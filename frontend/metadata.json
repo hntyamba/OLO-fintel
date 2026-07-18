@@ -1,0 +1,6 @@
+{
+  "name": "OLO Fintel",
+  "description": "Economic Operating System that transforms daily operational data of SADC PMEs and cooperatives into funding readiness, powered by AI Financial Advisors.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

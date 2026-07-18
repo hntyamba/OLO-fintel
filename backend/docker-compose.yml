@@ -1,0 +1,83 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: olo-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres_password
+      POSTGRES_DB: olofintel
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - olo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d olofintel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: olo-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    networks:
+      - olo-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: olo-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=postgresql://postgres:postgres_password@postgres:5432/olofintel?schema=public
+      - JWT_SECRET=olo-fintel-secret-key-2026-luanda
+      - JWT_REFRESH_SECRET=olo-fintel-refresh-secret-key-2026-luanda
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - olo-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: olo-nginx
+    restart: always
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+    networks:
+      - olo-network
+
+volumes:
+  postgres-data:
+    driver: local
+
+networks:
+  olo-network:
+    name: olo-network
+    driver: bridge

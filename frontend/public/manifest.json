@@ -1,0 +1,22 @@
+{
+  "short_name": "OLO Fintel",
+  "name": "OLO Fintel — Inteligência Financeira",
+  "description": "Fomento Cooperativo e Pontuação de Crédito por Inteligência Artificial para PMEs em Angola.",
+  "icons": [
+    {
+      "src": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=192&h=192&fit=crop",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=512&h=512&fit=crop",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#09090b",
+  "theme_color": "#7c3aed",
+  "display": "standalone",
+  "orientation": "portrait"
+}

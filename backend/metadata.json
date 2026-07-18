@@ -1,0 +1,6 @@
+{
+  "name": "OLO Fintel",
+  "description": "Plataforma de inteligência operacional, financeira e de preparação para financiamento para PMEs, cooperativas e organizações produtivas africanas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,1004 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ==========================================
+// CORE DOMAIN
+// ==========================================
+
+model Organization {
+  id           String   @id @default(uuid())
+  name         String
+  legalName    String?
+  taxNumber    String?  @unique // NIF
+  sector       String   // e.g. "Agriculture", "Livestock", "Fisheries", "Commerce"
+  size         String?  // e.g. "Micro", "Small", "Medium"
+  country      String   @default("Angola")
+  province     String?
+  municipality String?
+  address      String?
+  phone        String?
+  email        String?
+  website      String?
+  status       String   @default("Active") // Active, Suspended, Inactive
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  deletedAt    DateTime?
+
+  // Relations
+  profile      OrganizationProfile?
+  settings     OrganizationSettings?
+  memberships  OrganizationMembership[]
+  farms        Farm[]
+  inputs       AgriculturalInput[]
+  equipment    Equipment[]
+  weather      WeatherRecord[]
+  animals      Animal[]
+  vessels      Vessel[]
+  products     Product[]
+  leads        Lead[]
+  customers    Customer[]
+  suppliers    Supplier[]
+  contracts    Contract[]
+  tasks        Task[]
+  accounts     Account[]
+  revenues     Revenue[]
+  expenses     Expense[]
+  budgets      Budget[]
+  forecasts    Forecast[]
+  documents    Document[]
+  fundingProfile FundingProfile?
+  fundingScores  FundingScore[]
+  applications FundingApplication[]
+  metrics      OrganizationMetrics[]
+  kpis         KPI[]
+  conversations AIConversation[]
+  recommendations AIRecommendation[]
+  insights     AIInsight[]
+  actionPlans  AIActionPlan[]
+  auditLogs    AuditLog[]
+  files        File[]
+
+  @@index([createdAt])
+  @@index([status])
+}
+
+model OrganizationProfile {
+  organizationId String       @id
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  mission        String?
+  vision         String?
+  description    String?
+  foundedAt      DateTime?
+  employeeCount  Int          @default(0)
+  annualRevenue  Float        @default(0.0)
+}
+
+model OrganizationSettings {
+  organizationId       String       @id
+  organization         Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  currency             String       @default("AOA") // Kwanza
+  language             String       @default("pt")  // Portuguese
+  timezone             String       @default("Africa/Luanda")
+  theme                String       @default("system") // light, dark, system
+  notificationsEnabled Boolean      @default(true)
+}
+
+model OrganizationMembership {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId         String
+  role           Role         @relation(fields: [roleId], references: [id])
+  status         String       @default("Active") // Active, Pending, Inactive
+  joinedAt       DateTime     @default(now())
+
+  @@unique([organizationId, userId])
+}
+
+// ==========================================
+// IDENTITY DOMAIN
+// ==========================================
+
+model User {
+  id           String   @id @default(uuid())
+  firstName    String
+  lastName     String
+  email        String   @unique
+  phone        String?
+  passwordHash String
+  avatar       String?
+  status       String   @default("Active") // Active, Suspended, Inactive
+  lastLogin    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  memberships  OrganizationMembership[]
+  sessions     Session[]
+  notifications Notification[]
+  auditLogs    AuditLog[]
+  files        File[]
+  documentReviews DocumentReview[]
+  fundingReviews  FundingReview[]
+  documentVersions DocumentVersion[]
+}
+
+model Role {
+  id          String       @id
+  name        String       @unique // Owner, Admin, Manager, FinancialOfficer, Analyst, Consultant, Member, Jury
+  description String?
+  
+  // Relations
+  memberships OrganizationMembership[]
+  permissions RolePermission[]
+}
+
+model Permission {
+  id          String   @id @default(uuid())
+  resource    String   // e.g. "operations", "finance", "documents", "funding", "survey", "analyst"
+  action      String   // e.g. "create", "read", "update", "delete", "approve"
+  
+  // Relations
+  roles       RolePermission[]
+
+  @@unique([resource, action])
+}
+
+model RolePermission {
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+}
+
+model Session {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// AGRICULTURE DOMAIN
+// ==========================================
+
+model Farm {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  location       String?
+  area           Float        @default(0.0) // in hectares
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  plots          Plot[]
+}
+
+model Plot {
+  id             String    @id @default(uuid())
+  farmId         String
+  farm           Farm      @relation(fields: [farmId], references: [id], onDelete: Cascade)
+  name           String
+  area           Float     @default(0.0) // in hectares
+  gpsCoordinates String?
+  soilType       String?
+  status         String    @default("Fallow") // Cultivated, Fallow, Preparing
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  plantings      Planting[]
+  usages         InputUsage[]
+}
+
+model Crop {
+  id        String   @id @default(uuid())
+  name      String   @unique // e.g. Mandioca, Milho, Batata-doce, Feijão
+  category  String?  // e.g. Tuberculo, Cereal, Leguminosa
+  variety   String?  // e.g. Branca, Amarela
+  createdAt DateTime @default(now())
+
+  // Relations
+  plantings Planting[]
+}
+
+model Planting {
+  id                  String    @id @default(uuid())
+  plotId              String
+  plot                Plot      @relation(fields: [plotId], references: [id], onDelete: Cascade)
+  cropId              String
+  crop                Crop      @relation(fields: [cropId], references: [id], onDelete: Cascade)
+  startDate           DateTime
+  expectedHarvestDate DateTime?
+  quantity            Float
+  unit                String    @default("kg") // e.g. kg, sementes, mudas
+  status              String    @default("Growing") // Growing, Harvested, Failed
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  harvests            Harvest[]
+}
+
+model Harvest {
+  id          String   @id @default(uuid())
+  plantingId  String
+  planting    Planting @relation(fields: [plantingId], references: [id], onDelete: Cascade)
+  harvestDate DateTime
+  quantity    Float
+  quality     String   @default("Standard") // Premium, Standard, Low
+  losses      Float    @default(0.0)
+  notes       String?
+  createdAt   DateTime @default(now())
+}
+
+model AgriculturalInput {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String       // e.g. Fertilizante NPK, Sementes de Milho, Calcário
+  category       String       // Fertilizers, Seeds, Pesticides, Tools
+  stock          Float        @default(0.0)
+  unit           String       @default("kg") // kg, L, un
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  usages         InputUsage[]
+}
+
+model InputUsage {
+  id         String            @id @default(uuid())
+  inputId    String
+  input      AgriculturalInput @relation(fields: [inputId], references: [id], onDelete: Cascade)
+  plotId     String
+  plot       Plot              @relation(fields: [plotId], references: [id], onDelete: Cascade)
+  quantity   Float
+  date       DateTime
+  createdAt  DateTime          @default(now())
+}
+
+model Equipment {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String       // e.g. Tractor Massey Ferguson, Bomba de Água
+  type           String       // e.g. Vehicle, Pump, Generator, Sprayer
+  serialNumber   String?
+  status         String       @default("Operational") // Operational, Maintenance, Broken
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  maintenances   EquipmentMaintenance[]
+}
+
+model EquipmentMaintenance {
+  id          String    @id @default(uuid())
+  equipmentId String
+  equipment   Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  type        String    // Preventive, Corrective
+  cost        Float     @default(0.0)
+  date        DateTime
+  notes       String?
+  createdAt   DateTime  @default(now())
+}
+
+model WeatherRecord {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  temperature    Float
+  humidity       Float
+  rainfall       Float        @default(0.0) // in mm
+  windSpeed      Float        @default(0.0)
+  recordedAt     DateTime     @default(now())
+  source         String       @default("sensor") // sensor, manual, api
+}
+
+// ==========================================
+// LIVESTOCK DOMAIN
+// ==========================================
+
+model Animal {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  tagNumber      String       @unique // Brinco ou ID visual
+  species        String       // Bovinos, Suínos, Caprinos, Ovinos, Aves
+  breed          String?
+  gender         String       // M, F
+  birthDate      DateTime?
+  weight         Float?       // in kg
+  status         String       @default("Active") // Active, Sold, Dead, Sick, Quarantine
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  vaccinations   Vaccination[]
+  treatments     Treatment[]
+  feedRecords    FeedRecord[]
+  weightRecords  WeightRecord[]
+}
+
+model Vaccination {
+  id           String    @id @default(uuid())
+  animalId     String
+  animal       Animal    @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  vaccine      String
+  date         DateTime
+  nextDoseDate DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+}
+
+model Treatment {
+  id        String   @id @default(uuid())
+  animalId  String
+  animal    Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  disease   String
+  medicine  String
+  date      DateTime
+  notes     String?
+  createdAt DateTime @default(now())
+}
+
+model FeedRecord {
+  id        String   @id @default(uuid())
+  animalId  String
+  animal    Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  feedType  String   // e.g. Ração de Crescimento, Capim, Suplemento
+  quantity  Float    // in kg
+  cost      Float    @default(0.0)
+  date      DateTime
+  createdAt DateTime @default(now())
+}
+
+model WeightRecord {
+  id        String   @id @default(uuid())
+  animalId  String
+  animal    Animal   @relation(fields: [animalId], references: [id], onDelete: Cascade)
+  weight    Float
+  date      DateTime
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// FISHERIES DOMAIN
+// ==========================================
+
+model Vessel {
+  id                 String       @id @default(uuid())
+  organizationId     String
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name               String
+  registrationNumber String       @unique
+  capacity           Float        @default(0.0) // in tons
+  status             String       @default("Operational") // Operational, Maintenance, Sea, Docked
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  // Relations
+  trips              FishingTrip[]
+  maintenances       VesselMaintenance[]
+}
+
+model FishingTrip {
+  id            String    @id @default(uuid())
+  vesselId      String
+  vessel        Vessel    @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  departureDate DateTime
+  arrivalDate   DateTime?
+  fuelCost      Float     @default(0.0)
+  crewCount     Int       @default(0)
+  status        String    @default("Active") // Active, Completed, Cancelled
+  createdAt     DateTime  @default(now())
+
+  // Relations
+  catches       Catch[]
+}
+
+model Catch {
+  id          String      @id @default(uuid())
+  tripId      String
+  trip        FishingTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  species     String      // e.g. Carapau, Sardinha, Garoupa, Caxucho
+  weight      Float       // in kg
+  marketValue Float       @default(0.0) // estimated value in AOA
+  createdAt   DateTime    @default(now())
+}
+
+model VesselMaintenance {
+  id              String   @id @default(uuid())
+  vesselId        String
+  vessel          Vessel   @relation(fields: [vesselId], references: [id], onDelete: Cascade)
+  maintenanceType String   // Preventive, Corrective, Drydock
+  cost            Float    @default(0.0)
+  date            DateTime
+  notes           String?
+  createdAt       DateTime @default(now())
+}
+
+// ==========================================
+// COMMERCE DOMAIN
+// ==========================================
+
+model Product {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  sku            String?
+  name           String
+  category       String       // e.g. Cereais, Carnes, Peixe, Fertilizantes
+  purchasePrice  Float        @default(0.0)
+  salePrice      Float        @default(0.0)
+  status         String       @default("Active") // Active, Inactive
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  inventory      Inventory?
+  movements      InventoryMovement[]
+  purchaseItems  PurchaseOrderItem[]
+  saleItems      SaleOrderItem[]
+
+  @@unique([organizationId, sku])
+}
+
+model Inventory {
+  productId String   @id
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  quantity  Float    @default(0.0)
+  reserved  Float    @default(0.0)
+  available Float    @default(0.0)
+  updatedAt DateTime @updatedAt
+}
+
+model InventoryMovement {
+  id        String   @id @default(uuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  type      String   // IN, OUT, ADJUSTMENT, RESERVED
+  quantity  Float
+  reason    String   // e.g. Purchase, Sale, Loss, Stocktake
+  date      DateTime @default(now())
+}
+
+model PurchaseOrder {
+  id          String              @id @default(uuid())
+  supplierId  String
+  supplier    Supplier            @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  status      String              @default("Draft") // Draft, Ordered, Received, Paid, Cancelled
+  totalAmount Float               @default(0.0)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  items       PurchaseOrderItem[]
+}
+
+model PurchaseOrderItem {
+  id              String        @id @default(uuid())
+  purchaseOrderId String
+  purchaseOrder   PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+  productId       String
+  product         Product       @relation(fields: [productId], references: [id])
+  quantity        Float
+  price           Float
+}
+
+model SaleOrder {
+  id          String          @id @default(uuid())
+  customerId  String
+  customer    Customer        @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  status      String          @default("Draft") // Draft, Completed, Shipped, Paid, Cancelled
+  totalAmount Float           @default(0.0)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  items       SaleOrderItem[]
+}
+
+model SaleOrderItem {
+  id          String    @id @default(uuid())
+  saleOrderId String
+  saleOrder   SaleOrder @relation(fields: [saleOrderId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product   @relation(fields: [productId], references: [id])
+  quantity    Float
+  price       Float
+}
+
+// ==========================================
+// CRM DOMAIN
+// ==========================================
+
+model Lead {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  phone          String?
+  email          String?
+  source         String?      // Referral, Website, Direct, Event
+  status         String       @default("New") // New, Contacted, Qualified, Lost
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  opportunities  Opportunity[]
+}
+
+model Opportunity {
+  id          String   @id @default(uuid())
+  leadId      String
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  title       String
+  value       Float    @default(0.0)
+  stage       String   @default("Discovery") // Discovery, Proposal, Negotiation, Won, Lost
+  probability Float    @default(0.1) // 0.0 to 1.0
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Customer {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  phone          String?
+  email          String?
+  taxNumber      String?      // NIF of Customer
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  contracts      Contract[]
+  saleOrders     SaleOrder[]
+}
+
+model Supplier {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String
+  phone          String?
+  email          String?
+  taxNumber      String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  purchaseOrders PurchaseOrder[]
+}
+
+model Contract {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  customerId     String
+  customer       Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  startDate      DateTime
+  endDate        DateTime?
+  value          Float        @default(0.0)
+  status         String       @default("Draft") // Draft, Active, Expired, Cancelled
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Task {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  dueDate        DateTime?
+  status         String       @default("Pending") // Pending, InProgress, Completed, Deferred
+  assignedUserId String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// ==========================================
+// FINANCE DOMAIN
+// ==========================================
+
+model Account {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String       // e.g. Caixa Geral, Banco BAI, Caixa Fundo Maneio
+  type           String       // Cash, Bank, MobileMoney
+  balance        Float        @default(0.0)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  transactions   Transaction[]
+}
+
+model Revenue {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source         String       // e.g. Venda de Colheita, Venda de Peixe
+  amount         Float
+  date           DateTime
+  category       String       // e.g. Sales, Grants, Services
+  createdAt      DateTime     @default(now())
+}
+
+model Expense {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  description    String
+  amount         Float
+  date           DateTime
+  category       String       // e.g. Seeds, Fuel, Salaries, Maintenance, Rent
+  createdAt      DateTime     @default(now())
+}
+
+model Transaction {
+  id          String   @id @default(uuid())
+  accountId   String
+  account     Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  type        String   // IN, OUT
+  amount      Float
+  reference   String?  // receipt number, invoice ref
+  date        DateTime @default(now())
+  description String?
+}
+
+model Budget {
+  id              String       @id @default(uuid())
+  organizationId  String
+  organization    Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  period          String       // e.g. "2026-Q1", "2026-07"
+  expectedRevenue Float        @default(0.0)
+  expectedExpense Float        @default(0.0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+}
+
+model Forecast {
+  id               String       @id @default(uuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  period           String       // "2026-08", "2027"
+  projectedRevenue Float        @default(0.0)
+  projectedExpense Float        @default(0.0)
+  confidence       Float        @default(1.0) // 0.0 to 1.0
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+// ==========================================
+// DOCUMENTS DOMAIN
+// ==========================================
+
+model Document {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category       String       // e.g. NIF, CommercialLicense, Statutes, Contract, Report
+  title          String
+  currentVersion Int          @default(1)
+  status         String       @default("Pending") // Pending, Approved, Rejected, Expired
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  versions       DocumentVersion[]
+  reviews        DocumentReview[]
+}
+
+model DocumentVersion {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  fileUrl    String
+  version    Int
+  uploadedBy String
+  user       User     @relation(fields: [uploadedBy], references: [id])
+  uploadedAt DateTime @default(now())
+}
+
+model DocumentReview {
+  id         String   @id @default(uuid())
+  documentId String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  reviewerId String
+  reviewer   User     @relation(fields: [reviewerId], references: [id])
+  decision   String   // Approved, Rejected
+  comments   String?
+  reviewedAt DateTime @default(now())
+}
+
+// ==========================================
+// FUNDING DOMAIN
+// ==========================================
+
+model FundingProfile {
+  id                 String       @id @default(uuid())
+  organizationId     String       @unique
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  status             String       @default("NotStarted") // NotStarted, InProgress, Ready, Financed
+  lastAssessmentDate DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+}
+
+model FundingScore {
+  id               String       @id @default(uuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  financialScore   Float        @default(0.0) // 0 - 100
+  operationalScore Float        @default(0.0) // 0 - 100
+  commercialScore  Float        @default(0.0) // 0 - 100
+  documentScore    Float        @default(0.0) // 0 - 100
+  finalScore       Float        @default(0.0) // Overall average / weighted score
+  generatedAt      DateTime     @default(now())
+}
+
+model FundingChecklist {
+  id             String   @id @default(uuid())
+  organizationId String
+  item           String   // e.g. "Upload NIF", "Register 3 months of revenues", "Verify email"
+  status         String   @default("Pending") // Pending, Completed, Waived
+  updatedAt      DateTime @updatedAt
+}
+
+model FundingApplication {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  requestedAmount Float
+  purpose        String
+  status         String       @default("Draft") // Draft, Submitted, UnderReview, Approved, Rejected
+  submittedAt    DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  // Relations
+  reviews        FundingReview[]
+}
+
+model FundingReview {
+  id            String             @id @default(uuid())
+  applicationId String
+  application   FundingApplication @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  analystId     String
+  analyst       User               @relation(fields: [analystId], references: [id])
+  decision      String             // Approved, Rejected, NeedsMoreInfo
+  comments      String?
+  reviewedAt    DateTime           @default(now())
+}
+
+// ==========================================
+// ANALYTICS DOMAIN
+// ==========================================
+
+model OrganizationMetrics {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  month          Int
+  year           Int
+  revenue        Float        @default(0.0)
+  expense        Float        @default(0.0)
+  cashFlow       Float        @default(0.0)
+  inventoryValue Float        @default(0.0)
+  activeContracts Int          @default(0)
+  fundingScore   Float        @default(0.0)
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, month, year])
+}
+
+model KPI {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  name           String       // e.g. "Monthly Burn Rate", "Average Yield per Hectare"
+  value          Float
+  period         String       // "2026-07", "annual"
+  createdAt      DateTime     @default(now())
+}
+
+model Benchmark {
+  id         String   @id @default(uuid())
+  sector     String   // Agriculture, Livestock, Fisheries, Commerce
+  metric     String   // e.g. "ProfitMargin", "YieldPerHectare", "FuelEfficiency"
+  average    Float
+  top10      Float
+  top25      Float
+  updatedAt  DateTime @updatedAt
+
+  @@unique([sector, metric])
+}
+
+// ==========================================
+// AI ADVISOR DOMAIN
+// ==========================================
+
+model AIConversation {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  advisorType    String       // e.g. Executive, Financial, Operations, Commercial, Funding
+  createdAt      DateTime     @default(now())
+
+  // Relations
+  messages       AIMessage[]
+}
+
+model AIMessage {
+  id             String         @id @default(uuid())
+  conversationId String
+  conversation   AIConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           String         // user, assistant
+  content        String
+  createdAt      DateTime       @default(now())
+}
+
+model AIRecommendation {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  priority       String       // High, Medium, Low
+  status         String       @default("Active") // Active, Implemented, Ignored
+  generatedAt    DateTime     @default(now())
+}
+
+model AIInsight {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  type           String       // financial, operational, market
+  title          String
+  description    String
+  confidence     Float        @default(1.0)
+  generatedAt    DateTime     @default(now())
+}
+
+model AIActionPlan {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  deadline       DateTime?
+  status         String       @default("Pending") // Pending, Done, Overdue
+  createdAt      DateTime     @default(now())
+}
+
+// ==========================================
+// SURVEY DOMAIN (VALIDATION ENGINE)
+// ==========================================
+
+model Survey {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  goalCount   Int      @default(100)
+  status      String   @default("Open") // Open, Closed
+  createdAt   DateTime @default(now())
+
+  // Relations
+  questions   SurveyQuestion[]
+  responses   SurveyResponse[]
+}
+
+model SurveyQuestion {
+  id       String         @id @default(uuid())
+  surveyId String
+  survey   Survey         @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  order    Int
+  type     String         // single_choice, multi_choice, text, scale
+  text     String
+  options  String[]       // serialized array of choices (if applicable)
+
+  // Relations
+  answers  SurveyAnswer[]
+}
+
+model SurveyResponse {
+  id                   String   @id @default(uuid())
+  surveyId             String
+  survey               Survey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  respondentFingerprint String   // Hash code to prevent duplicates
+  organizationTypeHint String?  // Cooperativa, PME, Outro
+  provinceHint         String?  // Luanda, Benguela, Huambo, etc.
+  personaHint          String?  // Presidente, Gestor, Analista, Consultor
+  completedAt          DateTime @default(now())
+
+  // Relations
+  answers              SurveyAnswer[]
+}
+
+model SurveyAnswer {
+  id         String         @id @default(uuid())
+  responseId String
+  response   SurveyResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  questionId String
+  question   SurveyQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  value      String         // Answer text/value
+}
+
+// ==========================================
+// NOTIFICATION DOMAIN
+// ==========================================
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // e.g. Operational, Financial, Document, Funding, AI, Validation
+  title     String
+  body      String
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+model NotificationTemplate {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  channel   String   // email, in_app, push
+  content   String
+  createdAt DateTime @default(now())
+}
+
+// ==========================================
+// AUDIT LOG DOMAIN
+// ==========================================
+
+model AuditLog {
+  id             String        @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  userId         String?
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  entity         String        // e.g. "Revenue", "Animal", "Document"
+  entityId       String
+  action         String        // e.g. "CREATE", "UPDATE", "DELETE", "APPROVE"
+  oldValue       String?       // JSON serialized
+  newValue       String?       // JSON serialized
+  ipAddress      String?
+  createdAt      DateTime      @default(now())
+}
+
+// ==========================================
+// FILE STORAGE DOMAIN
+// ==========================================
+
+model File {
+  id             String        @id @default(uuid())
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  bucket         String        // e.g. avatars, documents, contracts, funding, reports
+  path           String
+  mimeType       String
+  size           Int
+  uploadedBy     String?
+  user           User?         @relation(fields: [uploadedBy], references: [id], onDelete: SetNull)
+  uploadedAt     DateTime      @default(now())
+}
