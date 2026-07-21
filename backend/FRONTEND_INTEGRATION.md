@@ -167,3 +167,33 @@ Recalcula as métricas reais e submete candidaturas estruturadas:
   *(Retorna as subpontuações calculadas a partir das finanças e documentos reais da cooperativa de 0 a 100)*
 * **Submeter Candidatura**: `POST /api/v1/funding/applications`
   *(Requer que a organização tenha pelo menos um documento avaliado como 'Approved' por analistas)*
+
+---
+
+## 7. Servidores, Ambientes e Utilitários de Administração
+
+### 7.1 URLs de Base (Endpoints da API)
+Ao integrar o frontend, utilize as seguintes variáveis de ambiente ou constantes:
+* **Ambiente de Desenvolvimento (AI Studio)**: `https://ais-dev-unq5ob2f5h3txk7mjjov2s-202455623977.europe-west2.run.app` (Ou use caminhos relativos `/api/*` se o frontend for servido pelo mesmo container Express/Vite)
+* **API Server (Render)**: `https://olofintel.onrender.com`
+* **Vercel Frontend**: `https://olofintel.vercel.app`
+
+### 7.2 Utilitários Exclusivos de Super Administrador (Controlo da BD)
+Para auxiliar o desenvolvimento e sincronização de testes, disponibilizamos dois endpoints administrativos:
+
+#### A. Estado Geral da BD Relacional (PostgreSQL / Supabase)
+* **Endpoint**: `GET /api/v1/admin/db-status`
+* **Retorna**: Contagem agregada de registos em todas as tabelas (utilizadores, organizações, questionários, candidaturas), além da lista dos últimos 15 utilizadores e organizações registadas.
+
+#### B. Redefinição Total (Reset & Seed)
+* **Endpoint**: `POST /api/v1/admin/db-reset`
+* **Descrição**: Limpa todas as tabelas e recria as perguntas básicas de validação do estudo de mercado no PostgreSQL.
+* **Aviso**: Esta ação é destrutiva e deve ser utilizada apenas em fase de testes e preparação da documentação.
+
+---
+
+## 8. Consola Administrativa Visual Integrada
+Para testar estes fluxos de forma interativa sem recorrer ao Postman, a nossa plataforma inclui agora uma **Consola Administrativa** no topo do ecrã com três separadores dedicados:
+1. **Simulador de Operações**: Permite alternar papéis (Owner, Analyst, Jury, Admin) e simular lançamentos no dashboard.
+2. **DB Postgres Inspector**: Um painel visual que se liga diretamente à base de dados PostgreSQL no Supabase, exibindo a contagem e os últimos registos em tempo real.
+3. **API Docs & Playground**: Documentação viva e gerador automático de comandos `cURL` para cada endpoint do sistema, com capacidade de disparar pedidos reais diretamente do navegador e analisar as respostas JSON instantaneamente.

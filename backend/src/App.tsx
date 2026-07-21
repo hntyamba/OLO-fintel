@@ -30,7 +30,8 @@ import {
   ShoppingBag,
   Cpu,
   Trash2,
-  Check
+  Check,
+  Code
 } from "lucide-react";
 
 // Types matching OLO Fintel Backend Architecture
@@ -61,7 +62,7 @@ export default function App() {
   // SIMULATION STATE (Owner / Sector / User Role Selector)
   // -------------------------------------------------------------
   const [activeSector, setActiveSector] = useState<"Agriculture" | "Livestock" | "Fisheries" | "Commerce">("Agriculture");
-  const [activeRole, setActiveRole] = useState<"Owner" | "FinancialOfficer" | "Analyst" | "Jury" | "Guest">("Owner");
+  const [activeRole, setActiveRole] = useState<"Owner" | "FinancialOfficer" | "Analyst" | "Jury" | "Guest" | "Admin">("Owner");
   const [activeProvince, setActiveProvince] = useState<string>("Benguela");
   const [orgName, setOrgName] = useState<string>("Cooperativa Agrícola de Catabola");
   const [nifValue, setNifValue] = useState<string>("5001228941");
@@ -190,6 +191,235 @@ export default function App() {
     const time = new Date().toISOString().slice(11, 19);
     setSysLogs(prev => [{ time, action, type }, ...prev].slice(0, 30));
   };
+
+  // -------------------------------------------------------------
+  // ADMIN/DEVELOPER CONSOLE STATE & UTILITIES
+  // -------------------------------------------------------------
+  const [activeTab, setActiveTab] = useState<"simulator" | "database" | "api">("simulator");
+  const [dbStatus, setDbStatus] = useState<any>(null);
+  const [isLoadingDb, setIsLoadingDb] = useState(false);
+  const [dbSuccessMsg, setDbSuccessMsg] = useState("");
+  const [selectedEndpointIdx, setSelectedEndpointIdx] = useState(0);
+  const [customPayload, setCustomPayload] = useState("");
+  const [apiResponse, setApiResponse] = useState<string | null>(null);
+  const [isCallingApi, setIsCallingApi] = useState(false);
+
+  const fetchDbStatus = async () => {
+    setIsLoadingDb(true);
+    try {
+      const res = await fetch("/api/v1/admin/db-status");
+      const data = await res.json();
+      if (data.success) {
+        setDbStatus(data);
+      }
+    } catch (err: any) {
+      console.error("Erro a carregar status da BD", err);
+    } finally {
+      setIsLoadingDb(false);
+    }
+  };
+
+  const handleResetDb = async () => {
+    if (!window.confirm("Aviso: Esta ação irá redefinir todas as tabelas e dados no PostgreSQL/Supabase. Desejas continuar?")) return;
+    setIsLoadingDb(true);
+    try {
+      const res = await fetch("/api/v1/admin/db-reset", { method: "POST" });
+      const data = await res.json();
+      if (data.success) {
+        setDbSuccessMsg("Base de dados redefinida e sincronizada com sucesso!");
+        await fetchDbStatus();
+        addLog("Redefinição total da Base de Dados executada pelo Administrador.", "WARN");
+        setTimeout(() => setDbSuccessMsg(""), 4000);
+      } else {
+        alert("Erro ao redefinir base de dados: " + data.error);
+      }
+    } catch (err: any) {
+      alert("Erro de conexão ao servidor: " + err.message);
+    } finally {
+      setIsLoadingDb(false);
+    }
+  };
+
+  const ENDPOINTS = [
+    {
+      name: "Autenticação: Registo de Novo Gestor",
+      method: "POST",
+      path: "/api/v1/auth/register",
+      auth: "Livre (Público)",
+      tenant: "Não aplicável",
+      description: "Cria uma conta de utilizador gestor e cria a respetiva Organização com papel de 'Owner'.",
+      payload: {
+        firstName: "Kiala",
+        lastName: "Mateus",
+        email: "kiala.mateus@coop.ao",
+        password: "SenhaSuperSegura",
+        phone: "+244923000000",
+        organizationName: "Cooperativa Agrícola de Catabola",
+        sector: "Agriculture"
+      }
+    },
+    {
+      name: "Autenticação: Iniciar Sessão (Login)",
+      method: "POST",
+      path: "/api/v1/auth/login",
+      auth: "Livre (Público)",
+      tenant: "Não aplicável",
+      description: "Autentica o utilizador e devolve tokens JWT de acesso (1h) e de atualização (7 dias).",
+      payload: {
+        email: "raisingpigs252@gmail.com",
+        password: "SenhaSuperSegura"
+      }
+    },
+    {
+      name: "Estudo de Mercado: Obter Estudo Ativo",
+      method: "GET",
+      path: "/api/v1/surveys/active",
+      auth: "Livre (Público)",
+      tenant: "Não aplicável",
+      description: "Retorna a estrutura das perguntas do estudo de validação de mercado (Epic 15) e progresso.",
+      payload: null
+    },
+    {
+      name: "Estudo de Mercado: Submeter Resposta",
+      method: "POST",
+      path: "/api/v1/surveys/responses",
+      auth: "Livre (Público)",
+      tenant: "Não aplicável",
+      description: "Regista as respostas de um respondente. Controlado por fingerprint de IP para evitar duplicados.",
+      payload: {
+        surveyId: "default-survey-id",
+        organizationTypeHint: "Cooperativa",
+        provinceHint: "Benguela",
+        personaHint: "Presidente",
+        answers: [
+          { questionId: "q-sector", value: "Agricultura" },
+          { questionId: "q-province", value: "Benguela" },
+          { questionId: "q-challenge", value: "Falta de controle de fluxo de caixa." }
+        ]
+      }
+    },
+    {
+      name: "Estatísticas: Painel de Júri de Validação",
+      method: "GET",
+      path: "/api/v1/surveys/jury-dashboard",
+      auth: "Autenticado (Jury / Analyst / Admin)",
+      tenant: "Opcional",
+      description: "Disponibiliza dados agregados e métricas anónimas. Requer o perfil correspondente.",
+      payload: null
+    },
+    {
+      name: "Consultoria: Chat com Advisor de IA (Gemini)",
+      method: "POST",
+      path: "/api/v1/ai/chat",
+      auth: "Autenticado (Qualquer papel)",
+      tenant: "Requerido (Cabeçalho 'x-organization-id')",
+      description: "Envia o prompt para o consultor especializado selecionado (Executive, Financial, Operations, Funding).",
+      payload: {
+        prompt: "Como reduzir os custos na colheita e otimizar adubos?",
+        advisorType: "Operations"
+      }
+    },
+    {
+      name: "Funding: Calcular Score de Elegibilidade",
+      method: "GET",
+      path: "/api/v1/funding/score",
+      auth: "Autenticado (Owner / FinancialOfficer / Analyst / Admin)",
+      tenant: "Requerido (Cabeçalho 'x-organization-id')",
+      description: "Calcula dinamicamente a prontidão financeira de 0 a 100 com base nos lançamentos reais.",
+      payload: null
+    },
+    {
+      name: "Funding: Submeter Dossiê à Banca",
+      method: "POST",
+      path: "/api/v1/funding/applications",
+      auth: "Autenticado (Owner / FinancialOfficer / Admin)",
+      tenant: "Requerido (Cabeçalho 'x-organization-id')",
+      description: "Cria um dossiê de candidatura de crédito e envia para análise analítica dos bancos parceiros.",
+      payload: {
+        requestedAmount: 5000000,
+        purpose: "Compra de Trator de Pneus e Equipamentos de Rega por Aspersão"
+      }
+    },
+    {
+      name: "Notificações: Listar Notificações",
+      method: "GET",
+      path: "/api/v1/notifications",
+      auth: "Autenticado (Qualquer papel)",
+      tenant: "Não aplicável",
+      description: "Obtém todas as notificações enviadas para o utilizador autenticado (notificações operacionais, financeiras, etc.).",
+      payload: null
+    },
+    {
+      name: "Notificações: Marcar Todas como Lidas",
+      method: "PATCH",
+      path: "/api/v1/notifications/read-all",
+      auth: "Autenticado (Qualquer papel)",
+      tenant: "Não aplicável",
+      description: "Marca instantaneamente todas as notificações pendentes do utilizador como lidas.",
+      payload: {}
+    },
+    {
+      name: "Notificações: Criar Notificação Simulada",
+      method: "POST",
+      path: "/api/v1/notifications",
+      auth: "Autenticado (Qualquer papel)",
+      tenant: "Não aplicável",
+      description: "Dispara/Simula o envio de uma notificação customizada para fins de auditoria ou alertamento operacional.",
+      payload: {
+        userId: "usr-sim-uuid-benguela",
+        type: "Operational",
+        title: "Alerta de Colheita Crítica",
+        body: "A humidade do solo no Setor C da fazenda atingiu limites críticos. Agendar irrigação prioritária."
+      }
+    }
+  ];
+
+  const handleExecuteApiCall = async () => {
+    setIsCallingApi(true);
+    setApiResponse(null);
+    const endpoint = ENDPOINTS[selectedEndpointIdx];
+    
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer mock-access-token-jwt",
+        "x-organization-id": "org-sim-uuid-benguela"
+      };
+
+      const options: RequestInit = {
+        method: endpoint.method,
+        headers
+      };
+
+      if (endpoint.method !== "GET" && customPayload) {
+        options.body = customPayload;
+      }
+
+      const res = await fetch(endpoint.path, options);
+      const data = await res.json();
+      setApiResponse(JSON.stringify(data, null, 2));
+      addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Retornado com sucesso`, "SUCCESS");
+    } catch (err: any) {
+      setApiResponse(JSON.stringify({ error: err.message }, null, 2));
+      addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Falhou`, "WARN");
+    } finally {
+      setIsCallingApi(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDbStatus();
+  }, []);
+
+  useEffect(() => {
+    const endpoint = ENDPOINTS[selectedEndpointIdx];
+    if (endpoint && endpoint.payload) {
+      setCustomPayload(JSON.stringify(endpoint.payload, null, 2));
+    } else {
+      setCustomPayload("");
+    }
+    setApiResponse(null);
+  }, [selectedEndpointIdx]);
 
   // -------------------------------------------------------------
   // DYNAMIC CALCULATORS FOR READINESS SCORE
@@ -486,6 +716,7 @@ export default function App() {
               <option value="FinancialOfficer">💰 Analista Financeiro (Finances)</option>
               <option value="Analyst">🛡️ Analista de Crédito (Banca)</option>
               <option value="Jury">⚖️ Jurado Evaluador (Ecosystem)</option>
+              <option value="Admin">⚡ Super Administrador (Admin)</option>
               <option value="Guest">🌐 Visitante / Público</option>
             </select>
           </div>
@@ -499,8 +730,51 @@ export default function App() {
         </div>
       </header>
 
-      {/* BENTO GRID */}
-      <main className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-grow mb-6">
+      {/* DEVELOPER / SUPERADMIN CONTROL PANEL TABS */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-zinc-900 border border-zinc-800 p-2 rounded-2xl mb-6">
+        <div className="flex items-center gap-2 pl-2">
+          <Shield className="w-4 h-4 text-emerald-400" />
+          <span className="text-xs font-bold uppercase tracking-wider font-mono text-zinc-300">CONSOLA ADMINISTRATIVA:</span>
+        </div>
+        <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-850 gap-1 w-full sm:w-auto">
+          <button
+            onClick={() => setActiveTab("simulator")}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+              activeTab === "simulator"
+                ? "bg-emerald-500 text-zinc-950 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
+            }`}
+          >
+            <span>📱</span> Simulador de Operações
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("database");
+              fetchDbStatus();
+            }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+              activeTab === "database"
+                ? "bg-emerald-500 text-zinc-950 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
+            }`}
+          >
+            <span>🗄️</span> DB Postgres Inspector
+          </button>
+          <button
+            onClick={() => setActiveTab("api")}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-2 px-4 py-1.5 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+              activeTab === "api"
+                ? "bg-emerald-500 text-zinc-950 shadow-[0_0_12px_rgba(16,185,129,0.3)]"
+                : "text-zinc-400 hover:text-white hover:bg-zinc-900"
+            }`}
+          >
+            <span>⚡</span> API Docs & Playground
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "simulator" && (
+        <main className="grid grid-cols-1 md:grid-cols-12 gap-4 flex-grow mb-6">
         
         {/* CARD 1: ECONOMIC IDENTITY & DOCUMENT STATUS (Col-span-4, Row-span-12 equivalent) */}
         <section className="md:col-span-4 bg-zinc-900 border border-zinc-800/80 rounded-2xl p-5 flex flex-col justify-between hover:border-zinc-700/50 transition-colors duration-200">
@@ -737,7 +1011,7 @@ export default function App() {
 
           {/* DYNAMIC QUICK ADD FORM (RBAC RESTRICTED - Only Manager, Owner, Admin) */}
           <div className="border-t border-zinc-800/80 pt-4">
-            {["Owner", "FinancialOfficer"].includes(activeRole) ? (
+            {["Owner", "FinancialOfficer", "Admin"].includes(activeRole) ? (
               <form onSubmit={handleAddOperationalItem} className="space-y-3">
                 <p className="text-[10px] font-mono text-emerald-400 uppercase tracking-wider font-bold">Lançar Novo Registo Operacional</p>
                 
@@ -862,7 +1136,7 @@ export default function App() {
             ) : (
               <div className="p-3 bg-zinc-950 rounded-xl border border-zinc-800 flex items-center gap-2.5 text-zinc-500 text-xs">
                 <Lock className="w-4 h-4 text-zinc-600 shrink-0" />
-                <span>Modificação de registros de atividade bloqueada para o seu perfil (<b>{activeRole}</b>). Altere para <b>Owner</b> ou <b>Analista Financeiro</b> acima para editar.</span>
+                <span>Modificação de registros de atividade bloqueada para o seu perfil (<b>{activeRole}</b>). Altere para <b>Owner</b>, <b>Analista Financeiro</b> ou <b>Admin</b> acima para editar.</span>
               </div>
             )}
           </div>
@@ -910,7 +1184,7 @@ export default function App() {
                     <span className={`font-mono text-[11px] font-bold ${t.type === "IN" ? "text-emerald-400" : "text-red-400"}`}>
                       {t.type === "IN" ? "+" : "-"}{t.amount.toLocaleString()}
                     </span>
-                    {activeRole === "Owner" && (
+                    {["Owner", "Admin"].includes(activeRole) && (
                       <button 
                         onClick={() => handleDeleteTransaction(t.id)}
                         className="text-zinc-700 hover:text-red-400 p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
@@ -927,7 +1201,7 @@ export default function App() {
 
           {/* Quick Transaction Adding Form */}
           <div className="border-t border-zinc-800/80 pt-3">
-            {["Owner", "FinancialOfficer"].includes(activeRole) ? (
+            {["Owner", "FinancialOfficer", "Admin"].includes(activeRole) ? (
               <form onSubmit={handleAddTransaction} className="space-y-2">
                 <div className="flex gap-2">
                   <input 
@@ -1422,6 +1696,377 @@ export default function App() {
         </section>
 
       </main>
+      )}
+
+      {activeTab === "database" && (
+        <main className="flex-grow flex flex-col gap-6 mb-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-zinc-800 pb-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Database className="w-5 h-5 text-emerald-400" />
+                  PostgreSQL Database Inspector & Seeder
+                </h2>
+                <p className="text-xs text-zinc-400 mt-1">
+                  Visualize, monitore e administre o estado atual do banco de dados relacional.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={fetchDbStatus}
+                  disabled={isLoadingDb}
+                  className="px-4 py-2 bg-zinc-850 hover:bg-zinc-800 text-white rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer border border-zinc-800"
+                >
+                  {isLoadingDb ? "A atualizar..." : "🔄 Atualizar Dados"}
+                </button>
+                <button
+                  onClick={handleResetDb}
+                  disabled={isLoadingDb}
+                  className="px-4 py-2 bg-red-600/20 text-red-400 border border-red-500/30 hover:bg-red-600 hover:text-white rounded-xl text-xs font-mono font-bold transition-all flex items-center gap-2 cursor-pointer"
+                >
+                  ⚠️ Redefinir Banco de Dados
+                </button>
+              </div>
+            </div>
+
+            {dbSuccessMsg && (
+              <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl text-xs font-mono mb-6 animate-pulse">
+                {dbSuccessMsg}
+              </div>
+            )}
+
+            {/* DB ENGINE STATUS SECTION */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 font-mono block mb-1">MOTOR DE BASE DE DADOS</span>
+                <span className="text-sm font-bold text-white flex items-center gap-2">
+                  {dbStatus?.dbConfigured ? (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                      PostgreSQL Engine
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                      In-Memory Sandbox
+                    </>
+                  )}
+                </span>
+              </div>
+              <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 font-mono block mb-1">CONEXÃO SUPABASE</span>
+                <span className="text-sm font-mono text-zinc-300 truncate block">
+                  {dbStatus?.dbConfigured ? "Conectado via TCP/Pooler" : "Offline / Mock Fallback"}
+                </span>
+              </div>
+              <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 font-mono block mb-1">REGISTOS TOTAIS</span>
+                <span className="text-sm font-mono font-bold text-emerald-400 block">
+                  {dbStatus?.counts ? Object.values(dbStatus.counts).reduce((a: any, b: any) => a + b, 0) : 0} linhas
+                </span>
+              </div>
+              <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-500 font-mono block mb-1">MODO DE EXECUÇÃO</span>
+                <span className="text-sm font-bold text-white block">
+                  {dbStatus?.isUsingMock ? "🔒 Sandbox (Sem Persistência)" : "🚀 Supabase Live"}
+                </span>
+              </div>
+            </div>
+
+            {/* METRICS BENTO CONTAINER */}
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850 text-center">
+                <span className="text-[10px] text-zinc-500 font-mono block">ORGANIZAÇÕES</span>
+                <span className="text-xl font-bold text-white font-mono mt-1 block">
+                  {dbStatus?.counts?.organizations ?? 0}
+                </span>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850 text-center">
+                <span className="text-[10px] text-zinc-500 font-mono block">UTILIZADORES</span>
+                <span className="text-xl font-bold text-white font-mono mt-1 block">
+                  {dbStatus?.counts?.users ?? 0}
+                </span>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850 text-center">
+                <span className="text-[10px] text-zinc-500 font-mono block">DOSSIÊS DE CRÉDITO</span>
+                <span className="text-xl font-bold text-white font-mono mt-1 block">
+                  {dbStatus?.counts?.fundingApplications ?? 0}
+                </span>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850 text-center">
+                <span className="text-[10px] text-zinc-500 font-mono block">RESPOSTAS ESTUDO</span>
+                <span className="text-xl font-bold text-white font-mono mt-1 block">
+                  {dbStatus?.counts?.surveyResponses ?? 0}
+                </span>
+              </div>
+              <div className="bg-zinc-950/40 p-3 rounded-xl border border-zinc-850 col-span-2 md:col-span-1 text-center">
+                <span className="text-[10px] text-zinc-500 font-mono block">DOCUMENTOS</span>
+                <span className="text-xl font-bold text-white font-mono mt-1 block">
+                  {dbStatus?.counts?.documents ?? 0}
+                </span>
+              </div>
+            </div>
+
+            {/* TABELAS COMPACTAS */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* ORGANIZATIONS LIST */}
+              <div className="bg-zinc-950/60 p-4 rounded-xl border border-zinc-850">
+                <h3 className="text-xs font-bold text-zinc-400 font-mono uppercase mb-3 tracking-wider flex items-center gap-1.5">
+                  📁 Últmas Organizações Registadas ({dbStatus?.counts?.organizations ?? 0})
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-900 text-zinc-500">
+                        <th className="py-2">Nome</th>
+                        <th className="py-2">Sector</th>
+                        <th className="py-2">Província</th>
+                        <th className="py-2">Criado em</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(!dbStatus?.lastOrgs || dbStatus.lastOrgs.length === 0) ? (
+                        <tr>
+                          <td colSpan={4} className="py-4 text-center text-zinc-600 italic">Sem organizações registadas.</td>
+                        </tr>
+                      ) : (
+                        dbStatus.lastOrgs.map((org: any) => (
+                          <tr key={org.id} className="border-b border-zinc-900 text-zinc-300 hover:text-white">
+                            <td className="py-2 font-bold">{org.name}</td>
+                            <td className="py-2 font-mono text-[10px] text-emerald-400">{org.sector}</td>
+                            <td className="py-2">{org.province || "Benguela"}</td>
+                            <td className="py-2 font-mono text-[10px] text-zinc-500">{new Date(org.createdAt).toLocaleDateString()}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* USERS LIST */}
+              <div className="bg-zinc-950/60 p-4 rounded-xl border border-zinc-850">
+                <h3 className="text-xs font-bold text-zinc-400 font-mono uppercase mb-3 tracking-wider flex items-center gap-1.5">
+                  👤 Últimos Utilizadores Registados ({dbStatus?.counts?.users ?? 0})
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-900 text-zinc-500">
+                        <th className="py-2">Nome</th>
+                        <th className="py-2">E-mail</th>
+                        <th className="py-2">Estado</th>
+                        <th className="py-2">Criado em</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(!dbStatus?.lastUsers || dbStatus.lastUsers.length === 0) ? (
+                        <tr>
+                          <td colSpan={4} className="py-4 text-center text-zinc-600 italic">Sem utilizadores registados.</td>
+                        </tr>
+                      ) : (
+                        dbStatus.lastUsers.map((user: any) => (
+                          <tr key={user.id} className="border-b border-zinc-900 text-zinc-300 hover:text-white">
+                            <td className="py-2 font-bold">{user.firstName} {user.lastName}</td>
+                            <td className="py-2 font-mono text-[10px]">{user.email}</td>
+                            <td className="py-2">
+                              <span className="bg-emerald-500/10 text-emerald-400 text-[9px] px-1.5 py-0.5 rounded border border-emerald-500/20 uppercase font-bold font-mono">
+                                {user.status}
+                              </span>
+                            </td>
+                            <td className="py-2 font-mono text-[10px] text-zinc-500">{new Date(user.createdAt).toLocaleDateString()}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* SURVEY RESPONSES LIST */}
+              <div className="bg-zinc-950/60 p-4 rounded-xl border border-zinc-850 col-span-1 lg:col-span-2">
+                <h3 className="text-xs font-bold text-zinc-400 font-mono uppercase mb-3 tracking-wider flex items-center gap-1.5">
+                  📝 Últimas Submissões do Estudo de Mercado ({dbStatus?.counts?.surveyResponses ?? 0})
+                </h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead>
+                      <tr className="border-b border-zinc-900 text-zinc-500">
+                        <th className="py-2">ID Submissão</th>
+                        <th className="py-2">Tipo de Organização</th>
+                        <th className="py-2">Província</th>
+                        <th className="py-2">Cargo do Respondente</th>
+                        <th className="py-2">Data da Resposta</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {(!dbStatus?.lastResponses || dbStatus.lastResponses.length === 0) ? (
+                        <tr>
+                          <td colSpan={5} className="py-4 text-center text-zinc-600 italic">Nenhuma submissão de estudo encontrada na BD. Use o simulador para registar respostas!</td>
+                        </tr>
+                      ) : (
+                        dbStatus.lastResponses.map((resp: any) => (
+                          <tr key={resp.id} className="border-b border-zinc-900 text-zinc-300 hover:text-white">
+                            <td className="py-2 font-mono text-[10px] text-zinc-500 truncate max-w-[120px]">{resp.id}</td>
+                            <td className="py-2">{resp.organizationTypeHint || "N/A"}</td>
+                            <td className="py-2 text-emerald-400 font-bold">{resp.provinceHint || "N/A"}</td>
+                            <td className="py-2 font-mono text-[10px] text-zinc-400">{resp.personaHint || "N/A"}</td>
+                            <td className="py-2 font-mono text-[10px] text-zinc-500">{new Date(resp.completedAt).toLocaleString()}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </main>
+      )}
+
+      {activeTab === "api" && (
+        <main className="flex-grow flex flex-col gap-6 mb-6">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6">
+            <div className="mb-6 border-b border-zinc-800 pb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <Code className="w-5 h-5 text-emerald-400" />
+                API Explorer & Integration Playground
+              </h2>
+              <p className="text-xs text-zinc-400 mt-1">
+                Explore os contratos de rotas, payloads, cabeçalhos, gere cURLs automáticos e teste pedidos em tempo real.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* ENDPOINT SELECTOR & CONTRACT INFO (Col-span-4) */}
+              <div className="lg:col-span-5 flex flex-col gap-4">
+                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-850">
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 font-bold">
+                    Selecionar Endpoint do Sistema:
+                  </label>
+                  <select
+                    value={selectedEndpointIdx}
+                    onChange={(e) => setSelectedEndpointIdx(Number(e.target.value))}
+                    className="w-full bg-zinc-900 border border-zinc-800 text-xs text-white rounded-xl p-2.5 focus:outline-none focus:border-emerald-500 cursor-pointer"
+                  >
+                    {ENDPOINTS.map((endpoint, index) => (
+                      <option key={index} value={index}>
+                        {endpoint.method} {endpoint.path}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-850 flex-grow space-y-4">
+                  <div className="flex items-center gap-2">
+                    <span className={`px-2.5 py-1 text-[10px] font-mono font-black rounded-lg ${
+                      ENDPOINTS[selectedEndpointIdx]?.method === "GET" 
+                        ? "bg-blue-500/10 text-blue-400 border border-blue-500/20"
+                        : "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                    }`}>
+                      {ENDPOINTS[selectedEndpointIdx]?.method}
+                    </span>
+                    <span className="text-xs font-mono font-bold text-zinc-300">
+                      {ENDPOINTS[selectedEndpointIdx]?.path}
+                    </span>
+                  </div>
+
+                  <div>
+                    <h4 className="text-xs font-bold text-white">{ENDPOINTS[selectedEndpointIdx]?.name}</h4>
+                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                      {ENDPOINTS[selectedEndpointIdx]?.description}
+                    </p>
+                  </div>
+
+                  <div className="border-t border-zinc-900 pt-3 space-y-2 text-xs font-mono">
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Autenticação:</span>
+                      <span className="text-zinc-300 font-bold">{ENDPOINTS[selectedEndpointIdx]?.auth}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-zinc-500">Escopo Multi-Tenant:</span>
+                      <span className="text-zinc-300 font-bold">{ENDPOINTS[selectedEndpointIdx]?.tenant}</span>
+                    </div>
+                  </div>
+
+                  {/* CODE GENERATOR: cURL COMPILER */}
+                  <div className="border-t border-zinc-900 pt-3">
+                    <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 font-bold">
+                      Comando de Integração (cURL):
+                    </label>
+                    <div className="bg-zinc-900 p-3 rounded-lg border border-zinc-850 font-mono text-[10px] text-zinc-400 leading-relaxed overflow-x-auto relative group">
+                      <pre>
+{`curl -X ${ENDPOINTS[selectedEndpointIdx]?.method} \\
+  "https://fintel-engine.olo.ao${ENDPOINTS[selectedEndpointIdx]?.path}" \\
+  -H "Content-Type: application/json" \\
+  -H "Authorization: Bearer <SEU_JWT_TOKEN>" \\
+  ${ENDPOINTS[selectedEndpointIdx]?.tenant.includes("Requerido") ? '-H "x-organization-id: <ORG_ID_UUID>" \\\n  ' : ''}${ENDPOINTS[selectedEndpointIdx]?.payload ? `-d '${JSON.stringify(ENDPOINTS[selectedEndpointIdx]?.payload, null, 2).replace(/'/g, "'\\''")}'` : ''}`}
+                      </pre>
+                      <button
+                        onClick={() => {
+                          const curlText = `curl -X ${ENDPOINTS[selectedEndpointIdx]?.method} "https://fintel-engine.olo.ao${ENDPOINTS[selectedEndpointIdx]?.path}" -H "Content-Type: application/json" -H "Authorization: Bearer <SEU_JWT_TOKEN>" ${ENDPOINTS[selectedEndpointIdx]?.tenant.includes("Requerido") ? '-H "x-organization-id: <ORG_ID_UUID>" ' : ''}${ENDPOINTS[selectedEndpointIdx]?.payload ? `-d '${JSON.stringify(ENDPOINTS[selectedEndpointIdx]?.payload)}'` : ''}`;
+                          navigator.clipboard.writeText(curlText);
+                          alert("cURL copiado para a área de transferência!");
+                        }}
+                        className="absolute right-2 top-2 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-[10px] text-emerald-400 px-2 py-0.5 rounded cursor-pointer transition-all opacity-0 group-hover:opacity-100"
+                      >
+                        Copiar cURL
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* PAYLOAD EDITOR & REAL-TIME CALLER (Col-span-8) */}
+              <div className="lg:col-span-7 flex flex-col gap-4">
+                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-850 flex flex-col h-[280px]">
+                  <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block mb-2 font-bold flex justify-between items-center">
+                    <span>Corpo do Pedido (Request Body - JSON)</span>
+                    {ENDPOINTS[selectedEndpointIdx]?.payload === null && (
+                      <span className="text-zinc-600 font-normal normal-case">Sem payload necessário (GET)</span>
+                    )}
+                  </label>
+                  <textarea
+                    value={customPayload}
+                    onChange={(e) => setCustomPayload(e.target.value)}
+                    disabled={ENDPOINTS[selectedEndpointIdx]?.payload === null}
+                    className="w-full flex-grow bg-zinc-900 border border-zinc-800 font-mono text-xs text-emerald-400 rounded-xl p-3 focus:outline-none focus:border-emerald-500 resize-none disabled:opacity-40"
+                    placeholder="{}"
+                  />
+                </div>
+
+                <div className="bg-zinc-950 p-4 rounded-xl border border-zinc-850 flex-grow flex flex-col min-h-[220px]">
+                  <div className="flex justify-between items-center mb-2">
+                    <label className="text-[10px] font-mono text-zinc-500 uppercase tracking-wider block font-bold">
+                      Consola de Resposta do Servidor (Response Body)
+                    </label>
+                    <button
+                      onClick={handleExecuteApiCall}
+                      disabled={isCallingApi}
+                      className="px-4 py-1.5 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 disabled:bg-zinc-800 disabled:text-zinc-600 rounded-lg text-xs font-mono font-black tracking-wider uppercase transition-all cursor-pointer shadow-[0_0_12px_rgba(16,185,129,0.2)] flex items-center gap-2"
+                    >
+                      {isCallingApi ? "A executar..." : "⚡ Testar Pedido"}
+                    </button>
+                  </div>
+                  
+                  <div className="flex-grow bg-zinc-900 p-3 rounded-xl border border-zinc-850 font-mono text-xs text-zinc-300 leading-relaxed overflow-y-auto max-h-[280px]">
+                    {apiResponse ? (
+                      <pre className="text-emerald-400 whitespace-pre-wrap">{apiResponse}</pre>
+                    ) : (
+                      <div className="text-zinc-600 text-center py-10 italic">
+                        Clique no botão "Testar Pedido" para despachar o pedido real para o servidor express e obter a resposta em formato JSON.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </main>
+      )}
 
       {/* FOOTER BAR */}
       <footer className="mt-4 flex flex-col md:flex-row justify-between items-center text-[10px] font-mono text-zinc-600 border-t border-zinc-900 pt-4 gap-2">

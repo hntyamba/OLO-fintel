@@ -239,6 +239,22 @@ class InMemoryDb {
       count: async (args?: any) => {
         const list = await api.findMany(args);
         return list.length;
+      },
+      updateMany: async (args?: any) => {
+        const list = await api.findMany(args);
+        let count = 0;
+        for (const item of list) {
+          const index = this.store[table].findIndex(x => x.id === item.id);
+          if (index !== -1) {
+            this.store[table][index] = {
+              ...this.store[table][index],
+              ...args.data,
+              updatedAt: new Date()
+            };
+            count++;
+          }
+        }
+        return { count };
       }
     };
     return api;

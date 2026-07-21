@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import swaggerUi from "swagger-ui-express";
+import cors from "cors";
 import { createServer as createViteServer } from "vite";
 import { swaggerDocument } from "./src/server/swagger.ts";
 
@@ -42,6 +43,7 @@ import {
   reviewApplication
 } from "./src/server/controllers/fundingController.ts";
 import { askAdvisor, getRecommendations, getActionPlan } from "./src/server/controllers/aiController.ts";
+import { getNotifications, markAsRead, markAllAsRead, createNotification } from "./src/server/controllers/notificationController.ts";
 
 async function startServer() {
   const app = express();
@@ -50,6 +52,30 @@ async function startServer() {
   // Global parsing middlewares
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
+
+  // Enable CORS for external frontend (Vercel) & local development
+  const allowedOrigins = [
+    "https://olofintel.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+  ];
+  if (process.env.FRONTEND_URL) {
+    allowedOrigins.push(process.env.FRONTEND_URL);
+  }
+  
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-side calls)
+      if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".run.app")) {
+        callback(null, true);
+      } else {
+        callback(new Error("Bloqueado por política CORS: Origem não autorizada."));
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "x-organization-id"]
+  }));
 
   // Swagger Documentation
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
@@ -119,6 +145,12 @@ async function startServer() {
   app.get("/api/v1/ai/recommendations", requireAuth, injectTenant, getRecommendations);
   app.get("/api/v1/ai/action-plan", requireAuth, injectTenant, getActionPlan);
 
+  // Notifications Endpoints
+  app.get("/api/v1/notifications", requireAuth, getNotifications);
+  app.patch("/api/v1/notifications/read-all", requireAuth, markAllAsRead);
+  app.patch("/api/v1/notifications/:id/read", requireAuth, markAsRead);
+  app.post("/api/v1/notifications", requireAuth, createNotification);
+
   // ==========================================
   // ROLE GATED PORTALS (Analyst / Jury / Admin)
   // ==========================================
@@ -154,6 +186,192 @@ async function startServer() {
   // Healthcheck Route
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date() });
+  });
+
+  // ==========================================
+  // ADMIN/DEVELOPER UTILITIES & DB VISUALIZER
+  // ==========================================
+  app.get("/api/v1/admin/db-status", async (req, res) => {
+    try {
+      const { db, isUsingMock, isDbConfigured } = await import("./src/db/client.ts");
+      
+      const counts = {
+        organizations: await db.organization.count().catch(() => 0),
+        users: await db.user.count().catch(() => 0),
+        farms: await db.farm.count().catch(() => 0),
+        animals: await db.animal.count().catch(() => 0),
+        vessels: await db.vessel.count().catch(() => 0),
+        products: await db.product.count().catch(() => 0),
+        transactions: await db.transaction.count().catch(() => 0),
+        documents: await db.document.count().catch(() => 0),
+        fundingApplications: await db.fundingApplication.count().catch(() => 0),
+        surveys: await db.survey.count().catch(() => 0),
+        surveyResponses: await db.surveyResponse.count().catch(() => 0),
+      };
+
+      const lastUsers = await db.user.findMany({
+        take: 15,
+        orderBy: { createdAt: "desc" },
+        select: { id: true, firstName: true, lastName: true, email: true, status: true, createdAt: true }
+      }).catch(() => []);
+
+      const lastOrgs = await db.organization.findMany({
+        take: 15,
+        orderBy: { createdAt: "desc" },
+        select: { id: true, name: true, sector: true, province: true, status: true, createdAt: true }
+      }).catch(() => []);
+
+      const lastResponses = await db.surveyResponse.findMany({
+        take: 15,
+        orderBy: { completedAt: "desc" }
+      }).catch(() => []);
+
+      const lastApplications = await db.fundingApplication.findMany({
+        take: 15,
+        orderBy: { createdAt: "desc" }
+      }).catch(() => []);
+
+      res.json({
+        success: true,
+        engine: "OLO Fintel Administrative Console",
+        dbConfigured: isDbConfigured,
+        isUsingMock: isUsingMock,
+        databaseUrl: process.env.DATABASE_URL ? "postgresql://postgres.zxtvhwrqxeychyehqcqv:colege@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true" : "Not Defined",
+        counts,
+        lastUsers,
+        lastOrgs,
+        lastResponses,
+        lastApplications,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.post("/api/v1/admin/db-reset", async (req, res) => {
+    try {
+      const { db, isUsingMock } = await import("./src/db/client.ts");
+      
+      if (!isUsingMock) {
+        // Safe delete cascade or deletion of dependants first
+        await db.surveyAnswer.deleteMany().catch(() => {});
+        await db.surveyResponse.deleteMany().catch(() => {});
+        await db.document.deleteMany().catch(() => {});
+        await db.fundingApplication.deleteMany().catch(() => {});
+        await db.transaction.deleteMany().catch(() => {});
+        await db.product.deleteMany().catch(() => {});
+        await db.animal.deleteMany().catch(() => {});
+        await db.vessel.deleteMany().catch(() => {});
+        await db.farm.deleteMany().catch(() => {});
+        await db.organizationMembership.deleteMany().catch(() => {});
+        await db.organizationSettings.deleteMany().catch(() => {});
+        await db.organizationProfile.deleteMany().catch(() => {});
+        await db.fundingProfile.deleteMany().catch(() => {});
+        await db.session.deleteMany().catch(() => {});
+        await db.user.deleteMany().catch(() => {});
+        await db.organization.deleteMany().catch(() => {});
+        
+        // Seed standard survey
+        await db.survey.upsert({
+          where: { id: "default-survey-id" },
+          update: {},
+          create: {
+            id: "default-survey-id",
+            title: "Estudo Nacional de PMEs e Cooperativas",
+            description: "Estudo para validação de dores operacionais e financeiras de organizações produtivas africanas.",
+            goalCount: 100,
+            status: "Open",
+          }
+        });
+
+        await db.surveyQuestion.upsert({
+          where: { id: "q-sector" },
+          update: {},
+          create: {
+            id: "q-sector",
+            surveyId: "default-survey-id",
+            order: 1,
+            type: "single_choice",
+            text: "Qual é o setor principal da sua organização?",
+            options: ["Agricultura", "Pecuária", "Pesca", "Comércio", "Outro"]
+          }
+        });
+      } else {
+        // Clear InMemory store
+        // @ts-ignore
+        if (db.store) {
+          // @ts-ignore
+          db.store = {
+            users: [],
+            organizations: [],
+            organizationProfiles: [],
+            organizationSettings: [],
+            memberships: [],
+            farms: [],
+            plots: [],
+            crops: [],
+            plantings: [],
+            harvests: [],
+            inputs: [],
+            inputUsages: [],
+            equipments: [],
+            maintenances: [],
+            weatherRecords: [],
+            animals: [],
+            vaccinations: [],
+            treatments: [],
+            feedRecords: [],
+            weightRecords: [],
+            vessels: [],
+            trips: [],
+            catches: [],
+            products: [],
+            inventories: [],
+            inventoryMovements: [],
+            leads: [],
+            opportunities: [],
+            customers: [],
+            suppliers: [],
+            contracts: [],
+            tasks: [],
+            accounts: [],
+            revenues: [],
+            expenses: [],
+            transactions: [],
+            budgets: [],
+            forecasts: [],
+            documents: [],
+            documentVersions: [],
+            fundingProfiles: [],
+            fundingScores: [],
+            fundingChecklists: [],
+            fundingApplications: [],
+            fundingReviews: [],
+            metrics: [],
+            kpis: [],
+            benchmarks: [],
+            conversations: [],
+            messages: [],
+            recommendations: [],
+            insights: [],
+            actionPlans: [],
+            surveys: [],
+            surveyQuestions: [],
+            surveyResponses: [],
+            surveyAnswers: [],
+            notifications: [],
+            auditLogs: [],
+            files: []
+          };
+          // @ts-ignore
+          db.seedDefaults();
+        }
+      }
+
+      res.json({ success: true, message: "Base de dados redefinida e sincronizada com sucesso!" });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
   });
 
   // ==========================================
