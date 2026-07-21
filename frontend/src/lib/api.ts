@@ -10,24 +10,46 @@
 
 const API_URL = (import.meta as any).env.VITE_API_URL || '';
 
-// Função auxiliar para retornar a URL da API correta com base no ambiente
-export function getApiUrl(path: string): string {
-  const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  return `${API_URL}${cleanPath}`;
-}
+// Let's implement an automated background probe that ensures we fall back
+// to relative paths (our built-in full-stack server.ts) if the configured VITE_API_URL is unreachable or slow.
+let useRemoteServer = false;
+let checkedHealth = false;
 
-// Função auxiliar para verificar se o servidor está online
 export async function checkServerHealth(): Promise<boolean> {
   if (!API_URL) return false;
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000); // Timeout de 3 segundos
-    const res = await fetch(`${API_URL}/health`, { signal: controller.signal });
+    const timeoutId = setTimeout(() => controller.abort(), 1500); // 1.5s timeout is plenty
+    const res = await fetch(`${API_URL}/api/health`, { signal: controller.signal }).catch(() => 
+      fetch(`${API_URL}/health`, { signal: controller.signal })
+    ).catch(() => 
+      fetch(`${API_URL}/`, { method: 'HEAD', signal: controller.signal })
+    );
     clearTimeout(timeoutId);
-    return res.ok;
+    return !!(res && res.ok);
   } catch {
     return false;
   }
+}
+
+// Proactive background check on startup
+if (API_URL) {
+  checkServerHealth().then((isOnline) => {
+    useRemoteServer = isOnline;
+    checkedHealth = true;
+    console.log(`[OLO Fintel API] Probe results for ${API_URL}: Online = ${isOnline}`);
+  });
+}
+
+// Função auxiliar para retornar a URL da API correta com base no ambiente
+export function getApiUrl(path: string): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  // Only prepend the remote API_URL if we have explicitly checked and confirmed it is online and reachable.
+  // Otherwise, route natively via relative path to the built-in Express server inside the local environment!
+  if (API_URL && useRemoteServer) {
+    return `${API_URL}${cleanPath}`;
+  }
+  return cleanPath;
 }
 
 // Obter os cabeçalhos de autenticação JWT

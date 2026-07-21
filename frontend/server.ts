@@ -492,6 +492,15 @@ async function startServer() {
     res.json({ success: true, survey: newResponse });
   });
 
+  // Health Check endpoints
+  app.get('/api/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  });
+
+  app.get('/health', (req, res) => {
+    res.json({ status: 'OK', timestamp: new Date().toISOString() });
+  });
+
   // Authentication API: Login
   app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
