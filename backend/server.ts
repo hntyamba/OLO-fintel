@@ -67,10 +67,10 @@ async function startServer() {
   app.use(cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps, curl, or server-side calls)
-      if (!origin || allowedOrigins.includes(origin) || origin.endsWith(".run.app")) {
+      if (!origin || allowedOrigins.includes(origin) || origin.includes(".run.app") || origin.includes("localhost") || origin.includes("127.0.0.1")) {
         callback(null, true);
       } else {
-        callback(new Error("Bloqueado por política CORS: Origem não autorizada."));
+        callback(new Error(`Bloqueado por política CORS: Origem '${origin}' não autorizada.`));
       }
     },
     credentials: true,
@@ -373,6 +373,15 @@ async function startServer() {
     } catch (err: any) {
       res.status(500).json({ success: false, error: err.message });
     }
+  });
+
+  // Global Error Handler for API routes (Prevents Express from rendering HTML on server errors/CORS issues)
+  app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+    console.error("[Global Error Handler] Caught exception:", err);
+    res.status(res.statusCode === 200 || res.statusCode === 304 ? 500 : res.statusCode).json({
+      success: false,
+      error: err.message || "Erro interno de processamento no servidor."
+    });
   });
 
   // ==========================================

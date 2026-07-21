@@ -396,12 +396,28 @@ export default function App() {
       }
 
       const res = await fetch(endpoint.path, options);
-      const data = await res.json();
-      setApiResponse(JSON.stringify(data, null, 2));
-      addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Retornado com sucesso`, "SUCCESS");
+      const contentType = res.headers.get("content-type");
+      const text = await res.text();
+      
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          const data = JSON.parse(text);
+          setApiResponse(JSON.stringify(data, null, 2));
+        } catch (e) {
+          setApiResponse(`[Status ${res.status}] Erro ao parsear JSON:\n\n${text}`);
+        }
+      } else {
+        setApiResponse(`[Status ${res.status} - ${res.statusText || "No Status Text"}]\n\n${text}`);
+      }
+      
+      if (res.ok) {
+        addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Retornado com sucesso (${res.status})`, "SUCCESS");
+      } else {
+        addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Servidor respondeu com erro (${res.status})`, "WARN");
+      }
     } catch (err: any) {
       setApiResponse(JSON.stringify({ error: err.message }, null, 2));
-      addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Falhou`, "WARN");
+      addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Erro de ligação físico`, "WARN");
     } finally {
       setIsCallingApi(false);
     }
