@@ -400,7 +400,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
         }
       }
       else if (apiPath === 'survey/stats') {
-        targetUrl = `${activeUrl}/api/v1/surveys/jury-dashboard`;
+        targetUrl = `${activeUrl}/api/v1/surveys/statistics`;
       }
       else if (apiPath === 'survey/submit') {
         targetUrl = `${activeUrl}/api/v1/surveys/responses`;
@@ -450,6 +450,26 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
       else if (apiPath.startsWith('funding/score/')) {
         targetUrl = `${activeUrl}/api/v1/funding/score`;
       }
+      else if (apiPath.startsWith('documents/list/')) {
+        targetUrl = `${activeUrl}/api/v1/documents`;
+      }
+      else if (apiPath === 'documents/upload') {
+        targetUrl = `${activeUrl}/api/v1/documents`;
+        if (bodyText) {
+          try {
+            const body = JSON.parse(bodyText);
+            const payload = {
+              category: body.type || 'Other',
+              title: body.name || 'Documento',
+              fileUrl: body.fileUrl || '#pending-upload'
+            };
+            modifiedInit.body = JSON.stringify(payload);
+          } catch {}
+        }
+      }
+      else if (apiPath.startsWith('funding/applications/')) {
+        targetUrl = `${activeUrl}/api/v1/funding/applications`;
+      }
 
       // Efetuar chamada ao servidor NestJS no Render
       try {
@@ -470,32 +490,41 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
 
             // --- TRADUÇÃO DE RESPOSTAS (SAÍDA) ---
             if (apiPath === 'auth/login' || apiPath === 'auth/register') {
-              if (originalJson.token && originalJson.user) {
-                safeStorage.setItem('olo_fintel_token', originalJson.token);
+              // Support both flat format (mock/local) and nested format (Render backend: { success, data: { user, accessToken, ... } })
+              const accessToken = originalJson.token || originalJson.data?.accessToken;
+              const userData = originalJson.user || originalJson.data?.user;
+              const orgIdFromBackend = originalJson.data?.organizationId;
+              const roleFromBackend = originalJson.data?.role;
+              if (accessToken && userData) {
+                safeStorage.setItem('olo_fintel_token', accessToken);
                 const org = originalJson.organization || {};
                 const flatUser = {
-                  id: originalJson.user.id,
-                  name: `${originalJson.user.firstName || ''} ${originalJson.user.lastName || ''}`.trim() || originalJson.user.email,
-                  email: originalJson.user.email,
-                  role: originalJson.user.role || 'USER',
-                  organizationId: org.id || 'org-sim-uuid-benguela',
-                  organizationName: org.name || 'Cooperativa Agropecuária do Dombe Grande',
-                  industry: org.sector || 'Agriculture',
-                  province: originalJson.user.province || 'Benguela'
+                  id: userData.id,
+                  name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.email,
+                  email: userData.email,
+                  role: roleFromBackend || userData.role || 'USER',
+                  organizationId: orgIdFromBackend || org.id || null,
+                  organizationName: org.name || null,
+                  industry: org.sector || null,
+                  province: userData.province || null,
+                  maturity: userData.maturity || 'BEGINNER',
+                  fundingScore: userData.fundingScore || 25
                 };
                 safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(flatUser));
                 safeStorage.setItem('olo-fintel-userId', flatUser.id);
-                safeStorage.setItem('olo-fintel-orgId', flatUser.organizationId);
+                if (flatUser.organizationId) {
+                  safeStorage.setItem('olo-fintel-orgId', flatUser.organizationId);
+                }
                 
                 finalJson = flatUser;
               }
             }
             else if (apiPath === 'survey/stats') {
-              const stats = originalJson.stats || {};
+              const statsData = originalJson.data || originalJson.stats || {};
               finalJson = {
-                total: stats.totalResponses || 0,
-                byProvince: stats.byProvince || {},
-                bySector: stats.bySector || {},
+                total: statsData.count || statsData.totalResponses || 0,
+                byProvince: statsData.byProvince || {},
+                bySector: statsData.bySector || {},
                 challenges: [
                   { id: '1', challenge: 'Falta de controle de fluxo de caixa.', percentage: 48 },
                   { id: '2', challenge: 'Dificuldade de acesso a financiamento bancário.', percentage: 37 },
@@ -504,16 +533,24 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
               };
             }
             else if (apiPath === 'ai/advisor') {
+              const reply = originalJson.data?.reply || originalJson.response || 'Recomendação gerada com sucesso pelo consultor de IA.';
+              const source = originalJson.data?.source || 'Consultor IA';
               finalJson = {
-                report: originalJson.response || 'Recomendação gerada com sucesso pelo consultor de IA.'
+                report: {
+                  diagnostico: reply,
+                  riscos: 'Consulte o consultor financeiro para uma análise detalhada de riscos e mitigação.',
+                  oportunidades: 'Existem oportunidades de melhoria operacional e financeira identificadas pelo consultor.',
+                  acoes: reply,
+                  impactoEsperado: `Fonte: ${source}`
+                }
               };
             }
             else if (apiPath === 'funding/apply') {
               finalJson = {
                 success: true,
-                application: originalJson.application || {
+                application: originalJson.data || {
                   id: `app-${Date.now()}`,
-                  status: 'PENDING',
+                  status: 'Submitted',
                   submittedAt: new Date().toISOString()
                 }
               };
