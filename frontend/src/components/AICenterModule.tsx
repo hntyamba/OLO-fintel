@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { getApiUrl } from '../lib/api';
 import { 
   Sparkles, 
   ChevronRight, 
@@ -241,7 +242,7 @@ export default function AICenterModule({ userId, userRole, organizationId }: AIC
     }, 1100);
 
     try {
-      const response = await fetch('/api/ai/advisor', {
+      const response = await fetch(getApiUrl('/api/ai/advisor'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

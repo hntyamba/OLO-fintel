@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { getApiUrl } from '../lib/api';
 import { 
   Award, 
   Coins, 
@@ -285,7 +286,7 @@ export default function FundingReadinessModule({
 
   const loadApplications = async () => {
     try {
-      const res = await fetch(`/api/funding/applications/${organizationId || 'guest'}`);
+      const res = await fetch(getApiUrl(`/api/funding/applications/${organizationId || 'guest'}`));
       if (res.ok) {
         const data = await res.json();
         setApplications(data);
@@ -352,7 +353,7 @@ export default function FundingReadinessModule({
     };
 
     try {
-      const response = await fetch('/api/funding/action-plan', {
+      const response = await fetch(getApiUrl('/api/funding/action-plan'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(requestPayload)
@@ -455,7 +456,7 @@ export default function FundingReadinessModule({
     };
 
     try {
-      const res = await fetch('/api/funding/apply', {
+      const res = await fetch(getApiUrl('/api/funding/apply'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newApp)

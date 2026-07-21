@@ -5,6 +5,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserContext } from '../types.js';
+import { getApiUrl } from '../lib/api';
 
 interface AuthContextType {
   user: UserContext | null;
@@ -33,7 +34,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const savedUserId = localStorage.getItem('olo-fintel-userId');
     if (savedUserId) {
       try {
-        const res = await fetch(`/api/auth/me/${savedUserId}`);
+        const res = await fetch(getApiUrl(`/api/auth/me/${savedUserId}`));
         if (res.ok) {
           const updatedUser = await res.json();
           setUser(updatedUser);
@@ -54,7 +55,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     try {
-      const res = await fetch('/api/auth/login', {
+      const res = await fetch(getApiUrl('/api/auth/login'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -84,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     organizationName?: string;
   }) => {
     try {
-      const res = await fetch('/api/auth/register', {
+      const res = await fetch(getApiUrl('/api/auth/register'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)

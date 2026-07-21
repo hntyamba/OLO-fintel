@@ -10,6 +10,12 @@
 
 const API_URL = (import.meta as any).env.VITE_API_URL || '';
 
+// Função auxiliar para retornar a URL da API correta com base no ambiente
+export function getApiUrl(path: string): string {
+  const cleanPath = path.startsWith('/') ? path : `/${path}`;
+  return `${API_URL}${cleanPath}`;
+}
+
 // Função auxiliar para verificar se o servidor está online
 export async function checkServerHealth(): Promise<boolean> {
   if (!API_URL) return false;

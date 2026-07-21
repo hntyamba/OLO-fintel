@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { useAuth } from './AuthContext.js';
+import { getApiUrl } from '../lib/api';
 import { 
   User, 
   Building, 
@@ -63,7 +64,7 @@ export default function UserProfileModule({ onBack }: UserProfileModuleProps) {
     setErrorMsg('');
 
     try {
-      const res = await fetch('/api/auth/profile/update', {
+      const res = await fetch(getApiUrl('/api/auth/profile/update'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

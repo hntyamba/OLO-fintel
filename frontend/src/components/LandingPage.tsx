@@ -6,6 +6,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from './LanguageContext.js';
 import { useTheme } from './ThemeContext.js';
+import { getApiUrl } from '../lib/api';
 import { 
   TrendingUp, 
   Layers, 
@@ -126,7 +127,7 @@ export default function LandingPage({
   const [simulatedCreditLimit, setSimulatedCreditLimit] = useState('0 Kz');
 
   useEffect(() => {
-    fetch('/api/survey/stats')
+    fetch(getApiUrl('/api/survey/stats'))
       .then(res => res.json())
       .then(data => {
         setRealStats(data);

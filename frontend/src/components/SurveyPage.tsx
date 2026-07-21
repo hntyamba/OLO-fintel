@@ -6,8 +6,8 @@
 import React, { useEffect, useState } from 'react';
 import { useLanguage } from './LanguageContext.js';
 import { useTheme } from './ThemeContext.js';
-import { 
-  CheckCircle, 
+import { getApiUrl } from '../lib/api';
+import {   CheckCircle, 
   ArrowLeft, 
   ArrowRight, 
   ClipboardCheck, 
@@ -271,7 +271,7 @@ export default function SurveyPage({
     setIsSubmitting(true);
 
     try {
-      const res = await fetch('/api/survey/submit', {
+      const res = await fetch(getApiUrl('/api/survey/submit'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

@@ -7,6 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from './AuthContext.js';
 import { useLanguage } from './LanguageContext.js';
 import { useTheme } from './ThemeContext.js';
+import { getApiUrl } from '../lib/api';
 import { 
   ShieldCheck, 
   Users, 
@@ -389,20 +390,20 @@ export default function Dashboards() {
     setLoading(true);
     try {
       if (['SUPER_ADMIN', 'ADMIN', 'ANALYST', 'CONSULTANT'].includes(user?.role || '')) {
-        const orgRes = await fetch('/api/admin/organizations');
-        const userRes = await fetch('/api/admin/users');
+        const orgRes = await fetch(getApiUrl('/api/admin/organizations'));
+        const userRes = await fetch(getApiUrl('/api/admin/users'));
         if (orgRes.ok) setOrganizations(await orgRes.json());
         if (userRes.ok) setUsersList(await userRes.json());
 
         if (user?.role === 'SUPER_ADMIN') {
-          const consRes = await fetch('/api/admin/consultants');
+          const consRes = await fetch(getApiUrl('/api/admin/consultants'));
           if (consRes.ok) setConsultants(await consRes.json());
         }
       }
 
       if (user?.organizationId) {
-        const opRes = await fetch(`/api/operations/list/${user.organizationId}`);
-        const docRes = await fetch(`/api/documents/list/${user.organizationId}`);
+        const opRes = await fetch(getApiUrl(`/api/operations/list/${user.organizationId}`));
+        const docRes = await fetch(getApiUrl(`/api/documents/list/${user.organizationId}`));
         if (opRes.ok) setOperationalLogs(await opRes.json());
         if (docRes.ok) setDocumentsQueue(await docRes.json());
       }
@@ -453,7 +454,7 @@ export default function Dashboards() {
       if (offlineCache.length > 0) {
         try {
           for (const item of offlineCache) {
-            await fetch('/api/operations/add', {
+            await fetch(getApiUrl('/api/operations/add'), {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -717,7 +718,7 @@ export default function Dashboards() {
     }
 
     try {
-      const res = await fetch('/api/operations/add', {
+      const res = await fetch(getApiUrl('/api/operations/add'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -744,7 +745,7 @@ export default function Dashboards() {
     if (!docFileName || !user?.organizationId) return;
 
     try {
-      const res = await fetch('/api/documents/upload', {
+      const res = await fetch(getApiUrl('/api/documents/upload'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -768,7 +769,7 @@ export default function Dashboards() {
   // SuperAdmin: Verify/Reject KYC doc
   const handleDocAction = async (docId: string, action: 'VERIFIED' | 'REJECTED', fb?: string) => {
     try {
-      const res = await fetch('/api/admin/document-action', {
+      const res = await fetch(getApiUrl('/api/admin/document-action'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ documentId: docId, action, feedback: fb })
@@ -786,7 +787,7 @@ export default function Dashboards() {
   // SuperAdmin: Delegate Org to Consultant
   const handleDelegate = async (orgId: string, consId: string) => {
     try {
-      const res = await fetch('/api/admin/delegate', {
+      const res = await fetch(getApiUrl('/api/admin/delegate'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ organizationId: orgId, consultantId: consId })
@@ -809,7 +810,7 @@ export default function Dashboards() {
     const suspend = !org?.suspended;
 
     try {
-      const res = await fetch('/api/admin/suspend', {
+      const res = await fetch(getApiUrl('/api/admin/suspend'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

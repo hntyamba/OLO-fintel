@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getApiUrl } from '../lib/api';
 import { 
   FileText, 
   ShieldCheck, 
@@ -72,7 +73,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
     setLoading(true);
     try {
       if (organizationId) {
-        const res = await fetch(`/api/documents/list/${organizationId}`);
+        const res = await fetch(getApiUrl(`/api/documents/list/${organizationId}`));
         if (res.ok) {
           const data = await res.json();
           setMyDocuments(data);
@@ -80,8 +81,8 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
       }
 
       if (isAdminOrAnalyst) {
-        const orgRes = await fetch('/api/admin/organizations');
-        const docRes = await fetch('/api/admin/documents');
+        const orgRes = await fetch(getApiUrl('/api/admin/organizations'));
+        const docRes = await fetch(getApiUrl('/api/admin/documents'));
         if (orgRes.ok) {
           setAllOrganizations(await orgRes.json());
         }
@@ -113,7 +114,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
     if (!uploadedFileName || !organizationId) return;
 
     try {
-      const res = await fetch('/api/documents/upload', {
+      const res = await fetch(getApiUrl('/api/documents/upload'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -145,7 +146,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
     if (!selectedDocForReview) return;
 
     try {
-      const res = await fetch('/api/admin/document-action', {
+      const res = await fetch(getApiUrl('/api/admin/document-action'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
