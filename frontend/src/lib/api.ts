@@ -44,9 +44,9 @@ if (API_URL) {
 // Função auxiliar para retornar a URL da API correta com base no ambiente
 export function getApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
-  // Only prepend the remote API_URL if we have explicitly checked and confirmed it is online and reachable.
-  // Otherwise, route natively via relative path to the built-in Express server inside the local environment!
-  if (API_URL && useRemoteServer) {
+  // If the user explicitly provided VITE_API_URL (e.g. in Vercel), we must use it directly.
+  // Otherwise, we fallback to relative paths which hit our local full-stack server on port 3000.
+  if (API_URL) {
     return `${API_URL}${cleanPath}`;
   }
   return cleanPath;
@@ -69,11 +69,9 @@ export const ApiClient = {
    * Envia dados operacionais ou financeiros para o servidor ou armazena localmente
    */
   async postOperationalLog(payload: any): Promise<{ success: boolean; data: any; source: 'server' | 'local' }> {
-    const isOnline = await checkServerHealth();
-    
-    if (isOnline) {
+    if (API_URL) {
       try {
-        const res = await fetch(`${API_URL}/api/operational-logs`, {
+        const res = await fetch(getApiUrl('/api/operations/add'), {
           method: 'POST',
           headers: getAuthHeaders(),
           body: JSON.stringify(payload),
@@ -104,16 +102,14 @@ export const ApiClient = {
    * Upload Real de Ficheiros com Fallback Base64 Local
    */
   async uploadDocument(file: File, docType: string): Promise<{ success: boolean; url: string; source: 'server' | 'local' }> {
-    const isOnline = await checkServerHealth();
-
-    if (isOnline) {
+    if (API_URL) {
       try {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('docType', docType);
 
         const token = localStorage.getItem('olo_fintel_token');
-        const res = await fetch(`${API_URL}/api/documents/upload`, {
+        const res = await fetch(getApiUrl('/api/documents/upload'), {
           method: 'POST',
           headers: token ? { 'Authorization': `Bearer ${token}` } : {},
           body: formData,
