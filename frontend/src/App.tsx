@@ -11,6 +11,7 @@ import LandingPage from './components/LandingPage.js';
 import SurveyPage from './components/SurveyPage.js';
 import AuthPages from './components/AuthPages.js';
 import Dashboards from './components/Dashboards.js';
+import BackendConnectionManager from './components/BackendConnectionManager.js';
 import { Sun, Moon, Menu, X, Landmark, ShieldCheck } from 'lucide-react';
 
 function AppContent() {
@@ -211,6 +212,7 @@ function AppContent() {
         </footer>
       )}
 
+      <BackendConnectionManager />
     </div>
   );
 }
