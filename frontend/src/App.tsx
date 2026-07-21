@@ -1,237 +1,228 @@
-import { useState, useEffect } from "react";
-import { Role, Sector, ThemePreference } from "./types";
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
 
-// Components & Views imports
-import LandingPage from "./features/LandingPage";
-import SurveyForm from "./features/SurveyForm";
-import JuryPanel from "./features/JuryPanel";
-import AppLayout from "./features/AppLayout";
-import Auth from "./features/Auth";
-import ExecutiveDashboard from "./features/ExecutiveDashboard";
-import IndustryDashboards from "./features/IndustryDashboards";
-import FinanceManagement from "./features/FinanceManagement";
-import CRM from "./features/CRM";
-import Documents from "./features/Documents";
-import FundingReadiness from "./features/FundingReadiness";
-import AICenter from "./features/AICenter";
-import KnowledgeHub from "./features/KnowledgeHub";
+import React, { useState, useEffect } from 'react';
+import { ThemeProvider, useTheme } from './components/ThemeContext.js';
+import { LanguageProvider, useLanguage } from './components/LanguageContext.js';
+import { AuthProvider, useAuth } from './components/AuthContext.js';
+import LandingPage from './components/LandingPage.js';
+import SurveyPage from './components/SurveyPage.js';
+import AuthPages from './components/AuthPages.js';
+import Dashboards from './components/Dashboards.js';
+import { Sun, Moon, Menu, X, Landmark, ShieldCheck } from 'lucide-react';
 
-export default function App() {
-  const [view, setView] = useState<"landing" | "survey" | "jury" | "app" | "auth">("landing");
-  
-  // App-level state
-  const [currentUser, setCurrentUser] = useState<{ name: string; email: string; role: Role; sector: Sector; organizationName: string } | null>(null);
-  const [currentRole, setCurrentRole] = useState<Role>(Role.Owner);
-  const [currentSector, setCurrentSector] = useState<Sector>(Sector.Agriculture);
-  const [currentTheme, setCurrentTheme] = useState<ThemePreference>(() => {
-    const saved = typeof window !== "undefined" ? localStorage.getItem("olo-theme") as ThemePreference : null;
-    return saved || "light";
-  });
-  const [activeTab, setActiveTab] = useState<string>("dashboard");
-  const [fundingScore, setFundingScore] = useState<number>(55); // Starts intermediate
-  const [surveyStats, setSurveyStats] = useState<any>(null);
+function AppContent() {
+  const { user, loading } = useAuth();
+  const { t, locale, setLocale } = useLanguage();
+  const { theme, setTheme, isDark } = useTheme();
 
-  // Fetch initial survey statistics
+  // Root navigation state
+  const [currentPage, setCurrentPage] = useState<'home' | 'survey' | 'login' | 'register' | 'dashboard'>('home');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Redirect to dashboard if logged-in upon loading
   useEffect(() => {
-    fetch("/api/stats")
-      .then((res) => res.json())
-      .then((resData) => {
-        if (resData.success) {
-          setSurveyStats(resData.data);
-        }
-      })
-      .catch((err) => console.error("Error fetching initial survey stats:", err));
-  }, []);
-
-  // Apply dark mode theme to document element and persist
-  useEffect(() => {
-    const isDark = currentTheme === "dark" || 
-      (currentTheme === "system" && window.matchMedia("(prefers-color-scheme: dark)").matches);
-    
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
+    if (user) {
+      setCurrentPage('dashboard');
+    } else if (currentPage === 'dashboard') {
+      setCurrentPage('home');
     }
-    localStorage.setItem("olo-theme", currentTheme);
-  }, [currentTheme]);
+  }, [user]);
 
-  const handleAuthSuccess = (user: { name: string; email: string; role: Role; sector: Sector; organizationName: string }) => {
-    setCurrentUser(user);
-    setCurrentRole(user.role);
-    setCurrentSector(user.sector);
-    
-    if (user.role === Role.Jury) {
-      setView("jury");
-    } else {
-      setView("app");
-      // Set default tab for the role
-      const roleTabs: Record<Role, string[]> = {
-        [Role.Owner]: ["dashboard", "operations", "finance", "crm", "documents", "funding", "ai", "knowledge"],
-        [Role.Manager]: ["dashboard", "operations", "crm", "ai", "knowledge"],
-        [Role.FinancialOfficer]: ["dashboard", "finance", "documents", "funding", "ai"],
-        [Role.Analyst]: ["dashboard", "finance", "documents", "funding"],
-        [Role.Consultant]: ["dashboard", "operations", "finance", "crm", "funding", "ai"],
-        [Role.Member]: ["operations", "knowledge"],
-        [Role.Jury]: []
-      };
-      const allowed = roleTabs[user.role];
-      if (allowed && allowed.length > 0) {
-        setActiveTab(allowed[0]);
-      }
-    }
-  };
-
-  // Sync role and active tabs safely (RBAC check for active tab)
-  const handleRoleChange = (role: Role) => {
-    setCurrentRole(role);
-    
-    // If we transition to Jury role, swap view entirely to the Jury Validation Panel!
-    if (role === Role.Jury) {
-      setView("jury");
-      return;
-    }
-
-    // Role boundary checks for active tabs
-    const roleTabs: Record<Role, string[]> = {
-      [Role.Owner]: ["dashboard", "operations", "finance", "crm", "documents", "funding", "ai", "knowledge"],
-      [Role.Manager]: ["dashboard", "operations", "crm", "ai", "knowledge"],
-      [Role.FinancialOfficer]: ["dashboard", "finance", "documents", "funding", "ai"],
-      [Role.Analyst]: ["dashboard", "finance", "documents", "funding"],
-      [Role.Consultant]: ["dashboard", "operations", "finance", "crm", "funding", "ai"],
-      [Role.Member]: ["operations", "knowledge"],
-      [Role.Jury]: []
-    };
-
-    const allowed = roleTabs[role];
-    if (allowed && allowed.length > 0 && !allowed.includes(activeTab)) {
-      setActiveTab(allowed[0]);
-    }
-  };
-
-  // Helper to render layout content depending on active tab
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "dashboard":
-        return (
-          <ExecutiveDashboard 
-            sector={currentSector} 
-            score={fundingScore} 
-            onNavigate={(tab) => setActiveTab(tab)} 
-          />
-        );
-      case "operations":
-        return <IndustryDashboards sector={currentSector} />;
-      case "finance":
-        return <FinanceManagement />;
-      case "crm":
-        return <CRM />;
-      case "documents":
-        return <Documents />;
-      case "funding":
-        return (
-          <FundingReadiness 
-            sector={currentSector} 
-            score={fundingScore} 
-            onScoreChange={(score) => setFundingScore(score)} 
-          />
-        );
-      case "ai":
-        return <AICenter sector={currentSector} score={fundingScore} />;
-      case "knowledge":
-        return <KnowledgeHub />;
-      default:
-        return <ExecutiveDashboard sector={currentSector} score={fundingScore} onNavigate={(tab) => setActiveTab(tab)} />;
-    }
-  };
+  if (loading) {
+    return (
+      <div className="w-full h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-[#0E0E12] gap-4">
+        <div className="w-12 h-12 rounded-full border-4 border-brand-iris border-t-transparent animate-spin" />
+        <p className="text-sm font-semibold text-gray-400 font-mono">Iniciando Fintel OS...</p>
+      </div>
+    );
+  }
 
   return (
-    <div className="font-sans antialiased text-gray-900 dark:text-zinc-100 min-h-screen bg-slate-50 dark:bg-[#050508] relative overflow-x-hidden transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-[#0E0E12] text-gray-900 dark:text-white transition-colors duration-200">
       
-      {/* Immersive Theme Ambient Glows */}
-      <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-indigo-900/20 rounded-full blur-[120px] pointer-events-none z-0 opacity-0 dark:opacity-100 transition-opacity duration-1000"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-rose-900/10 rounded-full blur-[120px] pointer-events-none z-0 opacity-0 dark:opacity-100 transition-opacity duration-1000"></div>
+      {/* PUBLIC NAVBAR (Rendered when not on dashboard) */}
+      {currentPage !== 'dashboard' && (
+        <nav className="sticky top-0 z-50 bg-white/95 dark:bg-[#0E0E12]/95 border-b border-gray-200 dark:border-[#2A2A35] backdrop-blur px-6 py-4">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <button 
+              onClick={() => setCurrentPage('home')}
+              className="flex items-center gap-2 text-left cursor-pointer"
+            >
+              <div className="px-3 h-9 rounded-xl bg-brand-iris text-white flex items-center justify-center font-bold text-base shadow-md shadow-brand-iris/20">
+                OLO
+              </div>
+              <div>
+                <span className="font-bold text-base leading-none text-gray-900 dark:text-white block">OLO Fintel</span>
+                <span className="text-[10px] text-gray-400 block mt-0.5 font-sans">Economic Operating System</span>
+              </div>
+            </button>
 
-      <div className="relative z-10 min-h-screen">
-        {view === "landing" && (
-          <LandingPage 
-            stats={surveyStats}
-            onStartSurvey={() => setView("survey")} 
-            onLoginClick={() => setView("auth")}
-          />
-        )}
+            {/* Desktop Nav Items */}
+            <div className="hidden md:flex items-center gap-6 text-sm font-semibold">
+              <button 
+                onClick={() => setCurrentPage('home')}
+                className={`transition-all hover:text-brand-iris ${currentPage === 'home' ? 'text-brand-iris' : 'text-gray-600 dark:text-gray-300'}`}
+              >
+                {t('nav.home')}
+              </button>
+              
+              <button 
+                onClick={() => setCurrentPage('survey')}
+                className={`transition-all hover:text-brand-iris ${currentPage === 'survey' ? 'text-brand-iris' : 'text-gray-600 dark:text-gray-300'}`}
+              >
+                {t('nav.survey')}
+              </button>
 
-        {view === "auth" && (
-          <Auth 
-            onBack={() => setView("landing")}
-            onAuthSuccess={handleAuthSuccess}
-          />
-        )}
+              <button 
+                onClick={() => setCurrentPage('login')}
+                className="px-4 py-2 border border-gray-200 dark:border-gray-800 hover:border-brand-iris dark:hover:border-brand-iris text-gray-700 dark:text-gray-300 rounded-xl transition-all"
+              >
+                {t('nav.login')}
+              </button>
 
-        {view === "survey" && (
-          <SurveyForm 
-            stats={surveyStats}
-            onSuccess={(updatedStats, preselectedSector) => {
-              setSurveyStats(updatedStats);
-              const foundSector = Object.values(Sector).find(
-                (s) => s.toLowerCase() === preselectedSector.toLowerCase()
-              );
-              if (foundSector) {
-                setCurrentSector(foundSector);
-              }
-              setCurrentRole(Role.Jury);
-              setView("jury");
-            }} 
-            onCancel={() => setView("landing")} 
-          />
-        )}
+              <button 
+                onClick={() => setCurrentPage('register')}
+                className="px-5 py-2 bg-brand-iris text-white hover:bg-brand-iris-hover rounded-xl shadow-lg shadow-brand-iris/15 transition-all"
+              >
+                {t('nav.register')}
+              </button>
 
-        {view === "jury" && (
-          <JuryPanel 
-            stats={surveyStats}
-            onExit={() => {
-              setCurrentUser(null);
-              setView("landing");
-            }} 
-            onLoginAsOwner={() => {
-              // Direct login mock test as Owner
-              const mockOwner = {
-                name: "António Fula",
-                email: "owner@olo.ao",
-                role: Role.Owner,
-                sector: Sector.Agriculture,
-                organizationName: "Cooperativa Agrícola do Huambo"
-              };
-              setCurrentUser(mockOwner);
-              setCurrentRole(Role.Owner);
-              setCurrentSector(Sector.Agriculture);
-              setView("app");
-              setActiveTab("dashboard");
-            }}
-          />
-        )}
+              {/* Theme toggle in header */}
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="p-2 rounded-xl border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 transition-all text-gray-500"
+              >
+                {isDark ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} />}
+              </button>
+            </div>
 
-        {view === "app" && (
-          <AppLayout
-            currentRole={currentRole}
-            onRoleChange={handleRoleChange}
-            currentSector={currentSector}
-            onSectorChange={setCurrentSector}
-            currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
-            activeTab={activeTab}
-            onTabChange={setActiveTab}
-            onLogout={() => {
-              setCurrentUser(null);
-              setView("landing");
-            }}
-            currentUser={currentUser}
-          >
-            {renderTabContent()}
-          </AppLayout>
-        )}
+            {/* Mobile menu toggle */}
+            <div className="flex md:hidden items-center gap-3">
+              <button
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+                className="p-2 rounded-xl border border-gray-200 dark:border-gray-800 transition-all text-gray-500"
+              >
+                {isDark ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} />}
+              </button>
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="p-2 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-white"
+              >
+                {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile dropdown */}
+          {mobileMenuOpen && (
+            <div className="md:hidden mt-4 pt-4 border-t border-gray-100 dark:border-gray-800 flex flex-col gap-4 text-sm font-semibold">
+              <button 
+                onClick={() => { setCurrentPage('home'); setMobileMenuOpen(false); }}
+                className="text-left py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                {t('nav.home')}
+              </button>
+              <button 
+                onClick={() => { setCurrentPage('survey'); setMobileMenuOpen(false); }}
+                className="text-left py-2 px-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800"
+              >
+                {t('nav.survey')}
+              </button>
+              <div className="h-px bg-gray-100 dark:bg-gray-800" />
+              <button 
+                onClick={() => { setCurrentPage('login'); setMobileMenuOpen(false); }}
+                className="text-left py-2 px-3 rounded-lg border border-gray-200 dark:border-gray-800 hover:border-brand-iris"
+              >
+                {t('nav.login')}
+              </button>
+              <button 
+                onClick={() => { setCurrentPage('register'); setMobileMenuOpen(false); }}
+                className="py-2.5 px-3 bg-brand-iris text-white rounded-lg font-bold text-center"
+              >
+                {t('nav.register')}
+              </button>
+            </div>
+          )}
+        </nav>
+      )}
+
+      {/* CORE SCREENS ROUTING */}
+      <div className="flex-1 flex flex-col">
+        {currentPage === 'home' && <LandingPage onNavigate={setCurrentPage} />}
+        {currentPage === 'survey' && <SurveyPage onNavigate={setCurrentPage} />}
+        {currentPage === 'login' && <AuthPages view="login" onNavigate={setCurrentPage} />}
+        {currentPage === 'register' && <AuthPages view="register" onNavigate={setCurrentPage} />}
+        {currentPage === 'dashboard' && <Dashboards />}
       </div>
 
+      {/* PUBLIC FOOTER (Only when not on dashboard) */}
+      {currentPage !== 'dashboard' && (
+        <footer className="bg-white dark:bg-[#1A1A21] border-t border-gray-200 dark:border-[#2A2A35] py-12 px-6">
+          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-4 gap-8">
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="px-2.5 h-8 rounded-xl bg-brand-iris text-white flex items-center justify-center font-bold text-xs">
+                  OLO
+                </div>
+                <span className="font-bold text-base text-gray-900 dark:text-white">OLO Fintel</span>
+              </div>
+              <p className="text-xs text-gray-400 leading-relaxed">
+                {t('footer.desc')}
+              </p>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-4">{t('footer.platform')}</h4>
+              <ul className="space-y-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                <li><button onClick={() => setCurrentPage('home')} className="hover:text-brand-iris">{t('nav.home')}</button></li>
+                <li><button onClick={() => setCurrentPage('survey')} className="hover:text-brand-iris">{t('nav.inquerito_nacional')}</button></li>
+                <li><button onClick={() => setCurrentPage('login')} className="hover:text-brand-iris">{t('nav.reserved_area')}</button></li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-4">{t('footer.languages')}</h4>
+              <ul className="space-y-2 text-xs font-semibold text-gray-600 dark:text-gray-300">
+                <li><button onClick={() => setLocale('pt')} className={`hover:text-brand-iris ${locale === 'pt' ? 'text-brand-iris' : ''}`}>Português</button></li>
+                <li><button onClick={() => setLocale('en')} className={`hover:text-brand-iris ${locale === 'en' ? 'text-brand-iris' : ''}`}>English</button></li>
+                <li><button onClick={() => setLocale('umb')} className={`hover:text-brand-iris ${locale === 'umb' ? 'text-brand-iris' : ''}`}>Umbundu</button></li>
+                <li><button onClick={() => setLocale('kmb')} className={`hover:text-brand-iris ${locale === 'kmb' ? 'text-brand-iris' : ''}`}>Kimbundu</button></li>
+              </ul>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-2">{t('footer.compliance_title')}</h4>
+              <div className="p-3 bg-brand-iris/5 rounded-xl border border-brand-iris/10 text-[10px] text-gray-400 flex items-start gap-2">
+                <ShieldCheck className="text-brand-iris mt-0.5 shrink-0" size={16} />
+                <span>{t('footer.compliance_desc')}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-gray-400">
+            <span>{t('footer.rights')}</span>
+            <div className="flex gap-4">
+              <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 font-bold">Angola Sandbox Environment</span>
+            </div>
+          </div>
+        </footer>
+      )}
+
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <ThemeProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <AppContent />
+        </AuthProvider>
+      </LanguageProvider>
+    </ThemeProvider>
   );
 }
