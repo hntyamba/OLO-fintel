@@ -99,6 +99,19 @@ export async function register(req: AuthenticatedRequest, res: Response) {
       }
     });
 
+    // Fetch organization details if created
+    let orgName = null;
+    let orgSector = null;
+    let orgProvince = null;
+    if (organizationId) {
+      const org = await db.organization.findUnique({ where: { id: organizationId } });
+      if (org) {
+        orgName = org.name;
+        orgSector = org.sector;
+        orgProvince = org.province;
+      }
+    }
+
     return res.status(201).json({
       success: true,
       message: "Usuário registado com sucesso.",
@@ -113,6 +126,11 @@ export async function register(req: AuthenticatedRequest, res: Response) {
         accessToken,
         refreshToken,
         organizationId,
+        organizationName: orgName,
+        sector: orgSector,
+        province: orgProvince,
+        maturity: "BEGINNER",
+        fundingScore: 25,
         role: userRole
       }
     });
@@ -155,6 +173,22 @@ export async function login(req: AuthenticatedRequest, res: Response) {
     const role = membership ? membership.roleId : "Member";
     const organizationId = membership ? membership.organizationId : undefined;
 
+    // Fetch organization details if membership exists
+    let organizationName = null;
+    let sector = null;
+    let province = null;
+    let maturity = "BEGINNER";
+    let fundingScore = 25;
+
+    if (organizationId) {
+      const org = await db.organization.findUnique({ where: { id: organizationId } });
+      if (org) {
+        organizationName = org.name;
+        sector = org.sector;
+        province = org.province;
+      }
+    }
+
     const accessToken = signAccessToken({
       id: user.id,
       email: user.email,
@@ -186,6 +220,11 @@ export async function login(req: AuthenticatedRequest, res: Response) {
         accessToken,
         refreshToken,
         organizationId,
+        organizationName,
+        sector,
+        province,
+        maturity,
+        fundingScore,
         role
       }
     });

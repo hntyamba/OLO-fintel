@@ -47,6 +47,30 @@ const API_URL = (import.meta as any).env.VITE_API_URL ||
     ? ''
     : 'https://olofintel.onrender.com');
 
+// Normalize backend PascalCase roles to frontend UPPER_CASE roles
+function normalizeRole(role: string | undefined | null): string {
+  if (!role) return 'OWNER';
+  const roleMap: Record<string, string> = {
+    'Owner': 'OWNER',
+    'Manager': 'MANAGER',
+    'FinancialOfficer': 'FINANCIAL_OFFICER',
+    'Analyst': 'ANALYST',
+    'Consultant': 'CONSULTANT',
+    'Admin': 'ADMIN',
+    'Member': 'OWNER',
+    'Jury': 'ANALYST',
+    'SUPER_ADMIN': 'SUPER_ADMIN',
+    'ADMIN': 'ADMIN',
+    'ANALYST': 'ANALYST',
+    'CONSULTANT': 'CONSULTANT',
+    'OWNER': 'OWNER',
+    'MANAGER': 'MANAGER',
+    'FINANCIAL_OFFICER': 'FINANCIAL_OFFICER',
+    'USER': 'OWNER',
+  };
+  return roleMap[role] || role;
+}
+
 // Obter URL configurada ativamente (do localStorage ou da variável de ambiente)
 function getActiveApiUrl(): string {
   const savedUrl = safeStorage.getItem('olo_fintel_custom_api_url');
@@ -200,6 +224,15 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
         }
       };
     }
+    else if (apiPath === 'funding/action-plan') {
+      data = {
+        actionPlan: [
+          { step: 1, title: 'Organizar Documentação Financeira', description: 'Compilar DRE, extratos bancários e estatutos para apresentação a investidores.', priority: 'Alta', deadline: '2 semanas' },
+          { step: 2, title: 'Melhorar Fluxo de Caixa', description: 'Implementar registo diário de receitas e despesas no módulo financeiro.', priority: 'Alta', deadline: '1 mês' },
+          { step: 3, title: 'Diversificar Canais de Venda', description: 'Expandir para mercados institucionais e contratos com distribuidores.', priority: 'Média', deadline: '3 meses' }
+        ]
+      };
+    }
     else if (apiPath.startsWith('operations/list') || apiPath === 'operations/add') {
       if (method === 'POST') {
         const logs = JSON.parse(safeStorage.getItem('olo_fintel_operational_logs') || '[]');
@@ -247,21 +280,28 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
     }
     else if (apiPath.startsWith('admin/organizations')) {
       data = [
-        { id: 'org-sim-uuid-benguela', name: 'Cooperativa Agropecuária do Dombe Grande', sector: 'Agriculture', province: 'Benguela', creditScore: 78, isSuspended: false, consultant: 'Dr. Lucas Ribeiro' },
-        { id: 'org-2', name: 'Cooperativa Agrícola de Catabola', sector: 'Agriculture', province: 'Bié', creditScore: 45, isSuspended: false, consultant: null },
-        { id: 'org-3', name: 'Associação de Pescas de Cacuaco', sector: 'Fisheries', province: 'Luanda', creditScore: 92, isSuspended: false, consultant: 'Dra. Maria Mendes' }
+        { id: 'org-sim-uuid-benguela', name: 'Cooperativa Agropecuária do Dombe Grande', sector: 'Agriculture', province: 'Benguela', maturity: 'INTERMEDIATE', suspended: false, assignedConsultantId: 'cons-1', suspendedReason: null },
+        { id: 'org-2', name: 'Cooperativa Agrícola de Catabola', sector: 'Agriculture', province: 'Bié', maturity: 'BEGINNER', suspended: false, assignedConsultantId: null, suspendedReason: null },
+        { id: 'org-3', name: 'Associação de Pescas de Cacuaco', sector: 'Fisheries', province: 'Luanda', maturity: 'ADVANCED', suspended: false, assignedConsultantId: 'cons-2', suspendedReason: null }
       ];
     }
     else if (apiPath.startsWith('admin/users')) {
       data = [
-        { id: 'usr-1', firstName: 'José', lastName: 'Gariel', email: 'josegariel622@gmail.com', role: 'SUPER_ADMIN', province: 'Benguela', organization: { name: 'Cooperativa Agropecuária do Dombe Grande' } },
-        { id: 'usr-2', firstName: 'Manuel', lastName: 'António', email: 'manuel@example.com', role: 'USER', province: 'Bié', organization: { name: 'Cooperativa Agrícola de Catabola' } }
+        { id: 'usr-1', name: 'José Gariel', email: 'josegariel622@gmail.com', role: 'SUPER_ADMIN', organizationId: 'org-sim-uuid-benguela', organizationName: 'Cooperativa Agropecuária do Dombe Grande', fundingScore: 78 },
+        { id: 'usr-2', name: 'Manuel António', email: 'manuel@example.com', role: 'OWNER', organizationId: 'org-2', organizationName: 'Cooperativa Agrícola de Catabola', fundingScore: 45 }
       ];
     }
     else if (apiPath.startsWith('admin/consultants')) {
       data = [
         { id: 'cons-1', name: 'Dr. Lucas Ribeiro', email: 'lucas@fintel.ao', activeDelegations: 12 },
         { id: 'cons-2', name: 'Dra. Maria Mendes', email: 'maria@fintel.ao', activeDelegations: 7 }
+      ];
+    }
+    else if (apiPath.startsWith('admin/documents')) {
+      data = [
+        { id: 'doc-admin-1', orgId: 'org-sim-uuid-benguela', name: 'Certidão Comercial', type: 'Alvará', uploadedAt: '2026-07-10T14:30:00.000Z', status: 'VERIFIED', version: 1 },
+        { id: 'doc-admin-2', orgId: 'org-sim-uuid-benguela', name: 'DRE Exercicio 2025', type: 'Financeiro', uploadedAt: '2026-07-18T10:15:00.000Z', status: 'PENDING', version: 1 },
+        { id: 'doc-admin-3', orgId: 'org-2', name: 'NIF Cooperativa Catabola', type: 'NIF', uploadedAt: '2026-07-20T09:00:00.000Z', status: 'REJECTED', version: 2, feedback: 'Documento ilegível, favor reintroduzir.' }
       ];
     }
     else if (apiPath.startsWith('admin/document-action')) {
@@ -393,10 +433,21 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
       }
       else if (apiPath.startsWith('auth/me')) {
         if (cachedUserStr) {
-          return new Response(cachedUserStr, {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
+          try {
+            const cachedUser = JSON.parse(cachedUserStr);
+            cachedUser.role = normalizeRole(cachedUser.role);
+            const normalized = JSON.stringify(cachedUser);
+            safeStorage.setItem('olo_fintel_cached_user', normalized);
+            return new Response(normalized, {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          } catch {
+            return new Response(cachedUserStr, {
+              status: 200,
+              headers: { 'Content-Type': 'application/json' }
+            });
+          }
         }
       }
       else if (apiPath === 'survey/stats') {
@@ -504,17 +555,18 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
               if (accessToken && userData) {
                 safeStorage.setItem('olo_fintel_token', accessToken);
                 const org = originalJson.organization || {};
+                const rawRole = roleFromBackend || userData.role || 'OWNER';
                 const flatUser = {
                   id: userData.id,
                   name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.email,
                   email: userData.email,
-                  role: roleFromBackend || userData.role || 'USER',
+                  role: normalizeRole(rawRole),
                   organizationId: orgIdFromBackend || org.id || null,
-                  organizationName: org.name || null,
-                  industry: org.sector || null,
-                  province: userData.province || null,
-                  maturity: userData.maturity || 'BEGINNER',
-                  fundingScore: userData.fundingScore || 25
+                  organizationName: org.name || originalJson.data?.organizationName || null,
+                  industry: org.sector || originalJson.data?.sector || null,
+                  province: userData.province || originalJson.data?.province || null,
+                  maturity: userData.maturity || originalJson.data?.maturity || 'BEGINNER',
+                  fundingScore: userData.fundingScore || originalJson.data?.fundingScore || 25
                 };
                 safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(flatUser));
                 safeStorage.setItem('olo-fintel-userId', flatUser.id);
@@ -581,6 +633,18 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
             }
             else if (apiPath.startsWith('funding/applications/') && originalJson.data) {
               finalJson = originalJson.data;
+            }
+
+            // Se o backend retornou um array vazio, tentar fallback para mock (dados simulados)
+            if (Array.isArray(finalJson) && finalJson.length === 0) {
+              try {
+                const mockResponse = mockLocalEndpoint(apiPath, method, bodyText);
+                const mockData = await mockResponse.json();
+                if (Array.isArray(mockData) && mockData.length > 0) {
+                  console.warn(`[OLO Fintel API Proxy] Backend retornou dados vazios para ${apiPath}. Usando mock local...`);
+                  finalJson = mockData;
+                }
+              } catch {}
             }
 
             return new Response(JSON.stringify(finalJson), {

@@ -45,14 +45,17 @@ export function requireAuth(req: AuthenticatedRequest, res: Response, next: Next
   }
 }
 
-// Middleware to restrict access based on roles
+// Middleware to restrict access based on roles (case-insensitive comparison)
 export function requireRoles(allowedRoles: string[]) {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
       return res.status(401).json({ success: false, message: "Não autenticado." });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const userRoleLower = req.user.role.toLowerCase();
+    const allowedLower = allowedRoles.map(r => r.toLowerCase());
+
+    if (!allowedLower.includes(userRoleLower)) {
       return res.status(403).json({ 
         success: false, 
         message: `Acesso proibido. Esta ação requer uma das seguintes funções: ${allowedRoles.join(", ")}` 
