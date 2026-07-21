@@ -5,7 +5,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { UserContext } from '../types.js';
-import { getApiUrl } from '../lib/api';
+import { getApiUrl, safeStorage } from '../lib/api';
 
 interface AuthContextType {
   user: UserContext | null;
@@ -31,7 +31,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
 
   const refreshUser = async () => {
-    const savedUserId = localStorage.getItem('olo-fintel-userId');
+    const savedUserId = safeStorage.getItem('olo-fintel-userId');
     if (savedUserId) {
       try {
         const res = await fetch(getApiUrl(`/api/auth/me/${savedUserId}`));
@@ -68,7 +68,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const loggedUser = await res.json();
       setUser(loggedUser);
-      localStorage.setItem('olo-fintel-userId', loggedUser.id);
+      safeStorage.setItem('olo-fintel-userId', loggedUser.id);
       return { success: true };
     } catch (err) {
       return { success: false, error: 'Erro de ligação ao servidor.' };
@@ -98,7 +98,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const registeredUser = await res.json();
       setUser(registeredUser);
-      localStorage.setItem('olo-fintel-userId', registeredUser.id);
+      safeStorage.setItem('olo-fintel-userId', registeredUser.id);
       return { success: true };
     } catch (err) {
       return { success: false, error: 'Erro de ligação ao servidor.' };
@@ -107,7 +107,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('olo-fintel-userId');
+    safeStorage.removeItem('olo-fintel-userId');
   };
 
   return (

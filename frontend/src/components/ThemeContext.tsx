@@ -17,15 +17,21 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
-    const saved = localStorage.getItem('olo-fintel-theme');
-    return (saved as Theme) || 'system';
+    try {
+      const saved = localStorage.getItem('olo-fintel-theme');
+      return (saved as Theme) || 'system';
+    } catch {
+      return 'system';
+    }
   });
 
   const [isDark, setIsDark] = useState(false);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
-    localStorage.setItem('olo-fintel-theme', newTheme);
+    try {
+      localStorage.setItem('olo-fintel-theme', newTheme);
+    } catch {}
   };
 
   useEffect(() => {

@@ -252,6 +252,26 @@ async function startServer() {
   const app = express();
   app.use(express.json());
 
+  // CORS Middleware - Permite pedidos de qualquer origem (Vercel, localhost, etc.)
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+    } else {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    }
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, olo-fintel-userId, olo-fintel-orgId');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    // Tratamento de pedidos preflight OPTIONS
+    if (req.method === 'OPTIONS') {
+      res.sendStatus(204);
+      return;
+    }
+    next();
+  });
+
   // ----------------- API ROUTES -----------------
 
   // Public survey aggregates for Landing Page & LISPA jury validation

@@ -743,13 +743,19 @@ const translations: Record<Locale, Record<string, string>> = {
 
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [locale, setLocaleState] = useState<Locale>(() => {
-    const saved = localStorage.getItem('olo-fintel-locale');
-    return (saved as Locale) || 'pt';
+    try {
+      const saved = localStorage.getItem('olo-fintel-locale');
+      return (saved as Locale) || 'pt';
+    } catch {
+      return 'pt';
+    }
   });
 
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
-    localStorage.setItem('olo-fintel-locale', newLocale);
+    try {
+      localStorage.setItem('olo-fintel-locale', newLocale);
+    } catch {}
   };
 
   const t = (key: string): string => {

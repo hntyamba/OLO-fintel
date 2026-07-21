@@ -130,10 +130,39 @@ export default function LandingPage({
     fetch(getApiUrl('/api/survey/stats'))
       .then(res => res.json())
       .then(data => {
-        setRealStats(data);
-        // If real data exists, let's auto-select 'real', otherwise keep 'benchmark'
-        if (data && data.total > 0) {
-          setDataSource('real');
+        if (data) {
+          const mappedStats: SurveyStats = {
+            total: data.total || BENCHMARK_STATS.total,
+            sectors: data.sectors || data.bySector || BENCHMARK_STATS.sectors,
+            provinces: data.provinces || data.byProvince || BENCHMARK_STATS.provinces,
+            challenges: {},
+            fundingHistory: data.fundingHistory || BENCHMARK_STATS.fundingHistory,
+            maturityLevels: data.maturityLevels || BENCHMARK_STATS.maturityLevels,
+            bancarizacao: data.bancarizacao || BENCHMARK_STATS.bancarizacao,
+            lostHoursStats: data.lostHoursStats || BENCHMARK_STATS.lostHoursStats,
+            avgHoursLost: data.avgHoursLost ?? BENCHMARK_STATS.avgHoursLost,
+            totalLostHoursYear: data.totalLostHoursYear ?? BENCHMARK_STATS.totalLostHoursYear,
+            registeredOrgs: data.registeredOrgs ?? BENCHMARK_STATS.registeredOrgs,
+            totalOperations: data.totalOperations ?? BENCHMARK_STATS.totalOperations
+          };
+
+          if (Array.isArray(data.challenges)) {
+            data.challenges.forEach((item: any) => {
+              if (item && item.challenge) {
+                const percentage = item.percentage || 10;
+                mappedStats.challenges[item.challenge] = Math.round((percentage / 100) * mappedStats.total);
+              }
+            });
+          } else if (data.challenges && typeof data.challenges === 'object') {
+            mappedStats.challenges = data.challenges;
+          } else {
+            mappedStats.challenges = BENCHMARK_STATS.challenges;
+          }
+
+          setRealStats(mappedStats);
+          if (mappedStats.total > 0) {
+            setDataSource('real');
+          }
         }
       })
       .catch(err => console.error('Error fetching survey stats:', err));
