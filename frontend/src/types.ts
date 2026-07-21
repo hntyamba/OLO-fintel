@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+export type ThemePreference = 'light' | 'dark' | 'system';
+
 export type UserRole = 
   | 'SUPER_ADMIN' 
   | 'ADMIN' 
@@ -23,6 +25,63 @@ export type MaturityLevel =
   | 'BEGINNER' 
   | 'INTERMEDIATE' 
   | 'ADVANCED';
+
+export enum Role {
+  Owner = 'Owner',
+  Manager = 'Manager',
+  FinancialOfficer = 'FinancialOfficer',
+  Analyst = 'Analyst',
+  Consultant = 'Consultant',
+  Member = 'Member',
+  Jury = 'Jury'
+}
+
+export enum Sector {
+  Agriculture = 'Agriculture',
+  Livestock = 'Livestock',
+  Fisheries = 'Fisheries',
+  Commerce = 'Commerce'
+}
+
+export enum DocumentStatus {
+  Approved = 'Approved',
+  Pending = 'Pending',
+  Rejected = 'Rejected'
+}
+
+export interface SurveyStats {
+  totalResponses: number;
+  goal?: number;
+  count?: number;
+  avgAiRating?: number;
+  bySector: Record<string, number>;
+  byProvince: Record<string, number>;
+  byChallenge: Record<string, number>;
+  byPersona?: Record<string, number>;
+  byTool?: Record<string, number>;
+}
+
+export interface Lead {
+  id: string;
+  name: string;
+  company: string;
+  stage: string;
+  value: number;
+  phone: string;
+  email: string;
+  updatedAt: string;
+}
+
+export interface Document {
+  id: string;
+  name: string;
+  category: string;
+  status: DocumentStatus;
+  uploadedAt: string;
+  size: string;
+  url: string;
+  notes?: string;
+}
 
 export interface UserContext {
   id: string;
@@ -129,4 +188,14 @@ export interface Consultant {
   name: string;
   email: string;
   assignedOrgs: string[]; // Org IDs
+}
+
+export interface Transaction {
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  type: 'revenue' | 'expense';
+  category: string;
+  responsible?: string;
 }

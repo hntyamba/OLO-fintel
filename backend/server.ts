@@ -10,7 +10,7 @@ import { swaggerDocument } from "./src/server/swagger.ts";
 import { requireAuth, requireRoles, injectTenant } from "./src/server/middleware/auth.ts";
 
 // Controllers
-import { register, login, refresh, logout } from "./src/server/controllers/authController.ts";
+import { register, login, refresh, logout, updateProfile } from "./src/server/controllers/authController.ts";
 import { getActiveSurvey, submitResponse, getSurveyStatistics, getJuryDashboard } from "./src/server/controllers/surveyController.ts";
 import { getPublicPlatformMetrics, getExecutiveDashboard } from "./src/server/controllers/dashboardController.ts";
 import {
@@ -24,7 +24,9 @@ import {
   getVessels,
   recordCatch,
   createProduct,
-  getProducts
+  getProducts,
+  getUnifiedOperations,
+  addUnifiedOperation
 } from "./src/server/controllers/operationsController.ts";
 import {
   createAccount,
@@ -45,6 +47,15 @@ import {
 } from "./src/server/controllers/fundingController.ts";
 import { askAdvisor, getRecommendations, getActionPlan } from "./src/server/controllers/aiController.ts";
 import { getNotifications, markAsRead, markAllAsRead, createNotification } from "./src/server/controllers/notificationController.ts";
+import {
+  getOrganizations,
+  getUsers,
+  getConsultants,
+  getAdminDocuments,
+  documentAction,
+  delegateConsultant,
+  suspendOrganization
+} from "./src/server/controllers/adminController.ts";
 
 async function startServer() {
   const app = express();
@@ -101,6 +112,9 @@ async function startServer() {
   // SECURED MULTI-TENANT ROUTES (requireAuth)
   // ==========================================
   
+  // User Profile
+  app.post("/api/v1/auth/profile/update", requireAuth, updateProfile);
+  
   // Dashboard
   app.get("/api/v1/dashboard", requireAuth, injectTenant, getExecutiveDashboard);
 
@@ -122,6 +136,10 @@ async function startServer() {
   // Operations - Commerce
   app.post("/api/v1/operations/commerce/products", requireAuth, injectTenant, createProduct);
   app.get("/api/v1/operations/commerce/products", requireAuth, injectTenant, getProducts);
+
+  // Operations - Unified
+  app.get("/api/v1/operations/list", requireAuth, injectTenant, getUnifiedOperations);
+  app.post("/api/v1/operations/add", requireAuth, injectTenant, addUnifiedOperation);
 
   // Finance Module
   app.post("/api/v1/finance/accounts", requireAuth, injectTenant, createAccount);
@@ -184,6 +202,17 @@ async function startServer() {
     reviewApplication
   );
 
+  // ==========================================
+  // ADMIN PORTAL (requireAuth + requireRoles)
+  // ==========================================
+  app.get("/api/v1/admin/organizations", requireAuth, requireRoles(["Admin", "Analyst"]), getOrganizations);
+  app.get("/api/v1/admin/users", requireAuth, requireRoles(["Admin", "Analyst"]), getUsers);
+  app.get("/api/v1/admin/consultants", requireAuth, requireRoles(["Admin"]), getConsultants);
+  app.get("/api/v1/admin/documents", requireAuth, requireRoles(["Admin", "Analyst"]), getAdminDocuments);
+  app.post("/api/v1/admin/document-action", requireAuth, requireRoles(["Admin", "Analyst"]), documentAction);
+  app.post("/api/v1/admin/delegate", requireAuth, requireRoles(["Admin"]), delegateConsultant);
+  app.post("/api/v1/admin/suspend", requireAuth, requireRoles(["Admin"]), suspendOrganization);
+
   // Healthcheck Route
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date() });
@@ -192,7 +221,7 @@ async function startServer() {
   // ==========================================
   // ADMIN/DEVELOPER UTILITIES & DB VISUALIZER
   // ==========================================
-  app.get("/api/v1/admin/db-status", async (req, res) => {
+  app.get("/api/v1/admin/db-status", requireAuth, requireRoles(["Admin"]), async (req, res) => {
     try {
       const { db, isUsingMock, isDbConfigured } = await import("./src/db/client.ts");
       
@@ -249,7 +278,7 @@ async function startServer() {
     }
   });
 
-  app.post("/api/v1/admin/db-reset", async (req, res) => {
+  app.post("/api/v1/admin/db-reset", requireAuth, requireRoles(["Admin"]), async (req, res) => {
     try {
       const { db, isUsingMock } = await import("./src/db/client.ts");
       

@@ -470,6 +470,12 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
       else if (apiPath.startsWith('funding/applications/')) {
         targetUrl = `${activeUrl}/api/v1/funding/applications`;
       }
+      else if (apiPath.startsWith('operations/list/')) {
+        targetUrl = `${activeUrl}/api/v1/operations/list`;
+      }
+      else if (apiPath === 'funding/action-plan') {
+        targetUrl = `${activeUrl}/api/v1/ai/action-plan`;
+      }
 
       // Efetuar chamada ao servidor NestJS no Render
       try {
@@ -554,6 +560,27 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
                   submittedAt: new Date().toISOString()
                 }
               };
+            }
+            else if (apiPath === 'admin/organizations' && originalJson.data) {
+              finalJson = originalJson.data;
+            }
+            else if (apiPath === 'admin/users' && originalJson.data) {
+              finalJson = originalJson.data;
+            }
+            else if (apiPath === 'admin/consultants' && originalJson.data) {
+              finalJson = originalJson.data;
+            }
+            else if (apiPath === 'admin/documents' && originalJson.data) {
+              finalJson = originalJson.data;
+            }
+            else if (apiPath.startsWith('documents/list/') && originalJson.data) {
+              finalJson = originalJson.data;
+            }
+            else if (apiPath.startsWith('operations/list/') && originalJson.data) {
+              finalJson = originalJson.data;
+            }
+            else if (apiPath.startsWith('funding/applications/') && originalJson.data) {
+              finalJson = originalJson.data;
             }
 
             return new Response(JSON.stringify(finalJson), {

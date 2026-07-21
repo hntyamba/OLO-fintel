@@ -255,3 +255,57 @@ export async function logout(req: AuthenticatedRequest, res: Response) {
     return res.status(500).json({ success: false, message: "Erro ao encerrar sessão." });
   }
 }
+
+export async function updateProfile(req: AuthenticatedRequest, res: Response) {
+  try {
+    const { userId, name, email, password, province, organizationName, industry } = req.body;
+    const requesterId = req.user?.id;
+
+    if (!requesterId) {
+      return res.status(401).json({ success: false, message: "Não autenticado." });
+    }
+
+    const targetUserId = userId || requesterId;
+
+    const user = await db.user.findUnique({ where: { id: targetUserId } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Utilizador não encontrado." });
+    }
+
+    const updateData: any = {};
+    if (name) {
+      const parts = name.split(" ");
+      updateData.firstName = parts[0] || user.firstName;
+      updateData.lastName = parts.slice(1).join(" ") || user.lastName;
+    }
+    if (email) updateData.email = email;
+    if (password) updateData.passwordHash = await bcrypt.hash(password, 10);
+
+    if (Object.keys(updateData).length > 0) {
+      await db.user.update({ where: { id: targetUserId }, data: updateData });
+    }
+
+    const membership = await db.organizationMembership.findFirst({
+      where: { userId: targetUserId, status: "Active" }
+    });
+
+    if (membership && (organizationName || industry || province)) {
+      const orgUpdateData: any = {};
+      if (organizationName) orgUpdateData.name = organizationName;
+      if (industry) orgUpdateData.sector = industry;
+      if (province) orgUpdateData.province = province;
+
+      if (Object.keys(orgUpdateData).length > 0) {
+        await db.organization.update({
+          where: { id: membership.organizationId },
+          data: orgUpdateData
+        });
+      }
+    }
+
+    return res.json({ success: true, message: "Perfil atualizado com sucesso." });
+  } catch (error: any) {
+    console.error("Erro ao atualizar perfil:", error);
+    return res.status(500).json({ success: false, message: "Erro ao atualizar perfil." });
+  }
+}
