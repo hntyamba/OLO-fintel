@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: olo-fintel-backend
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: GEMINI_API_KEY
+        sync: false # Cole a sua chave de API do Google Gemini
+      - key: FRONTEND_URL
+        value: https://olofintel.vercel.app # URL do seu frontend na Vercel
