@@ -1,4 +1,6 @@
 // @ts-ignore
+import "./env.ts";
+// @ts-ignore
 import { PrismaClient } from "@prisma/client";
 
 let isDbConfigured = false;
