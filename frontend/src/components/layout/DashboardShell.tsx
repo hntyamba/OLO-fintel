@@ -5,9 +5,9 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../AuthContext.js';
-import { useLanguage } from '../LanguageContext.js';
-import { useTheme } from '../ThemeContext.js';
+import { useAuth } from '../../contexts/AuthContext';
+import { useLanguage } from '../../contexts/LanguageContext';
+import { useTheme } from '../../contexts/ThemeContext';
 import { getApiUrl } from '../../lib/api';
 import { useOfflineSync } from '../../hooks/useOfflineSync';
 import { CommandPalette } from './CommandPalette';

@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLanguage } from '../../components/LanguageContext.js';
+import { useLanguage } from '../../contexts/LanguageContext';
 import {
   AlertTriangle,
   CloudSun,

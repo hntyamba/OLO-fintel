@@ -4,7 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { useAuth } from './AuthContext.js';
+import { useAuth } from '../contexts/AuthContext';
 import { getApiUrl } from '../lib/api';
 import { 
   User, 

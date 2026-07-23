@@ -4,9 +4,9 @@
  */
 
 import React, { useState } from 'react';
-import { useAuth } from './AuthContext.js';
-import { useTheme } from './ThemeContext.js';
-import { useLanguage } from './LanguageContext.js';
+import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
 import { 
   Building2, 
   Briefcase, 

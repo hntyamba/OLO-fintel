@@ -4,8 +4,8 @@
  */
 
 import React, { useEffect, useState } from 'react';
-import { useLanguage } from './LanguageContext.js';
-import { useTheme } from './ThemeContext.js';
+import { useLanguage } from '../contexts/LanguageContext';
+import { useTheme } from '../contexts/ThemeContext';
 import { getApiUrl } from '../lib/api';
 import {   CheckCircle, 
   ArrowLeft, 
