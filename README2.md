@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 Referência de Frontend — OLO Fintel
 Visão Geral
 
@@ -448,3 +449,9 @@ Preparação para investimento (Funding Readiness)
 O design deve parecer um produto SaaS global de alto padrão, focado em PMEs, cooperativas, fazendas, associações, ONGs e empresas africanas que necessitam de gestão financeira, operacional e tomada de decisão baseada em dados.
 
 Qualquer detalhe deixado de fora ajuste.
+=======
+OLO
+fintel
+now
+ready
+>>>>>>> f3107b171b9ac1d9d3d50b83a3f40fbbb58d1212
