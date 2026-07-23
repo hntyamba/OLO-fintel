@@ -32,7 +32,7 @@ export async function register(req: AuthenticatedRequest, res: Response) {
     });
 
     let organizationId = undefined;
-    let userRole = "Member";
+    let userRole = "MEMBER";
 
     if (organizationName && sector) {
       const org = await db.organization.create({
@@ -44,7 +44,7 @@ export async function register(req: AuthenticatedRequest, res: Response) {
       });
 
       organizationId = org.id;
-      userRole = "Owner";
+      userRole = "OWNER";
 
       // Create Settings & Profile
       await db.organizationSettings.create({
@@ -67,7 +67,7 @@ export async function register(req: AuthenticatedRequest, res: Response) {
         data: {
           organizationId: org.id,
           userId: user.id,
-          roleId: "Owner",
+          roleId: "OWNER",
           status: "Active"
         }
       });
@@ -170,7 +170,7 @@ export async function login(req: AuthenticatedRequest, res: Response) {
       where: { userId: user.id, status: "Active" }
     });
 
-    const role = membership ? membership.roleId : "Member";
+    const role = membership ? membership.roleId : "MEMBER";
     const organizationId = membership ? membership.organizationId : undefined;
 
     // Fetch organization details if membership exists
