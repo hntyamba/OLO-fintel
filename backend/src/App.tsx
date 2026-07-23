@@ -204,26 +204,83 @@ export default function App() {
   const [apiResponse, setApiResponse] = useState<string | null>(null);
   const [isCallingApi, setIsCallingApi] = useState(false);
 
+const AdminConsole = async () => {
+  const [dbStatus, setDbStatus] = useState<any>(null);
+  const [isLoadingDb, setIsLoadingDb] = useState(false);
+  //const [activeRole, setActiveRole] = useState<"Admin">("Admin");
+
+  // 1. Função para Autenticação Automática/Silenciosa
+  const handleAutoAdminAuth = async () => {
+    try {
+      // Tenta fazer login com a conta master de Admin
+      const res = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: "admin.olo@fintel.ao", // Substitua pelo e-mail padrão do Admin
+          password: "299792C*lege" // Substitua pela senha padrão
+        })
+      });
+
+      let data = await res.json();
+
+      // Se o utilizador não existir, faz o registo automático imediatamente
+      if (res.status === 404 || !data.success) {
+        const regRes = await fetch("/api/v1/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            firstName: "Admin",
+            lastName: "Kanji",
+            email: "admin.olo@fintel.ao",
+            password: "299792C*lege",
+            role: "ADMIN"
+          })
+        });
+        data = await regRes.json();
+      }
+
+      if (data.success) {
+        // Armazena o token gerado pelo Supabase/Backend
+        localStorage.setItem("adminAccessToken", data.data.accessToken);
+        // Executa a verificação do status com o novo token ativo
+        await fetchDbStatus();
+      }
+    } catch (err) {
+      console.error("Falha na autenticação automática do Admin", err);
+    }
+  };
+
+  // 2. Função de Verificação do Status com Token Injetado
   const fetchDbStatus = async () => {
     setIsLoadingDb(true);
     try {
-      // Procura o token guardado no localStorage (ou onde o guarda após o registo)
-      const token = localStorage.getItem("accessToken"); 
+      const token = localStorage.getItem("adminAccessToken");
+
+      // Se não houver token, força o login automático primeiro
+      if (!token) {
+        await handleAutoAdminAuth();
+        return;
+      }
 
       const res = await fetch("/api/v1/admin/db-status", {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          // Envia o token para passar pelos middlewares requireAuth e requireRoles
-          "Authorization": `Bearer ${token}` 
+          "Authorization": `Bearer ${token}`
         }
       });
+
+      // Se o token expirou (Erro 401/403), limpa e tenta reautenticar
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("adminAccessToken");
+        await handleAutoAdminAuth();
+        return;
+      }
 
       const data = await res.json();
       if (data.success) {
         setDbStatus(data);
-      } else {
-        console.warn("Bloqueio de permissão da API:", data.error);
       }
     } catch (err: any) {
       console.error("Erro a carregar status da BD", err);
@@ -231,7 +288,6 @@ export default function App() {
       setIsLoadingDb(false);
     }
   };
-
 
   const handleResetDb = async () => {
     if (!window.confirm("Aviso: Esta ação irá redefinir todas as tabelas e dados no PostgreSQL/Supabase. Desejas continuar?")) return;
