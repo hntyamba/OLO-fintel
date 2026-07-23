@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 Referência de Frontend — OLO Fintel
 Visão Geral
 
