@@ -38,6 +38,7 @@ export default function AuthPages({ view }: AuthPagesProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [networkError, setNetworkError] = useState(false);
 
   // Register specific steps
   const [regStep, setRegStep] = useState(1);
@@ -51,6 +52,7 @@ export default function AuthPages({ view }: AuthPagesProps) {
   // Quick login helper
   const handleQuickLogin = async (roleType: 'owner' | 'superadmin' | 'analyst' | 'consultant') => {
     setLoading(true);
+    setNetworkError(false);
     const emailMap = {
       owner: 'owner@olofintel.ao',
       superadmin: 'superadmin@olofintel.ao',
@@ -63,6 +65,7 @@ export default function AuthPages({ view }: AuthPagesProps) {
     if (res.success) {
       navigate('/app/overview');
     } else {
+      setNetworkError(!!res.networkError);
       setError(res.error || t('auth.error_login'));
     }
   };
@@ -75,11 +78,13 @@ export default function AuthPages({ view }: AuthPagesProps) {
     }
     setLoading(true);
     setError(null);
+    setNetworkError(false);
     const res = await login(email, password);
     setLoading(false);
     if (res.success) {
       navigate('/app/overview');
     } else {
+      setNetworkError(!!res.networkError);
       setError(res.error || t('auth.invalid_credentials'));
     }
   };
@@ -117,6 +122,7 @@ export default function AuthPages({ view }: AuthPagesProps) {
 
     setLoading(true);
     setError(null);
+    setNetworkError(false);
     
     const payload = {
       name,
@@ -133,6 +139,7 @@ export default function AuthPages({ view }: AuthPagesProps) {
     if (res.success) {
       navigate('/app/overview');
     } else {
+      setNetworkError(!!res.networkError);
       setError(res.error || t('auth.error_register'));
     }
   };
@@ -152,8 +159,12 @@ export default function AuthPages({ view }: AuthPagesProps) {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/25 rounded-xl text-red-500 text-xs font-semibold">
-              ⚠️ {error}
+            <div className={`p-3 rounded-xl text-xs font-semibold ${
+              networkError
+                ? 'bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400'
+                : 'bg-red-500/10 border border-red-500/25 text-red-500'
+            }`}>
+              {networkError ? '🔄 ' : '⚠️ '}{error}
             </div>
           )}
 
@@ -243,8 +254,12 @@ export default function AuthPages({ view }: AuthPagesProps) {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/25 rounded-xl text-red-500 text-xs font-semibold">
-              ⚠️ {error}
+            <div className={`p-3 rounded-xl text-xs font-semibold ${
+              networkError
+                ? 'bg-amber-500/10 border border-amber-500/25 text-amber-600 dark:text-amber-400'
+                : 'bg-red-500/10 border border-red-500/25 text-red-500'
+            }`}>
+              {networkError ? '🔄 ' : '⚠️ '}{error}
             </div>
           )}
 

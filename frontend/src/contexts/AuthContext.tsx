@@ -5,7 +5,7 @@ import { getApiUrl, safeStorage } from '../lib/api';
 interface AuthContextType {
   user: UserContext | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string; networkError?: boolean }>;
   register: (payload: {
     name: string;
     email: string;
@@ -14,7 +14,7 @@ interface AuthContextType {
     industry?: string;
     province?: string;
     organizationName?: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; networkError?: boolean }>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -55,6 +55,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         body: JSON.stringify({ email, password })
       });
 
+      if (res.status === 503) {
+        return { success: false, error: 'Servidor indisponível. Tente novamente mais tarde.', networkError: true };
+      }
+
       if (!res.ok) {
         const errorData = await res.json();
         return { success: false, error: errorData.error || 'Credenciais inválidas.' };
@@ -65,7 +69,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       safeStorage.setItem('olo-fintel-userId', loggedUser.id);
       return { success: true };
     } catch {
-      return { success: false, error: 'Erro de ligação ao servidor.' };
+      return { success: false, error: 'Servidor indisponível. Tente novamente mais tarde.', networkError: true };
     }
   };
 
@@ -85,6 +89,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         body: JSON.stringify(payload)
       });
 
+      if (res.status === 503) {
+        return { success: false, error: 'Servidor indisponível. Tente novamente mais tarde.', networkError: true };
+      }
+
       if (!res.ok) {
         const errorData = await res.json();
         return { success: false, error: errorData.error || 'Erro no registo.' };
@@ -95,7 +103,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       safeStorage.setItem('olo-fintel-userId', registeredUser.id);
       return { success: true };
     } catch {
-      return { success: false, error: 'Erro de ligação ao servidor.' };
+      return { success: false, error: 'Servidor indisponível. Tente novamente mais tarde.', networkError: true };
     }
   };
 

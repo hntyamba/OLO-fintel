@@ -8,7 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useTheme } from '../../contexts/ThemeContext';
-import { getApiUrl } from '../../lib/api';
+import { getApiUrl, isBackendDown, onBackendStateChange } from '../../lib/api';
 import { useOfflineSync } from '../../hooks/useOfflineSync';
 import { CommandPalette } from './CommandPalette';
 import {
@@ -68,6 +68,11 @@ export default function DashboardShell() {
   const { user, logout, refreshUser } = useAuth();
   const { t, locale, setLocale } = useLanguage();
   const { theme, setTheme, isDark } = useTheme();
+
+  const [backendOffline, setBackendOffline] = useState(isBackendDown());
+  useEffect(() => {
+    return onBackendStateChange(setBackendOffline);
+  }, []);
 
   const canSwitchSectors = !user?.industry || ['SUPER_ADMIN', 'ANALYST', 'CONSULTANT'].includes(user?.role || '');
 
@@ -704,6 +709,13 @@ export default function DashboardShell() {
             <div className="p-3 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-600 dark:text-amber-400 animate-pulse">
               <span className="font-semibold flex items-center gap-2"><AlertTriangle size={15} /> Estas a trabalhar em Modo Offline. Todas as operacoes lancadas serao salvas em cache segura.</span>
               <button onClick={handleToggleConnection} className="px-2.5 py-1 bg-amber-500 text-white rounded font-bold text-[10px]">Ligar & Sincronizar</button>
+            </div>
+          )}
+
+          {backendOffline && (
+            <div className="mx-6 mt-4 px-4 py-3 bg-amber-500/10 border border-amber-500/25 rounded-xl flex items-center gap-3 text-amber-700 dark:text-amber-400 text-xs font-semibold">
+              <AlertTriangle size={15} />
+              <span className="flex-1">Modo demonstracao — servidor offline. Alguns dados podem nao estar disponiveis.</span>
             </div>
           )}
 

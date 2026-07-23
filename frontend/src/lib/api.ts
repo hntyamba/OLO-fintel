@@ -78,6 +78,29 @@ function getActiveApiUrl(): string {
   return API_URL;
 }
 
+// Backend reachability flag — components can import this to show offline UI
+let _isBackendDown = false;
+let _backendCheckListeners: Array<(down: boolean) => void> = [];
+export function isBackendDown(): boolean { return _isBackendDown; }
+export function onBackendStateChange(cb: (down: boolean) => void): () => void {
+  _backendCheckListeners.push(cb);
+  return () => { _backendCheckListeners = _backendCheckListeners.filter(l => l !== cb); };
+}
+function setBackendDown(down: boolean) {
+  if (_isBackendDown !== down) { _isBackendDown = down; _backendCheckListeners.forEach(l => l(down)); }
+}
+
+const AUTH_ENDPOINTS = ['auth/login', 'auth/register'];
+function isAuthEndpoint(apiPath: string): boolean {
+  return AUTH_ENDPOINTS.some(ep => apiPath === ep || apiPath.startsWith(ep + '/'));
+}
+function authUnavailableResponse(): Response {
+  return new Response(JSON.stringify({ error: 'Servidor indisponível. Tente novamente mais tarde.' }), {
+    status: 503,
+    headers: { 'Content-Type': 'application/json' }
+  });
+}
+
 export async function checkServerHealth(): Promise<boolean> {
   const activeUrl = getActiveApiUrl();
   if (!activeUrl) return false;
@@ -355,6 +378,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
       // Se não temos backend ativo (ex: na Vercel e o servidor Render está offline ou em branco),
       // fazemos bypass diretamente para o nosso simulador local resiliente
       if (!activeUrl) {
+        if (isAuthEndpoint(apiPath)) { setBackendDown(true); return authUnavailableResponse(); }
         return mockLocalEndpoint(apiPath, method, bodyText);
       }
 
@@ -368,11 +392,13 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
         try {
           const response = await originalFetch(targetUrl, init);
           if (response.status === 404) {
+            if (isAuthEndpoint(apiPath)) { return new Response(JSON.stringify({ error: 'Credenciais inválidas.' }), { status: 401, headers: { 'Content-Type': 'application/json' } }); }
             console.warn(`[OLO Fintel API Proxy] Endpoint local ${apiPath} retornou 404. Usando mock local...`);
             return mockLocalEndpoint(apiPath, method, bodyText);
           }
           return response;
         } catch (err) {
+          if (isAuthEndpoint(apiPath)) { setBackendDown(true); return authUnavailableResponse(); }
           console.warn('[OLO Fintel API Proxy] Servidor Express local inacessível. Usando mock local...', err);
           return mockLocalEndpoint(apiPath, method, bodyText);
         }
@@ -533,8 +559,13 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
         const response = await originalFetch(targetUrl, modifiedInit);
 
         // Se o servidor retornar 404 para este endpoint (ou seja, não está implementado ou mudou de caminho),
-        // ativamos imediatamente a cura automática fallback-local
+        //ativamos imediatamente a cura automática fallback-local
         if (response.status === 404) {
+          if (isAuthEndpoint(apiPath)) {
+            console.warn(`[OLO Fintel API Proxy] Endpoint auth ${apiPath} indisponível (404). Servidor offline.`);
+            setBackendDown(true);
+            return authUnavailableResponse();
+          }
           console.warn(`[OLO Fintel API Proxy] Endpoint ${apiPath} indisponível (404) no NestJS. Ativando cura local...`);
           return mockLocalEndpoint(apiPath, method, bodyText);
         }
@@ -635,18 +666,6 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
               finalJson = originalJson.data;
             }
 
-            // Se o backend retornou um array vazio, tentar fallback para mock (dados simulados)
-            if (Array.isArray(finalJson) && finalJson.length === 0) {
-              try {
-                const mockResponse = mockLocalEndpoint(apiPath, method, bodyText);
-                const mockData = await mockResponse.json();
-                if (Array.isArray(mockData) && mockData.length > 0) {
-                  console.warn(`[OLO Fintel API Proxy] Backend retornou dados vazios para ${apiPath}. Usando mock local...`);
-                  finalJson = mockData;
-                }
-              } catch {}
-            }
-
             return new Response(JSON.stringify(finalJson), {
               status: response.status,
               statusText: response.statusText,
@@ -656,6 +675,11 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
         }
         return response;
       } catch (err) {
+        if (isAuthEndpoint(apiPath)) {
+          console.warn(`[OLO Fintel API Proxy] Servidor Render NestJS inacessível para auth. Servidor offline.`);
+          setBackendDown(true);
+          return authUnavailableResponse();
+        }
         console.warn('[OLO Fintel API Proxy] Servidor Render NestJS inacessível. Ativando cura local...', err);
         return mockLocalEndpoint(apiPath, method, bodyText);
       }
