@@ -62,7 +62,7 @@ export default function App() {
   // SIMULATION STATE (Owner / Sector / User Role Selector)
   // -------------------------------------------------------------
   const [activeSector, setActiveSector] = useState<"Agriculture" | "Livestock" | "Fisheries" | "Commerce">("Agriculture");
-  const [activeRole, setActiveRole] = useState<"Owner" | "FinancialOfficer" | "Analyst" | "Jury" | "Guest" | "Admin">("Owner");
+  const [activeRole, setActiveRole] = useState<"Owner" | "FinancialOfficer" | "Analyst" | "Jury" | "Guest" | "Admin">("Admin");
   const [activeProvince, setActiveProvince] = useState<string>("Benguela");
   const [orgName, setOrgName] = useState<string>("Cooperativa Agrícola de Catabola");
   const [nifValue, setNifValue] = useState<string>("5001228941");
