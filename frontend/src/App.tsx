@@ -152,10 +152,10 @@ function AppContent() {
 
       {/* CORE SCREENS ROUTING */}
       <div className="flex-1 flex flex-col">
-        {currentPage === 'home' && <LandingPage onNavigate={setCurrentPage} />}
-        {currentPage === 'survey' && <SurveyPage onNavigate={setCurrentPage} />}
-        {currentPage === 'login' && <AuthPages view="login" onNavigate={setCurrentPage} />}
-        {currentPage === 'register' && <AuthPages view="register" onNavigate={setCurrentPage} />}
+        {currentPage === 'home' && <LandingPage />}
+        {currentPage === 'survey' && <SurveyPage />}
+        {currentPage === 'login' && <AuthPages view="login" />}
+        {currentPage === 'register' && <AuthPages view="register" />}
         {currentPage === 'dashboard' && <DashboardShell />}
       </div>
 

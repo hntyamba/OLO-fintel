@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { getApiUrl } from '../lib/api';
@@ -97,11 +98,8 @@ const defaultSurveyData: StrategicSurveyData = {
   E7_contact: ''
 };
 
-export default function SurveyPage({ 
-  onNavigate 
-}: { 
-  onNavigate: (page: 'home' | 'survey' | 'login' | 'register' | 'dashboard') => void 
-}) {
+export default function SurveyPage() {
+  const navigate = useNavigate();
   const { t } = useLanguage();
   const { isDark } = useTheme();
   
@@ -462,13 +460,13 @@ export default function SurveyPage({
           {/* Action buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-end pt-4 border-t border-gray-100 dark:border-gray-800">
             <button 
-              onClick={() => onNavigate('home')}
+              onClick={() => navigate('/')}
               className="px-6 py-3 bg-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-800 rounded-xl font-semibold transition-all text-xs"
             >
               Voltar ao Início
             </button>
             <button 
-              onClick={() => onNavigate('register')}
+              onClick={() => navigate('/auth/register')}
               className="px-6 py-3 bg-brand-iris hover:bg-brand-iris-hover text-white rounded-xl font-bold transition-all text-xs shadow"
             >
               Iniciar Onboarding OLO Fintel

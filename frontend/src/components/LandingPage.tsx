@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { cn } from '../lib/utils';
 import {
   ArrowRight,
@@ -22,9 +23,7 @@ import {
   FileOutput,
 } from 'lucide-react';
 
-interface LandingPageProps {
-  onNavigate: (page: 'home' | 'survey' | 'login' | 'register' | 'dashboard') => void;
-}
+interface LandingPageProps {}
 
 const FINANCIALS = {
   receitas: 32540000,
@@ -86,7 +85,8 @@ function formatKz(value: number): string {
   return value.toLocaleString('pt-AO') + ' Kz';
 }
 
-export default function LandingPage({ onNavigate }: LandingPageProps) {
+export default function LandingPage({}: LandingPageProps) {
+  const navigate = useNavigate();
   return (
     <div className="min-h-screen bg-[#F4F6F8] font-sans text-gray-900">
       {/* HERO */}
@@ -106,14 +106,14 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
             </p>
             <div className="flex flex-wrap gap-3 pt-2">
               <button
-                onClick={() => onNavigate('login')}
+                onClick={() => navigate('/auth/login')}
                 className="px-7 py-3.5 bg-[#0DA676] hover:bg-[#0B8F64] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#0DA676]/25 flex items-center gap-2 cursor-pointer"
               >
                 Comece Agora
                 <ArrowRight size={16} />
               </button>
               <button
-                onClick={() => onNavigate('survey')}
+                onClick={() => navigate('/survey')}
                 className="px-7 py-3.5 border border-white/20 hover:border-white/40 text-white rounded-xl font-bold text-sm transition-all cursor-pointer"
               >
                 Participar no Inquérito
@@ -324,7 +324,7 @@ export default function LandingPage({ onNavigate }: LandingPageProps) {
             Crie a sua conta gratuita e comece a construir a identidade económica da sua cooperativa hoje.
           </p>
           <button
-            onClick={() => onNavigate('login')}
+            onClick={() => navigate('/auth/login')}
             className="px-8 py-4 bg-[#0DA676] hover:bg-[#0B8F64] text-white rounded-xl font-bold text-sm transition-all shadow-lg shadow-[#0DA676]/25 inline-flex items-center gap-2 cursor-pointer"
           >
             Comece Agora

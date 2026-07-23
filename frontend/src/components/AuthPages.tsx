@@ -4,6 +4,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -23,10 +24,10 @@ import {
 
 interface AuthPagesProps {
   view: 'login' | 'register';
-  onNavigate: (page: 'home' | 'survey' | 'login' | 'register' | 'dashboard') => void;
 }
 
-export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
+export default function AuthPages({ view }: AuthPagesProps) {
+  const navigate = useNavigate();
   const { login, register } = useAuth();
   const { isDark } = useTheme();
   const { t } = useLanguage();
@@ -60,7 +61,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
     const res = await login(targetEmail, 'password');
     setLoading(false);
     if (res.success) {
-      onNavigate('dashboard');
+      navigate('/app/overview');
     } else {
       setError(res.error || t('auth.error_login'));
     }
@@ -77,7 +78,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
     const res = await login(email, password);
     setLoading(false);
     if (res.success) {
-      onNavigate('dashboard');
+      navigate('/app/overview');
     } else {
       setError(res.error || t('auth.invalid_credentials'));
     }
@@ -130,7 +131,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
     const res = await register(payload);
     setLoading(false);
     if (res.success) {
-      onNavigate('dashboard');
+      navigate('/app/overview');
     } else {
       setError(res.error || t('auth.error_register'));
     }
@@ -228,7 +229,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
 
           <div className="text-center text-xs">
             <span className="text-gray-400">{t('auth.no_account')}</span>{' '}
-            <button onClick={() => onNavigate('register')} className="text-brand-iris font-bold hover:underline">
+            <button onClick={() => navigate('/auth/register')} className="text-brand-iris font-bold hover:underline">
               {t('auth.register_here')}
             </button>
           </div>
@@ -436,7 +437,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
 
           <div className="text-center text-xs">
             <span className="text-gray-400">{t('auth.have_account')}</span>{' '}
-            <button onClick={() => onNavigate('login')} className="text-brand-iris font-bold hover:underline">
+            <button onClick={() => navigate('/auth/login')} className="text-brand-iris font-bold hover:underline">
               {t('auth.do_login')}
             </button>
           </div>
