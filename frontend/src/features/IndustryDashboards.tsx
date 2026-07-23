@@ -23,7 +23,8 @@ import {
   Trash2
 } from "lucide-react";
 import { Sector } from "../types";
-import { APIService, ERPData, HRMember, MachineryItem, InsumoItem, ProductionCycle, DailyProduction } from "../services/api";
+import { APIService } from "../services/api";
+import type { ERPData, HRMember, MachineryItem, InsumoItem, ProductionCycle, DailyProduction } from "../types";
 
 interface IndustryDashboardsProps {
   sector: Sector;

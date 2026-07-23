@@ -14,7 +14,7 @@ import {
   DocumentRecord, 
   Organization, 
   Consultant 
-} from './src/types.js';
+} from './src/types/index.js';
 
 const PORT = 3000;
 const DB_FILE = path.join(process.cwd(), 'db_storage.json');

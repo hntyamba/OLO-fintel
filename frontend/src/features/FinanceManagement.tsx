@@ -19,8 +19,8 @@ import {
   PieChart,
   RefreshCw
 } from "lucide-react";
-import { APIService, ERPData, AssetLiability, Partner } from "../services/api";
-import { Transaction } from "../types";
+import { APIService } from "../services/api";
+import type { Transaction, ERPData, AssetLiability, Partner } from "../types";
 
 export default function FinanceManagement() {
   // Tabs: ledger, assets, partners, reports
@@ -221,7 +221,7 @@ export default function FinanceManagement() {
   };
 
   // Calculations
-  const totalIncome = currentErp.transactions.filter(t => t.type === "income" || t.type === ("revenue" as any)).reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = currentErp.transactions.filter((t: any) => t.type === "income" || t.type === "revenue").reduce((sum, t) => sum + t.amount, 0);
   const totalExpense = currentErp.transactions.filter(t => t.type === "expense").reduce((sum, t) => sum + t.amount, 0);
   const netCashFlow = totalIncome - totalExpense;
 
@@ -525,11 +525,11 @@ export default function FinanceManagement() {
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`h-8 w-8 rounded-lg flex items-center justify-center font-bold text-base ${
-                      t.type === "income" || t.type === ("revenue" as any)
+                      (t as any).type === "income" || t.type === "revenue"
                         ? "bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-400" 
                         : "bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400"
                     }`}>
-                      {t.type === "income" || t.type === ("revenue" as any) ? "+" : "-"}
+                      {(t as any).type === "income" || t.type === "revenue" ? "+" : "-"}
                     </div>
                     <div>
                       <span className="block font-bold text-gray-800 dark:text-zinc-200">{t.description}</span>
@@ -540,8 +540,8 @@ export default function FinanceManagement() {
                   </div>
 
                   <div className="flex items-center space-x-4">
-                    <span className={`font-black text-sm ${t.type === "income" || t.type === ("revenue" as any) ? "text-green-600" : "text-rose-500"}`}>
-                      {t.type === "income" || t.type === ("revenue" as any) ? "+" : "-"} {t.amount.toLocaleString()} Kz
+                    <span className={`font-black text-sm ${(t as any).type === "income" || t.type === "revenue" ? "text-green-600" : "text-rose-500"}`}>
+                      {(t as any).type === "income" || t.type === "revenue" ? "+" : "-"} {t.amount.toLocaleString()} Kz
                     </span>
                     <button 
                       onClick={() => handleDeleteTx(t.id)}

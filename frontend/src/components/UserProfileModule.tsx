@@ -279,7 +279,7 @@ export default function UserProfileModule({ onBack }: UserProfileModuleProps) {
                 <label className="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Sector Produtivo Principal</label>
                 <select
                   value={industry}
-                  onChange={e => setIndustry(e.target.value)}
+                  onChange={e => setIndustry(e.target.value as any)}
                   className="w-full pl-2 pr-3 py-2 text-xs font-semibold rounded-lg border border-gray-250 dark:border-gray-750 bg-white dark:bg-[#1A1A21] text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-purple"
                 >
                   {sectors.map(sec => (

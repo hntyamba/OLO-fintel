@@ -4,7 +4,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { UserContext } from '../types.js';
+import { UserContext } from '../types/index.js';
 import { getApiUrl, safeStorage } from '../lib/api';
 
 interface AuthContextType {

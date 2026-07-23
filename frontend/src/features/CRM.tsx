@@ -9,8 +9,8 @@ import {
   CheckCircle2,
   Activity
 } from "lucide-react";
-import { Lead } from "../types";
-import { APIService, ERPData } from "../services/api";
+import { APIService } from "../services/api";
+import type { Lead, ERPData } from "../types";
 
 const INITIAL_LEADS: Lead[] = [
   { id: "lead-1", name: "Manuel Carlos", company: "Supermercados Angomart", stage: "Lead", value: 450000, phone: "923114500", email: "mcarlos@angomart.co.ao", updatedAt: "2026-07-15" },
@@ -128,7 +128,7 @@ export default function CRM() {
   const moveStage = (id: string, direction: "forward" | "backward") => {
     const updated = leads.map(lead => {
       if (lead.id === id) {
-        const currentIndex = stages.indexOf(lead.stage);
+        const currentIndex = stages.indexOf(lead.stage as any);
         let nextIndex = currentIndex;
         if (direction === "forward" && currentIndex < stages.length - 1) {
           nextIndex += 1;

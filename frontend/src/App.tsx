@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from './components/AuthContext.js';
 import LandingPage from './components/LandingPage.js';
 import SurveyPage from './components/SurveyPage.js';
 import AuthPages from './components/AuthPages.js';
-import Dashboards from './components/Dashboards.js';
+import DashboardShell from './components/layout/DashboardShell.js';
 import BackendConnectionManager from './components/BackendConnectionManager.js';
 import { Sun, Moon, Menu, X, Landmark, ShieldCheck } from 'lucide-react';
 
@@ -156,7 +156,7 @@ function AppContent() {
         {currentPage === 'survey' && <SurveyPage onNavigate={setCurrentPage} />}
         {currentPage === 'login' && <AuthPages view="login" onNavigate={setCurrentPage} />}
         {currentPage === 'register' && <AuthPages view="register" onNavigate={setCurrentPage} />}
-        {currentPage === 'dashboard' && <Dashboards />}
+        {currentPage === 'dashboard' && <DashboardShell />}
       </div>
 
       {/* PUBLIC FOOTER (Only when not on dashboard) */}

@@ -30,7 +30,7 @@ import {
   History, 
   Building
 } from 'lucide-react';
-import { DocumentRecord, Organization } from '../types.js';
+import { DocumentRecord, Organization } from '../types/index.js';
 
 interface DocumentKYCModuleProps {
   key?: string;
