@@ -204,10 +204,7 @@ export default function App() {
   const [apiResponse, setApiResponse] = useState<string | null>(null);
   const [isCallingApi, setIsCallingApi] = useState(false);
 
-const AdminConsole = async () => {
-  const [dbStatus, setDbStatus] = useState<any>(null);
-  const [isLoadingDb, setIsLoadingDb] = useState(false);
-  //const [activeRole, setActiveRole] = useState<"Admin">("Admin");
+const AdminConsole = () => {
 
   // 1. Função para Autenticação Automática/Silenciosa
   const handleAutoAdminAuth = async () => {
