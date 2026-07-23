@@ -207,10 +207,23 @@ export default function App() {
   const fetchDbStatus = async () => {
     setIsLoadingDb(true);
     try {
-      const res = await fetch("/api/v1/admin/db-status");
+      // Procura o token guardado no localStorage (ou onde o guarda após o registo)
+      const token = localStorage.getItem("accessToken"); 
+
+      const res = await fetch("/api/v1/admin/db-status", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          // Envia o token para passar pelos middlewares requireAuth e requireRoles
+          "Authorization": `Bearer ${token}` 
+        }
+      });
+
       const data = await res.json();
       if (data.success) {
         setDbStatus(data);
+      } else {
+        console.warn("Bloqueio de permissão da API:", data.error);
       }
     } catch (err: any) {
       console.error("Erro a carregar status da BD", err);
@@ -218,6 +231,7 @@ export default function App() {
       setIsLoadingDb(false);
     }
   };
+
 
   const handleResetDb = async () => {
     if (!window.confirm("Aviso: Esta ação irá redefinir todas as tabelas e dados no PostgreSQL/Supabase. Desejas continuar?")) return;
