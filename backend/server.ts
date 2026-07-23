@@ -68,6 +68,7 @@ async function startServer() {
   // Enable CORS for external frontend (Vercel) & local development
   const allowedOrigins = [
     "https://olofintel.vercel.app",
+    "https://olofintel.onrender.com"
     "http://localhost:5173",
     "http://localhost:3000",
   ];
