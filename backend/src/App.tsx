@@ -260,7 +260,7 @@ export default function App() {
   }, [getAuthToken]);
 
    // Credenciais administrativas padrão para a Consola Exclusiva
-  const ADMIN_AUTO_EMAIL = "admin@olofintel.internal";
+  const ADMIN_AUTO_EMAIL = "kanji@olofintel.com";
   const ADMIN_AUTO_PASS = "20kperweek";
 
   // Função Única de Autenticação em Fluxo Contínuo
