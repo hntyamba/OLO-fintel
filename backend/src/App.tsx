@@ -192,7 +192,7 @@ export default function App() {
     setSysLogs(prev => [{ time, action, type }, ...prev].slice(0, 30));
   };
 
-  // -------------------------------------------------------------
+// -------------------------------------------------------------
   // ADMIN/DEVELOPER CONSOLE STATE & UTILITIES
   // -------------------------------------------------------------
   const [activeTab, setActiveTab] = useState<"simulator" | "database" | "api">("simulator");
@@ -204,9 +204,7 @@ export default function App() {
   const [apiResponse, setApiResponse] = useState<string | null>(null);
   const [isCallingApi, setIsCallingApi] = useState(false);
 
-  const [authError, setAuthError] = useState<string | null>(null);
-
-  // 1. Estados de Autenticação do Administrador
+  // 1. Estados de Autenticação Únicos do Administrador
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
   const [authMode, setAuthMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
@@ -216,60 +214,10 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
   
-  const getAuthToken = () => localStorage.getItem("adminAccessToken");
+  // Helper único para ler o Token
+  const getAuthToken = useCallback(() => localStorage.getItem("adminAccessToken"), []);
 
-  // 2. Verificar sessão ativa imediatamente ao montar o componente
-  useEffect(() => {
-    const token = getAuthToken();
-    if (token) {
-      setIsAdminAuthenticated(true);
-    }
-  }, []);
-
-  // 3. Executar o fetch automático APENAS se estiver autenticado
-  useEffect(() => {
-    if (isAdminAuthenticated) {
-      fetchDbStatus();
-    }
-  }, [isAdminAuthenticated, fetchDbStatus]);
-  
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError(null);
-
-    const endpoint = authMode === "login" ? "/api/v1/auth/login" : "/api/v1/auth/register";
-    const payload = authMode === "login" 
-      ? { email, password } 
-      : { email, password, firstName, lastName, role: "Admin" }; // Garante a role correta
-
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.token) {
-        localStorage.setItem("adminAccessToken", data.token);
-        setIsAdminAuthenticated(true);
-        addLog(`Administrador autenticado via ${authMode.toUpperCase()}.`, "SUCCESS");
-      } else {
-        setAuthError(data.message || `Erro ao efetuar ${authMode}. Verifique os dados.`);
-      }
-    } catch (err) {
-      setAuthError("Erro de rede ao contactar o servidor do Render.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
-  
-  // Helper to retrieve auth token
-  const getAuthToken = () => localStorage.getItem("adminAccessToken");
-
-  // Fetch Database Status
+  // Fetch Database Status redefinido de forma segura
   const fetchDbStatus = useCallback(async () => {
     const token = getAuthToken();
 
@@ -290,9 +238,9 @@ export default function App() {
         },
       });
 
-      // Handle expired or invalid session
       if (res.status === 401 || res.status === 403) {
         localStorage.removeItem("adminAccessToken");
+        setIsAdminAuthenticated(false); // Força retorno ao ecrã de login
         setAuthError("Session expired. Please log in again.");
         return;
       }
@@ -309,7 +257,57 @@ export default function App() {
     } finally {
       setIsLoadingDb(false);
     }
-  }, []);
+  }, [getAuthToken]);
+
+  // 2. Verificar sessão ativa imediatamente ao montar o componente
+  useEffect(() => {
+    const token = getAuthToken();
+    if (token) {
+      setIsAdminAuthenticated(true);
+    }
+  }, [getAuthToken]);
+
+  // 3. Executar o fetch automático apenas se estiver autenticado
+  useEffect(() => {
+    if (isAdminAuthenticated) {
+      fetchDbStatus();
+    }
+  }, [isAdminAuthenticated, fetchDbStatus]);
+  
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+
+    const endpoint = authMode === "login" ? "/api/v1/auth/login" : "/api/v1/auth/register";
+    const payload = authMode === "login" 
+      ? { email, password } 
+      : { email, password, firstName, lastName, role: "Admin" };
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.token) {
+        localStorage.setItem("adminAccessToken", data.token);
+        setIsAdminAuthenticated(true);
+        if (typeof addLog === "function") {
+          addLog(`Administrador autenticado via ${authMode.toUpperCase()}.`, "SUCCESS");
+        }
+      } else {
+        setAuthError(data.message || `Erro ao efetuar ${authMode}. Verifique os dados.`);
+      }
+    } catch (err) {
+      setAuthError("Erro de rede ao contactar o servidor do Render.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
   
   const handleResetDb = async () => {
     if (!window.confirm("Aviso: Esta ação irá redefinir todas as tabelas e dados no PostgreSQL/Supabase. Desejas continuar?")) return;
