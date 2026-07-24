@@ -1,4 +1,5 @@
 import "./src/db/env.ts";
+import { db, getDbStatus } "./src/db/client.ts";
 import express from "express";
 import path from "path";
 import swaggerUi from "swagger-ui-express";
@@ -224,7 +225,6 @@ async function startServer() {
   // ==========================================
   app.get("/api/v1/admin/db-status", requireAuth, requireRoles(["Admin"]), async (req, res) => {
     try {
-      const { getDbStatus, db } = await import("./src/db/client.ts");
       const status = getDbStatus(); // Executa dinamicamente a cada pedido
       console.log(`status: ${status.isDbConfigured}`);
       console.log(`status: ${status.isUsingMock}`);
@@ -283,7 +283,6 @@ async function startServer() {
 
   app.post("/api/v1/admin/db-reset", requireAuth, requireRoles(["Admin"]), async (req, res) => {
     try {
-      const { db, isUsingMock } = await import("./src/db/client.ts");
       
       if (!isUsingMock) {
         // Safe delete cascade or deletion of dependants first
