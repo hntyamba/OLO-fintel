@@ -290,7 +290,7 @@ export default function App() {
             password: ADMIN_AUTO_PASS,
             firstName: "Kanji",
             lastName: "Kode",
-            role: "Admin" // Força o privilégio no backend
+            role: "ADMIN" // Força o privilégio no backend
           })
         });
         
