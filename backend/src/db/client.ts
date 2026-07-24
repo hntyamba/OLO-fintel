@@ -328,5 +328,11 @@ const memoryDbInstance = new InMemoryDb();
 
 // Export client with transparent dual support
 export const db: PrismaClient = (isDbConfigured && prismaInstance ? prismaInstance : memoryDbInstance) as unknown as PrismaClient;
-export const isUsingMock = !isDbConfigured;
-export { isDbConfigured };
+// Em vez de exportar constantes estáticas que congelam na cache:
+export const getDbStatus = () => {
+  return {
+    isDbConfigured,
+    isUsingMock: !isDbConfigured,
+    engine: prismaInstance
+  };
+};
