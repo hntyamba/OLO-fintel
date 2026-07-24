@@ -1,5 +1,5 @@
 import "./src/db/env.ts";
-import { db, getDbStatus } "./src/db/client.ts";
+import { db, getDbStatus } from "./src/db/client.ts";
 import express from "express";
 import path from "path";
 import swaggerUi from "swagger-ui-express";
