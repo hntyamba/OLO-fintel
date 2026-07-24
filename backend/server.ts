@@ -224,7 +224,8 @@ async function startServer() {
   // ==========================================
   app.get("/api/v1/admin/db-status", requireAuth, requireRoles(["Admin"]), async (req, res) => {
     try {
-      const { db, isUsingMock, isDbConfigured } = await import("./src/db/client.ts");
+      const { getDbStatus, db } = await import("./src/db/client.ts");
+      const status = getDbStatus(); // Executa dinamicamente a cada pedido
       
       const counts = {
         organizations: await db.organization.count().catch(() => 0),
@@ -265,8 +266,8 @@ async function startServer() {
       res.json({
         success: true,
         engine: "OLO Fintel Administrative Console",
-        dbConfigured: isDbConfigured,
-        isUsingMock: isUsingMock,
+        dbConfigured: status.isDbConfigured,
+        isUsingMock: status.isUsingMock,
         databaseUrl: process.env.DATABASE_URL ? "postgresql://postgres.zxtvhwrqxeychyehqcqv:colege@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true" : "Not Defined",
         counts,
         lastUsers,
