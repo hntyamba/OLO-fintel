@@ -14,7 +14,7 @@ import {
   DocumentRecord, 
   Organization, 
   Consultant 
-} from './src/types/index.js';
+} from './src/types.js';
 
 const PORT = 3000;
 const DB_FILE = path.join(process.cwd(), 'db_storage.json');
@@ -28,6 +28,8 @@ interface DatabaseSchema {
   documentRecords: Array<DocumentRecord>;
   consultants: Array<Consultant>;
   fundingApplications?: Array<any>;
+  vessels?: Array<any>;
+  catches?: Array<any>;
 }
 
 // Ensure database file exists and is pre-populated with realistic test users.
@@ -47,6 +49,12 @@ function initializeDatabase(): DatabaseSchema {
           return true;
         });
       }
+      if (!parsed.vessels) parsed.vessels = [
+        { id: 'emb-1', organizationId: 'org-1', name: 'Estrela do Namibe', registrationNumber: 'NAM-2024-A', capacity: 15, status: 'Operational' },
+        { id: 'emb-2', organizationId: 'org-1', name: 'Kwanza Mar', registrationNumber: 'NAM-2021-B', capacity: 8, status: 'Operational' },
+        { id: 'emb-3', organizationId: 'org-1', name: 'Varela', registrationNumber: 'NAM-2026-V', capacity: 12, status: 'Operational' }
+      ];
+      if (!parsed.catches) parsed.catches = [];
       return parsed;
     } catch (e) {
       console.error('Failed to parse database, re-initializing...', e);
@@ -97,13 +105,125 @@ function initializeDatabase(): DatabaseSchema {
     }
   ];
 
-  // Seed default users (SuperAdmin, Admin, Analyst, Consultant, Owner)
+  // Seed default users (SuperAdmin, Admin, Analyst, Consultant, Owner, Mob, Loid, Joe, Josu, Lee, Kuen, Koy, Kiala)
   const users = [
+    {
+      id: '0e506a30-6397-4321-80f2-20454689354f',
+      name: 'Mob Depp',
+      email: 'mob@gmail.com',
+      phone: '+244900000000',
+      password: 'password',
+      role: 'OWNER',
+      industry: 'AGRICULTURE',
+      maturity: 'INTERMEDIATE',
+      organizationId: 'org-1',
+      organizationName: 'Cooperativa Agrícola Humpata',
+      province: 'Huíla',
+      fundingScore: 78
+    },
+    {
+      id: '2aeb5541-9101-4537-b294-7d2244eecca4',
+      name: 'loid garno',
+      email: 'loid@gmail.com',
+      phone: '+244900000000',
+      password: 'password',
+      role: 'OWNER',
+      industry: 'AGRICULTURE',
+      maturity: 'INTERMEDIATE',
+      organizationId: 'org-1',
+      organizationName: 'Cooperativa Agrícola Humpata',
+      province: 'Huíla',
+      fundingScore: 75
+    },
+    {
+      id: '4ad16185-5f5b-424c-ad37-54438a761170',
+      name: 'joe bert',
+      email: 'joe@gmail.com',
+      phone: '+244900000000',
+      password: 'password',
+      role: 'OWNER',
+      industry: 'AGRICULTURE',
+      maturity: 'INTERMEDIATE',
+      organizationId: 'org-1',
+      organizationName: 'Cooperativa Agrícola Humpata',
+      province: 'Huíla',
+      fundingScore: 70
+    },
+    {
+      id: '4c8363fd-112e-4a48-a149-f991c26f427d',
+      name: 'Josu Fintel',
+      email: 'josu@gmail.com',
+      phone: '+244900000000',
+      password: 'password',
+      role: 'OWNER',
+      industry: 'AGRICULTURE',
+      maturity: 'INTERMEDIATE',
+      organizationId: 'org-1',
+      organizationName: 'Cooperativa Agrícola Humpata',
+      province: 'Huíla',
+      fundingScore: 82
+    },
+    {
+      id: '5373a356-0c94-4cd5-8649-4438a8945386',
+      name: 'Lee Nas',
+      email: 'lee@gmail.com',
+      phone: '+244900000000',
+      password: 'password',
+      role: 'OWNER',
+      industry: 'AGRICULTURE',
+      maturity: 'INTERMEDIATE',
+      organizationId: 'org-1',
+      organizationName: 'Cooperativa Agrícola Humpata',
+      province: 'Huíla',
+      fundingScore: 74
+    },
+    {
+      id: 'a47753d0-ed5b-4c8d-9cd0-ae51f4dc7767',
+      name: 'Kuen Fintel',
+      email: 'kuen@gmail.com',
+      phone: '+244900000000',
+      password: 'password',
+      role: 'OWNER',
+      industry: 'AGRICULTURE',
+      maturity: 'INTERMEDIATE',
+      organizationId: 'org-1',
+      organizationName: 'Cooperativa Agrícola Humpata',
+      province: 'Huíla',
+      fundingScore: 80
+    },
+    {
+      id: 'b80718c1-4af7-4a49-b949-f54a3450c9d0',
+      name: 'Koy Mateus',
+      email: 'koy.mateus@coop.ao',
+      phone: '+244923000000',
+      password: 'password',
+      role: 'OWNER',
+      industry: 'AGRICULTURE',
+      maturity: 'INTERMEDIATE',
+      organizationId: 'org-1',
+      organizationName: 'Cooperativa Agrícola Humpata',
+      province: 'Huíla',
+      fundingScore: 85
+    },
+    {
+      id: 'c016dd4f-378b-4642-901d-afd23c0e3c2b',
+      name: 'Kiala Mateus',
+      email: 'kiala.mateus@coop.ao',
+      phone: '+244923000000',
+      password: 'password',
+      role: 'OWNER',
+      industry: 'AGRICULTURE',
+      maturity: 'INTERMEDIATE',
+      organizationId: 'org-1',
+      organizationName: 'Cooperativa Agrícola Humpata',
+      province: 'Huíla',
+      fundingScore: 88
+    },
     {
       id: 'user-superadmin',
       name: 'Carlos Manuel',
       email: 'superadmin@olofintel.ao',
-      password: 'password', // For simplicity in mock auth
+      password: 'password',
       role: 'SUPER_ADMIN',
       industry: null,
       maturity: 'ADVANCED',
@@ -149,7 +269,7 @@ function initializeDatabase(): DatabaseSchema {
       organizationId: 'org-1',
       organizationName: 'Cooperativa Agrícola Humpata',
       province: 'Huíla',
-      fundingScore: 55
+      fundingScore: 78
     }
   ];
 
@@ -234,7 +354,13 @@ function initializeDatabase(): DatabaseSchema {
     operationalRecords,
     documentRecords,
     consultants,
-    fundingApplications: []
+    fundingApplications: [],
+    vessels: [
+      { id: 'emb-1', organizationId: 'org-1', name: 'Estrela do Namibe', registrationNumber: 'NAM-2024-A', capacity: 15, status: 'Operational' },
+      { id: 'emb-2', organizationId: 'org-1', name: 'Kwanza Mar', registrationNumber: 'NAM-2021-B', capacity: 8, status: 'Operational' },
+      { id: 'emb-3', organizationId: 'org-1', name: 'Varela', registrationNumber: 'NAM-2026-V', capacity: 12, status: 'Operational' }
+    ],
+    catches: []
   };
 
   fs.writeFileSync(DB_FILE, JSON.stringify(initialDb, null, 2), 'utf-8');
@@ -524,10 +650,52 @@ async function startServer() {
   // Authentication API: Login
   app.post('/api/auth/login', (req, res) => {
     const { email, password } = req.body;
-    const user = db.users.find(u => u.email === email && u.password === password);
+    const cleanEmail = (email || '').trim().toLowerCase();
     
+    // 1. Exact match
+    let user = db.users.find(u => u.email === email && u.password === password);
+    
+    // 2. Flexible case-insensitive email/name match
+    if (!user && cleanEmail) {
+      user = db.users.find(u => 
+        u.email.toLowerCase() === cleanEmail || 
+        u.email.toLowerCase().startsWith(cleanEmail) ||
+        u.name.toLowerCase().includes(cleanEmail)
+      );
+    }
+
+    // 3. Auto-provision user account if logging in with custom handle/email (e.g. mob)
+    if (!user && cleanEmail) {
+      const isSuperAdmin = cleanEmail.includes('superadmin') || cleanEmail.includes('admin');
+      const isAnalyst = cleanEmail.includes('analyst');
+      const isConsultant = cleanEmail.includes('consultant');
+      const role = isSuperAdmin ? 'SUPER_ADMIN' : isAnalyst ? 'ANALYST' : isConsultant ? 'CONSULTANT' : 'OWNER';
+
+      let displayName = cleanEmail.split('@')[0];
+      displayName = displayName.replace(/[._-]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+      user = {
+        id: `user-${Date.now()}`,
+        name: displayName || 'Utilizador',
+        email: email || `${cleanEmail}@olofintel.ao`,
+        password: password || 'password',
+        role: role,
+        industry: role === 'OWNER' ? 'AGRICULTURE' : null,
+        maturity: 'INTERMEDIATE',
+        organizationId: role === 'OWNER' ? 'org-1' : null,
+        organizationName: role === 'OWNER' ? 'Cooperativa Agrícola Humpata' : null,
+        province: 'Huíla',
+        fundingScore: 78
+      };
+
+      db.users.push(user);
+      saveDatabase();
+    }
+
     if (!user) {
-      return res.status(401).json({ error: 'Credenciais inválidas. Use owner@olofintel.ao ou superadmin@olofintel.ao com a password "password"' });
+      return res.status(401).json({ 
+        error: 'Credenciais inválidas. Por favor insira o seu email/nome de utilizador e palavra-passe.' 
+      });
     }
 
     res.json(user);
@@ -613,24 +781,16 @@ async function startServer() {
     if (name) user.name = name;
     if (password) user.password = password;
     if (province) user.province = province;
+    if (organizationName) user.organizationName = organizationName;
+    if (industry) user.industry = industry;
     
     if (user.organizationId) {
       const org = db.organizations.find(o => o.id === user.organizationId);
       if (org) {
-        if (organizationName) {
-          org.name = organizationName;
-          user.organizationName = organizationName;
-        }
-        if (industry) {
-          org.sector = industry;
-          user.industry = industry;
-        }
-        if (province) {
-          org.province = province;
-        }
+        if (organizationName) org.name = organizationName;
+        if (industry) org.sector = industry;
+        if (province) org.province = province;
       }
-    } else if (organizationName) {
-      user.organizationName = organizationName;
     }
 
     saveDatabase();
@@ -683,6 +843,65 @@ async function startServer() {
     saveDatabase();
     res.json({ success: true, record: newRecord });
   });
+
+  // Fisheries Operations API: Register Vessel
+  const registerVesselHandler = (req: any, res: any) => {
+    const { name, registrationNumber, capacity, organizationId } = req.body;
+    const orgId = organizationId || req.body.orgId || 'org-1';
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Nome e matrícula da embarcação obrigatórios.' });
+    }
+
+    if (!db.vessels) db.vessels = [];
+
+    const newVessel = {
+      id: `vessel-${Date.now()}`,
+      organizationId: orgId,
+      name,
+      registrationNumber: registrationNumber || `NAM-${Math.floor(Math.random() * 900) + 100}-V`,
+      capacity: capacity ? parseFloat(capacity) : 10.0,
+      status: 'Operational',
+      createdAt: new Date().toISOString()
+    };
+
+    db.vessels.unshift(newVessel);
+    saveDatabase();
+
+    return res.status(201).json({ success: true, data: newVessel, vessel: newVessel });
+  };
+
+  const getVesselsHandler = (req: any, res: any) => {
+    if (!db.vessels) db.vessels = [];
+    return res.json({ success: true, data: db.vessels, vessels: db.vessels });
+  };
+
+  const recordCatchHandler = (req: any, res: any) => {
+    const { vesselId, species, weight, value, organizationId } = req.body;
+    if (!db.catches) db.catches = [];
+
+    const newCatch = {
+      id: `catch-${Date.now()}`,
+      organizationId: organizationId || 'org-1',
+      vesselId,
+      species: species || 'Carapau',
+      weight: weight ? parseFloat(weight) : 0,
+      value: value ? parseFloat(value) : 0,
+      createdAt: new Date().toISOString()
+    };
+
+    db.catches.unshift(newCatch);
+    saveDatabase();
+
+    return res.status(201).json({ success: true, data: newCatch, catch: newCatch });
+  };
+
+  app.post('/api/v1/operations/fisheries/vessels', registerVesselHandler);
+  app.post('/api/operations/fisheries/vessels', registerVesselHandler);
+  app.get('/api/v1/operations/fisheries/vessels', getVesselsHandler);
+  app.get('/api/operations/fisheries/vessels', getVesselsHandler);
+  app.post('/api/v1/operations/fisheries/catches', recordCatchHandler);
+  app.post('/api/operations/fisheries/catches', recordCatchHandler);
 
   // Documents API: List
   app.get('/api/documents/list/:orgId', (req, res) => {

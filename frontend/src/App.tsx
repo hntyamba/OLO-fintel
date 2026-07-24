@@ -10,7 +10,7 @@ import { AuthProvider, useAuth } from './components/AuthContext.js';
 import LandingPage from './components/LandingPage.js';
 import SurveyPage from './components/SurveyPage.js';
 import AuthPages from './components/AuthPages.js';
-import DashboardShell from './components/layout/DashboardShell.js';
+import Dashboards from './components/Dashboards.js';
 import BackendConnectionManager from './components/BackendConnectionManager.js';
 import { Sun, Moon, Menu, X, Landmark, ShieldCheck } from 'lucide-react';
 
@@ -98,6 +98,8 @@ function AppContent() {
               >
                 {isDark ? <Sun size={16} className="text-yellow-500" /> : <Moon size={16} />}
               </button>
+
+              <BackendConnectionManager />
             </div>
 
             {/* Mobile menu toggle */}
@@ -152,11 +154,11 @@ function AppContent() {
 
       {/* CORE SCREENS ROUTING */}
       <div className="flex-1 flex flex-col">
-        {currentPage === 'home' && <LandingPage />}
-        {currentPage === 'survey' && <SurveyPage />}
-        {currentPage === 'login' && <AuthPages view="login" />}
-        {currentPage === 'register' && <AuthPages view="register" />}
-        {currentPage === 'dashboard' && <DashboardShell />}
+        {currentPage === 'home' && <LandingPage onNavigate={setCurrentPage} />}
+        {currentPage === 'survey' && <SurveyPage onNavigate={setCurrentPage} />}
+        {currentPage === 'login' && <AuthPages view="login" onNavigate={setCurrentPage} />}
+        {currentPage === 'register' && <AuthPages view="register" onNavigate={setCurrentPage} />}
+        {currentPage === 'dashboard' && <Dashboards />}
       </div>
 
       {/* PUBLIC FOOTER (Only when not on dashboard) */}
@@ -205,14 +207,13 @@ function AppContent() {
 
           <div className="max-w-7xl mx-auto mt-12 pt-6 border-t border-gray-200 dark:border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4 text-xs text-gray-400">
             <span>{t('footer.rights')}</span>
-            <div className="flex gap-4">
+            <div className="flex flex-wrap items-center gap-3">
               <span className="font-mono text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500 font-bold">Angola Sandbox Environment</span>
+              <BackendConnectionManager />
             </div>
           </div>
         </footer>
       )}
-
-      <BackendConnectionManager />
     </div>
   );
 }

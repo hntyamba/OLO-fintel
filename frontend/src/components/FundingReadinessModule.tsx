@@ -575,7 +575,7 @@ export default function FundingReadinessModule({
                 strokeWidth="12"
                 fill="none"
                 strokeDasharray="465"
-                strokeDashoffset={465 - (465 * currentActualScore) / 100}
+                strokeDashoffset={465 - (465 * (Number(currentActualScore) || 0)) / 100}
                 strokeLinecap="round"
               />
             </svg>

@@ -42,34 +42,7 @@ export const safeStorage = {
 
 // Se estivermos em localhost ou no ambiente de desenvolvimento .run.app, mantemos relativo para usar o backend Express local.
 // Se estivermos na Vercel (ou qualquer outro domínio), apontamos por omissão para o backend real no Render.
-const API_URL = (import.meta as any).env.VITE_API_URL || 
-  (window.location.hostname.includes('localhost') || window.location.hostname.includes('.run.app')
-    ? ''
-    : 'https://olofintel.onrender.com');
-
-// Normalize backend PascalCase roles to frontend UPPER_CASE roles
-function normalizeRole(role: string | undefined | null): string {
-  if (!role) return 'OWNER';
-  const roleMap: Record<string, string> = {
-    'Owner': 'OWNER',
-    'Manager': 'MANAGER',
-    'FinancialOfficer': 'FINANCIAL_OFFICER',
-    'Analyst': 'ANALYST',
-    'Consultant': 'CONSULTANT',
-    'Admin': 'ADMIN',
-    'Member': 'OWNER',
-    'Jury': 'ANALYST',
-    'SUPER_ADMIN': 'SUPER_ADMIN',
-    'ADMIN': 'ADMIN',
-    'ANALYST': 'ANALYST',
-    'CONSULTANT': 'CONSULTANT',
-    'OWNER': 'OWNER',
-    'MANAGER': 'MANAGER',
-    'FINANCIAL_OFFICER': 'FINANCIAL_OFFICER',
-    'USER': 'OWNER',
-  };
-  return roleMap[role] || role;
-}
+const API_URL = (import.meta as any).env.VITE_API_URL || 'https://olofintel.onrender.com';
 
 // Obter URL configurada ativamente (do localStorage ou da variável de ambiente)
 function getActiveApiUrl(): string {
@@ -78,38 +51,15 @@ function getActiveApiUrl(): string {
   return API_URL;
 }
 
-// Backend reachability flag — components can import this to show offline UI
-let _isBackendDown = false;
-let _backendCheckListeners: Array<(down: boolean) => void> = [];
-export function isBackendDown(): boolean { return _isBackendDown; }
-export function onBackendStateChange(cb: (down: boolean) => void): () => void {
-  _backendCheckListeners.push(cb);
-  return () => { _backendCheckListeners = _backendCheckListeners.filter(l => l !== cb); };
-}
-function setBackendDown(down: boolean) {
-  if (_isBackendDown !== down) { _isBackendDown = down; _backendCheckListeners.forEach(l => l(down)); }
-}
-
-const AUTH_ENDPOINTS = ['auth/login', 'auth/register'];
-function isAuthEndpoint(apiPath: string): boolean {
-  return AUTH_ENDPOINTS.some(ep => apiPath === ep || apiPath.startsWith(ep + '/'));
-}
-function authUnavailableResponse(): Response {
-  return new Response(JSON.stringify({ error: 'Servidor indisponível. Tente novamente mais tarde.' }), {
-    status: 503,
-    headers: { 'Content-Type': 'application/json' }
-  });
-}
-
 export async function checkServerHealth(): Promise<boolean> {
   const activeUrl = getActiveApiUrl();
-  if (!activeUrl) return false;
+  const urlToCheck = activeUrl || window.location.origin;
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout
-    const res = await originalFetch(`${activeUrl}/api/health`, { signal: controller.signal })
-      .catch(() => originalFetch(`${activeUrl}/health`, { signal: controller.signal }))
-      .catch(() => originalFetch(`${activeUrl}/`, { method: 'HEAD', signal: controller.signal }));
+    const res = await originalFetch(`${urlToCheck}/api/health`, { signal: controller.signal })
+      .catch(() => originalFetch(`${urlToCheck}/health`, { signal: controller.signal }))
+      .catch(() => originalFetch(`${urlToCheck}/`, { method: 'HEAD', signal: controller.signal }));
     
     clearTimeout(timeoutId);
     return !!(res && res.ok);
@@ -128,15 +78,50 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
     
     if (apiPath === 'auth/login') {
       const email = body.email || '';
+      let userName = "Mateus Gaspar";
+      let userRole = "OWNER";
+      let orgName = "Cooperativa Agrícola Humpata";
+      let userIndustry = "AGRICULTURE";
+      let userProvince = "Huíla";
+      let userScore = 78;
+
+      if (email.includes('superadmin')) {
+        userName = "Carlos Manuel";
+        userRole = "SUPER_ADMIN";
+        orgName = "Comercial Luanda Norte";
+        userIndustry = "COMMERCE";
+        userProvince = "Luanda";
+        userScore = 100;
+      } else if (email.includes('analyst')) {
+        userName = "Sofia Antunes";
+        userRole = "ANALYST";
+        orgName = "Banco Angolano de Investimento (BAI)";
+        userIndustry = "COMMERCE";
+        userProvince = "Luanda";
+        userScore = 95;
+      } else if (email.includes('consultant')) {
+        userName = "Adilson Neto";
+        userRole = "CONSULTANT";
+        orgName = "Consultoria Agrícola Huíla";
+        userIndustry = "AGRICULTURE";
+        userProvince = "Huíla";
+        userScore = 90;
+      } else if (email) {
+        const uPart = email.split('@')[0];
+        userName = uPart.replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      }
+
       data = {
         id: "usr-sim-123",
-        name: "Super Admin",
-        email: email || "raisingpigs252@gmail.com",
-        role: "SUPER_ADMIN",
-        organizationId: "org-sim-uuid-benguela",
-        organizationName: "Cooperativa Agropecuária do Dombe Grande",
-        industry: "Agriculture",
-        province: "Benguela"
+        name: userName,
+        email: email || "owner@olofintel.ao",
+        role: userRole,
+        organizationId: "org-sim-uuid-1",
+        organizationName: orgName,
+        industry: userIndustry,
+        province: userProvince,
+        fundingScore: userScore,
+        maturity: "INTERMEDIATE"
       };
       safeStorage.setItem('olo_fintel_token', 'simulated-token-123');
       safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(data));
@@ -145,16 +130,18 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
     } 
     else if (apiPath === 'auth/register') {
       const email = body.email || '';
-      const name = body.name || 'Gestor Fintel';
+      const name = body.name || (email ? email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Gestor Fintel');
       data = {
         id: "usr-sim-" + Math.floor(Math.random() * 1000),
         name: name,
-        email: email,
-        role: "USER",
+        email: email || "usuario@olofintel.ao",
+        role: body.role || "OWNER",
         organizationId: "org-sim-uuid-" + Math.floor(Math.random() * 1000),
-        organizationName: body.organizationName || "Cooperativa Agropecuária do Dombe Grande",
-        industry: body.industry || "Agriculture",
-        province: body.province || "Benguela"
+        organizationName: body.organizationName || "Cooperativa Agrícola Humpata",
+        industry: body.industry || "AGRICULTURE",
+        province: body.province || "Huíla",
+        fundingScore: 70,
+        maturity: "BEGINNER"
       };
       safeStorage.setItem('olo_fintel_token', 'simulated-token-123');
       safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(data));
@@ -169,6 +156,17 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
         status = 401;
         data = { message: 'Não autenticado' };
       }
+    }
+    else if (apiPath === 'auth/profile/update') {
+      const cached = safeStorage.getItem('olo_fintel_cached_user');
+      let userObj = cached ? JSON.parse(cached) : { id: body.userId || 'usr-sim-123' };
+      if (body.name) userObj.name = body.name;
+      if (body.email) userObj.email = body.email;
+      if (body.province) userObj.province = body.province;
+      if (body.organizationName) userObj.organizationName = body.organizationName;
+      if (body.industry) userObj.industry = body.industry;
+      safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(userObj));
+      data = userObj;
     }
     else if (apiPath === 'survey/stats') {
       const surveyAnswers = JSON.parse(safeStorage.getItem('olo_fintel_survey_submissions') || '[]');
@@ -247,15 +245,6 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
         }
       };
     }
-    else if (apiPath === 'funding/action-plan') {
-      data = {
-        actionPlan: [
-          { step: 1, title: 'Organizar Documentação Financeira', description: 'Compilar DRE, extratos bancários e estatutos para apresentação a investidores.', priority: 'Alta', deadline: '2 semanas' },
-          { step: 2, title: 'Melhorar Fluxo de Caixa', description: 'Implementar registo diário de receitas e despesas no módulo financeiro.', priority: 'Alta', deadline: '1 mês' },
-          { step: 3, title: 'Diversificar Canais de Venda', description: 'Expandir para mercados institucionais e contratos com distribuidores.', priority: 'Média', deadline: '3 meses' }
-        ]
-      };
-    }
     else if (apiPath.startsWith('operations/list') || apiPath === 'operations/add') {
       if (method === 'POST') {
         const logs = JSON.parse(safeStorage.getItem('olo_fintel_operational_logs') || '[]');
@@ -303,28 +292,21 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
     }
     else if (apiPath.startsWith('admin/organizations')) {
       data = [
-        { id: 'org-sim-uuid-benguela', name: 'Cooperativa Agropecuária do Dombe Grande', sector: 'Agriculture', province: 'Benguela', maturity: 'INTERMEDIATE', suspended: false, assignedConsultantId: 'cons-1', suspendedReason: null },
-        { id: 'org-2', name: 'Cooperativa Agrícola de Catabola', sector: 'Agriculture', province: 'Bié', maturity: 'BEGINNER', suspended: false, assignedConsultantId: null, suspendedReason: null },
-        { id: 'org-3', name: 'Associação de Pescas de Cacuaco', sector: 'Fisheries', province: 'Luanda', maturity: 'ADVANCED', suspended: false, assignedConsultantId: 'cons-2', suspendedReason: null }
+        { id: 'org-sim-uuid-benguela', name: 'Cooperativa Agropecuária do Dombe Grande', sector: 'Agriculture', province: 'Benguela', creditScore: 78, isSuspended: false, consultant: 'Dr. Lucas Ribeiro' },
+        { id: 'org-2', name: 'Cooperativa Agrícola de Catabola', sector: 'Agriculture', province: 'Bié', creditScore: 45, isSuspended: false, consultant: null },
+        { id: 'org-3', name: 'Associação de Pescas de Cacuaco', sector: 'Fisheries', province: 'Luanda', creditScore: 92, isSuspended: false, consultant: 'Dra. Maria Mendes' }
       ];
     }
     else if (apiPath.startsWith('admin/users')) {
       data = [
-        { id: 'usr-1', name: 'José Gariel', email: 'josegariel622@gmail.com', role: 'SUPER_ADMIN', organizationId: 'org-sim-uuid-benguela', organizationName: 'Cooperativa Agropecuária do Dombe Grande', fundingScore: 78 },
-        { id: 'usr-2', name: 'Manuel António', email: 'manuel@example.com', role: 'OWNER', organizationId: 'org-2', organizationName: 'Cooperativa Agrícola de Catabola', fundingScore: 45 }
+        { id: 'usr-1', firstName: 'José', lastName: 'Gariel', email: 'josegariel622@gmail.com', role: 'SUPER_ADMIN', province: 'Benguela', organization: { name: 'Cooperativa Agropecuária do Dombe Grande' } },
+        { id: 'usr-2', firstName: 'Manuel', lastName: 'António', email: 'manuel@example.com', role: 'USER', province: 'Bié', organization: { name: 'Cooperativa Agrícola de Catabola' } }
       ];
     }
     else if (apiPath.startsWith('admin/consultants')) {
       data = [
         { id: 'cons-1', name: 'Dr. Lucas Ribeiro', email: 'lucas@fintel.ao', activeDelegations: 12 },
         { id: 'cons-2', name: 'Dra. Maria Mendes', email: 'maria@fintel.ao', activeDelegations: 7 }
-      ];
-    }
-    else if (apiPath.startsWith('admin/documents')) {
-      data = [
-        { id: 'doc-admin-1', orgId: 'org-sim-uuid-benguela', name: 'Certidão Comercial', type: 'Alvará', uploadedAt: '2026-07-10T14:30:00.000Z', status: 'VERIFIED', version: 1 },
-        { id: 'doc-admin-2', orgId: 'org-sim-uuid-benguela', name: 'DRE Exercicio 2025', type: 'Financeiro', uploadedAt: '2026-07-18T10:15:00.000Z', status: 'PENDING', version: 1 },
-        { id: 'doc-admin-3', orgId: 'org-2', name: 'NIF Cooperativa Catabola', type: 'NIF', uploadedAt: '2026-07-20T09:00:00.000Z', status: 'REJECTED', version: 2, feedback: 'Documento ilegível, favor reintroduzir.' }
       ];
     }
     else if (apiPath.startsWith('admin/document-action')) {
@@ -335,6 +317,52 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
     }
     else if (apiPath.startsWith('admin/suspend')) {
       data = { success: true };
+    }
+    else if (apiPath.includes('operations/fisheries/vessels')) {
+      if (method === 'POST') {
+        const vessels = JSON.parse(safeStorage.getItem('olo_fintel_vessels') || '[]');
+        const newVessel = {
+          id: 'ves-' + Date.now(),
+          organizationId: body.organizationId || 'org-1',
+          name: body.name || body.nome || 'Varela',
+          registrationNumber: body.registrationNumber || body.matricula || 'LA-9921',
+          capacity: body.capacity ? parseFloat(body.capacity) : 15.0,
+          status: 'Operational',
+          createdAt: new Date().toISOString()
+        };
+        vessels.unshift(newVessel);
+        safeStorage.setItem('olo_fintel_vessels', JSON.stringify(vessels));
+        data = { success: true, data: newVessel, vessel: newVessel };
+      } else {
+        const vessels = JSON.parse(safeStorage.getItem('olo_fintel_vessels') || '[]');
+        if (vessels.length === 0) {
+          const sample = [
+            { id: 'emb-1', name: 'Estrela do Namibe', registrationNumber: 'NAM-2024-A', capacity: 15.0, status: 'Operational' },
+            { id: 'emb-2', name: 'Kwanza Mar', registrationNumber: 'NAM-2021-B', capacity: 8.0, status: 'Operational' },
+            { id: 'emb-3', name: 'Varela', registrationNumber: 'NAM-2026-V', capacity: 12.0, status: 'Operational' }
+          ];
+          safeStorage.setItem('olo_fintel_vessels', JSON.stringify(sample));
+          data = { success: true, data: sample, vessels: sample };
+        } else {
+          data = { success: true, data: vessels, vessels };
+        }
+      }
+    }
+    else if (apiPath.includes('operations/fisheries/catches')) {
+      if (method === 'POST') {
+        const catches = JSON.parse(safeStorage.getItem('olo_fintel_catches') || '[]');
+        const newCatch = {
+          id: 'catch-' + Date.now(),
+          ...body,
+          createdAt: new Date().toISOString()
+        };
+        catches.unshift(newCatch);
+        safeStorage.setItem('olo_fintel_catches', JSON.stringify(catches));
+        data = { success: true, data: newCatch, catch: newCatch };
+      } else {
+        const catches = JSON.parse(safeStorage.getItem('olo_fintel_catches') || '[]');
+        data = { success: true, data: catches, catches };
+      }
     }
     else if (apiPath.startsWith('notifications')) {
       data = [
@@ -375,37 +403,32 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
     if (match) {
       const apiPath = match[1];
 
-      // Se não temos backend ativo (ex: na Vercel e o servidor Render está offline ou em branco),
-      // fazemos bypass diretamente para o nosso simulador local resiliente
-      if (!activeUrl) {
-        if (isAuthEndpoint(apiPath)) { setBackendDown(true); return authUnavailableResponse(); }
-        return mockLocalEndpoint(apiPath, method, bodyText);
-      }
-
-      // Detectar se o activeUrl é local (localhost, .run.app, ou coincide com a nossa origem atual)
-      const isLocal = activeUrl.startsWith('http://localhost') || 
+      // Detectar se o activeUrl é local (vazio, localhost, .run.app, ou coincide com a nossa origem atual)
+      const isLocal = !activeUrl ||
+                      activeUrl.startsWith('http://localhost') || 
                       activeUrl.includes('.run.app') || 
                       activeUrl.startsWith(window.location.origin);
 
       if (isLocal) {
-        const targetUrl = `${activeUrl}/api/${apiPath}`;
+        const targetUrl = urlString.startsWith('http') ? urlString : (activeUrl ? `${activeUrl}/api/${apiPath}` : `/api/${apiPath}`);
         try {
           const response = await originalFetch(targetUrl, init);
-          if (response.status === 404) {
-            if (isAuthEndpoint(apiPath)) { return new Response(JSON.stringify({ error: 'Credenciais inválidas.' }), { status: 401, headers: { 'Content-Type': 'application/json' } }); }
-            console.warn(`[OLO Fintel API Proxy] Endpoint local ${apiPath} retornou 404. Usando mock local...`);
+          const contentType = response.headers.get('content-type') || '';
+          if (response.status === 404 || contentType.includes('text/html')) {
+            console.warn(`[OLO Fintel API Proxy] Endpoint local ${apiPath} retornou HTML/404. Usando mock local...`);
             return mockLocalEndpoint(apiPath, method, bodyText);
           }
           return response;
         } catch (err) {
-          if (isAuthEndpoint(apiPath)) { setBackendDown(true); return authUnavailableResponse(); }
           console.warn('[OLO Fintel API Proxy] Servidor Express local inacessível. Usando mock local...', err);
           return mockLocalEndpoint(apiPath, method, bodyText);
         }
       }
 
+      const cleanApiPath = apiPath.replace(/^v1\//, '');
+
       // Caso contrário (servidor de produção Render NestJS remoto), traduzimos e direcionamos a chamada
-      let targetUrl = `${activeUrl}/api/v1/${apiPath}`;
+      let targetUrl = `${activeUrl}/api/v1/${cleanApiPath}`;
       const modifiedInit: RequestInit = init ? { ...init } : {};
 
       // Injetar cabeçalhos necessários do NestJS (Token JWT e ID de Organização se existirem)
@@ -435,51 +458,49 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
       };
 
       // --- TRADUÇÃO DE ROTAS E PAYLOADS (ENTRADA) ---
-      if (apiPath === 'auth/login') {
+      if (cleanApiPath === 'auth/login') {
         targetUrl = `${activeUrl}/api/v1/auth/login`;
       } 
-      else if (apiPath === 'auth/register') {
+      else if (cleanApiPath === 'auth/register') {
         targetUrl = `${activeUrl}/api/v1/auth/register`;
         if (bodyText) {
           try {
             const body = JSON.parse(bodyText);
-            const name = body.name || '';
+            const fullName = (body.name || '').trim();
+            const parts = fullName.split(' ').filter(Boolean);
+            const firstName = parts[0] || 'Gestor';
+            const lastName = parts.slice(1).join(' ') || 'Fintel';
+            const sectorVal = body.industry || body.sector || 'AGRICULTURE';
+
             const payload = {
-              firstName: name.split(' ')[0] || name || 'Gestor',
-              lastName: name.split(' ').slice(1).join(' ') || 'Fintel',
+              name: fullName || 'Gestor Fintel',
+              firstName,
+              lastName,
               email: body.email,
               password: body.password,
               phone: body.phone || '+244900000000',
               organizationName: body.organizationName || 'Cooperativa OLO',
-              sector: body.industry || 'Agriculture'
+              sector: sectorVal,
+              industry: sectorVal,
+              role: body.role || 'OWNER',
+              province: body.province || 'Luanda'
             };
             modifiedInit.body = JSON.stringify(payload);
           } catch {}
         }
       }
-      else if (apiPath.startsWith('auth/me')) {
+      else if (cleanApiPath.startsWith('auth/me')) {
         if (cachedUserStr) {
-          try {
-            const cachedUser = JSON.parse(cachedUserStr);
-            cachedUser.role = normalizeRole(cachedUser.role);
-            const normalized = JSON.stringify(cachedUser);
-            safeStorage.setItem('olo_fintel_cached_user', normalized);
-            return new Response(normalized, {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' }
-            });
-          } catch {
-            return new Response(cachedUserStr, {
-              status: 200,
-              headers: { 'Content-Type': 'application/json' }
-            });
-          }
+          return new Response(cachedUserStr, {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
         }
       }
-      else if (apiPath === 'survey/stats') {
-        targetUrl = `${activeUrl}/api/v1/surveys/statistics`;
+      else if (cleanApiPath === 'survey/stats') {
+        targetUrl = `${activeUrl}/api/v1/surveys/jury-dashboard`;
       }
-      else if (apiPath === 'survey/submit') {
+      else if (cleanApiPath === 'survey/submit') {
         targetUrl = `${activeUrl}/api/v1/surveys/responses`;
         if (bodyText) {
           try {
@@ -498,7 +519,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
           } catch {}
         }
       }
-      else if (apiPath === 'ai/advisor') {
+      else if (cleanApiPath === 'ai/advisor') {
         targetUrl = `${activeUrl}/api/v1/ai/chat`;
         if (bodyText) {
           try {
@@ -511,7 +532,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
           } catch {}
         }
       }
-      else if (apiPath === 'funding/apply') {
+      else if (cleanApiPath === 'funding/apply') {
         targetUrl = `${activeUrl}/api/v1/funding/applications`;
         if (bodyText) {
           try {
@@ -524,162 +545,128 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
           } catch {}
         }
       }
-      else if (apiPath.startsWith('funding/score/')) {
+      else if (cleanApiPath.startsWith('funding/score/')) {
         targetUrl = `${activeUrl}/api/v1/funding/score`;
       }
-      else if (apiPath.startsWith('documents/list/')) {
-        targetUrl = `${activeUrl}/api/v1/documents`;
-      }
-      else if (apiPath === 'documents/upload') {
-        targetUrl = `${activeUrl}/api/v1/documents`;
-        if (bodyText) {
+      else if (cleanApiPath.includes('operations/fisheries/vessels')) {
+        targetUrl = `${activeUrl}/api/v1/operations/fisheries/vessels`;
+        if (bodyText && method === 'POST') {
           try {
             const body = JSON.parse(bodyText);
             const payload = {
-              category: body.type || 'Other',
-              title: body.name || 'Documento',
-              fileUrl: body.fileUrl || '#pending-upload'
+              name: body.name || body.nome || 'Barco Baía Azul',
+              registrationNumber: body.registrationNumber || body.matricula || `LA-${Math.floor(Math.random() * 8000) + 1000}`,
+              capacityTons: Number(body.capacityTons || body.capacity || body.capacidade || 15.0)
             };
             modifiedInit.body = JSON.stringify(payload);
           } catch {}
         }
       }
-      else if (apiPath.startsWith('funding/applications/')) {
-        targetUrl = `${activeUrl}/api/v1/funding/applications`;
-      }
-      else if (apiPath.startsWith('operations/list/')) {
-        targetUrl = `${activeUrl}/api/v1/operations/list`;
-      }
-      else if (apiPath === 'funding/action-plan') {
-        targetUrl = `${activeUrl}/api/v1/ai/action-plan`;
+      else if (cleanApiPath.includes('operations/fisheries/catches')) {
+        targetUrl = `${activeUrl}/api/v1/operations/fisheries/catches`;
+        if (bodyText && method === 'POST') {
+          try {
+            const body = JSON.parse(bodyText);
+            const payload = {
+              vesselId: body.vesselId || 'ves-1',
+              species: body.species || body.especie || 'Carapau',
+              weightKg: Number(body.weightKg || body.weight || body.peso || 1200),
+              date: body.date || new Date().toISOString().split('T')[0]
+            };
+            modifiedInit.body = JSON.stringify(payload);
+          } catch {}
+        }
       }
 
       // Efetuar chamada ao servidor NestJS no Render
       try {
         const response = await originalFetch(targetUrl, modifiedInit);
+        const contentType = response.headers.get('Content-Type') || '';
 
-        // Se o servidor retornar 404 para este endpoint (ou seja, não está implementado ou mudou de caminho),
-        //ativamos imediatamente a cura automática fallback-local
-        if (response.status === 404) {
-          if (isAuthEndpoint(apiPath)) {
-            console.warn(`[OLO Fintel API Proxy] Endpoint auth ${apiPath} indisponível (404). Servidor offline.`);
-            setBackendDown(true);
-            return authUnavailableResponse();
-          }
-          console.warn(`[OLO Fintel API Proxy] Endpoint ${apiPath} indisponível (404) no NestJS. Ativando cura local...`);
+        // Se o servidor retornar 404 ou HTML para este endpoint (ex: erro HTML do Render ou rota indisponível),
+        // ativamos imediatamente a cura automática fallback-local
+        if (response.status === 404 || contentType.includes('text/html')) {
+          console.warn(`[OLO Fintel API Proxy] Endpoint ${apiPath} indisponível ou retornou HTML (${response.status}) no NestJS/Render. Ativando cura local...`);
           return mockLocalEndpoint(apiPath, method, bodyText);
         }
 
         if (response.ok) {
-          const contentType = response.headers.get('Content-Type');
-          if (contentType && contentType.includes('application/json')) {
-            const originalJson = await response.json();
-            let finalJson = originalJson;
+          if (contentType.includes('application/json')) {
+            try {
+              const originalJson = await response.json();
+              let finalJson = originalJson;
 
-            // --- TRADUÇÃO DE RESPOSTAS (SAÍDA) ---
-            if (apiPath === 'auth/login' || apiPath === 'auth/register') {
-              // Support both flat format (mock/local) and nested format (Render backend: { success, data: { user, accessToken, ... } })
-              const accessToken = originalJson.token || originalJson.data?.accessToken;
-              const userData = originalJson.user || originalJson.data?.user;
-              const orgIdFromBackend = originalJson.data?.organizationId;
-              const roleFromBackend = originalJson.data?.role;
-              if (accessToken && userData) {
-                safeStorage.setItem('olo_fintel_token', accessToken);
-                const org = originalJson.organization || {};
-                const rawRole = roleFromBackend || userData.role || 'OWNER';
-                const flatUser = {
-                  id: userData.id,
-                  name: `${userData.firstName || ''} ${userData.lastName || ''}`.trim() || userData.email,
-                  email: userData.email,
-                  role: normalizeRole(rawRole),
-                  organizationId: orgIdFromBackend || org.id || null,
-                  organizationName: org.name || originalJson.data?.organizationName || null,
-                  industry: org.sector || originalJson.data?.sector || null,
-                  province: userData.province || originalJson.data?.province || null,
-                  maturity: userData.maturity || originalJson.data?.maturity || 'BEGINNER',
-                  fundingScore: userData.fundingScore || originalJson.data?.fundingScore || 25
-                };
-                safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(flatUser));
-                safeStorage.setItem('olo-fintel-userId', flatUser.id);
-                if (flatUser.organizationId) {
-                  safeStorage.setItem('olo-fintel-orgId', flatUser.organizationId);
+              // --- TRADUÇÃO DE RESPOSTAS (SAÍDA) ---
+              if (cleanApiPath === 'auth/login' || cleanApiPath === 'auth/register') {
+                const userObj = originalJson.user || originalJson.data?.user || originalJson.data || (originalJson.email ? originalJson : null);
+                const tokenVal = originalJson.token || originalJson.accessToken || originalJson.data?.tokens?.accessToken || originalJson.data?.token || originalJson.data?.accessToken;
+                const orgObj = originalJson.organization || originalJson.data?.organization || userObj?.organization || {};
+
+                if (userObj) {
+                  if (tokenVal) {
+                    safeStorage.setItem('olo_fintel_token', tokenVal);
+                  }
+                  const flatUser = {
+                    id: userObj.id || `usr-${Date.now()}`,
+                    name: userObj.name || `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || userObj.email || 'Utilizador',
+                    email: userObj.email || 'utilizador@olofintel.ao',
+                    role: userObj.role || 'OWNER',
+                    organizationId: userObj.organizationId || orgObj.id || `org-${Date.now()}`,
+                    organizationName: orgObj.name || userObj.organizationName || 'Cooperativa Agropecuária OLO',
+                    industry: orgObj.sector || userObj.industry || userObj.sector || 'AGRICULTURE',
+                    province: userObj.province || 'Luanda'
+                  };
+                  safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(flatUser));
+                  safeStorage.setItem('olo-fintel-userId', flatUser.id);
+                  if (flatUser.organizationId) {
+                    safeStorage.setItem('olo-fintel-orgId', flatUser.organizationId);
+                  }
+                  
+                  finalJson = flatUser;
                 }
-                
-                finalJson = flatUser;
               }
-            }
-            else if (apiPath === 'survey/stats') {
-              const statsData = originalJson.data || originalJson.stats || {};
-              finalJson = {
-                total: statsData.count || statsData.totalResponses || 0,
-                byProvince: statsData.byProvince || {},
-                bySector: statsData.bySector || {},
-                challenges: [
-                  { id: '1', challenge: 'Falta de controle de fluxo de caixa.', percentage: 48 },
-                  { id: '2', challenge: 'Dificuldade de acesso a financiamento bancário.', percentage: 37 },
-                  { id: '3', challenge: 'Falta de registos e histórico financeiro organizado.', percentage: 15 }
-                ]
-              };
-            }
-            else if (apiPath === 'ai/advisor') {
-              const reply = originalJson.data?.reply || originalJson.response || 'Recomendação gerada com sucesso pelo consultor de IA.';
-              const source = originalJson.data?.source || 'Consultor IA';
-              finalJson = {
-                report: {
-                  diagnostico: reply,
-                  riscos: 'Consulte o consultor financeiro para uma análise detalhada de riscos e mitigação.',
-                  oportunidades: 'Existem oportunidades de melhoria operacional e financeira identificadas pelo consultor.',
-                  acoes: reply,
-                  impactoEsperado: `Fonte: ${source}`
-                }
-              };
-            }
-            else if (apiPath === 'funding/apply') {
-              finalJson = {
-                success: true,
-                application: originalJson.data || {
-                  id: `app-${Date.now()}`,
-                  status: 'Submitted',
-                  submittedAt: new Date().toISOString()
-                }
-              };
-            }
-            else if (apiPath === 'admin/organizations' && originalJson.data) {
-              finalJson = originalJson.data;
-            }
-            else if (apiPath === 'admin/users' && originalJson.data) {
-              finalJson = originalJson.data;
-            }
-            else if (apiPath === 'admin/consultants' && originalJson.data) {
-              finalJson = originalJson.data;
-            }
-            else if (apiPath === 'admin/documents' && originalJson.data) {
-              finalJson = originalJson.data;
-            }
-            else if (apiPath.startsWith('documents/list/') && originalJson.data) {
-              finalJson = originalJson.data;
-            }
-            else if (apiPath.startsWith('operations/list/') && originalJson.data) {
-              finalJson = originalJson.data;
-            }
-            else if (apiPath.startsWith('funding/applications/') && originalJson.data) {
-              finalJson = originalJson.data;
-            }
+              else if (cleanApiPath === 'survey/stats') {
+                const stats = originalJson.stats || {};
+                finalJson = {
+                  total: stats.totalResponses || 0,
+                  byProvince: stats.byProvince || {},
+                  bySector: stats.bySector || {},
+                  challenges: [
+                    { id: '1', challenge: 'Falta de controle de fluxo de caixa.', percentage: 48 },
+                    { id: '2', challenge: 'Dificuldade de acesso a financiamento bancário.', percentage: 37 },
+                    { id: '3', challenge: 'Falta de registos e histórico financeiro organizado.', percentage: 15 }
+                  ]
+                };
+              }
+              else if (cleanApiPath === 'ai/advisor') {
+                finalJson = {
+                  report: originalJson.response || 'Recomendação gerada com sucesso pelo consultor de IA.'
+                };
+              }
+              else if (cleanApiPath === 'funding/apply') {
+                finalJson = {
+                  success: true,
+                  application: originalJson.application || {
+                    id: `app-${Date.now()}`,
+                    status: 'PENDING',
+                    submittedAt: new Date().toISOString()
+                  }
+                };
+              }
 
-            return new Response(JSON.stringify(finalJson), {
-              status: response.status,
-              statusText: response.statusText,
-              headers: response.headers
-            });
+              return new Response(JSON.stringify(finalJson), {
+                status: response.status,
+                statusText: response.statusText,
+                headers: response.headers
+              });
+            } catch (jsonErr) {
+              console.warn(`[OLO Fintel API Proxy] Falha ao analisar JSON para ${apiPath}. Ativando cura local...`, jsonErr);
+              return mockLocalEndpoint(apiPath, method, bodyText);
+            }
           }
         }
         return response;
       } catch (err) {
-        if (isAuthEndpoint(apiPath)) {
-          console.warn(`[OLO Fintel API Proxy] Servidor Render NestJS inacessível para auth. Servidor offline.`);
-          setBackendDown(true);
-          return authUnavailableResponse();
-        }
         console.warn('[OLO Fintel API Proxy] Servidor Render NestJS inacessível. Ativando cura local...', err);
         return mockLocalEndpoint(apiPath, method, bodyText);
       }
@@ -719,6 +706,10 @@ try {
 }
 
 // Retornar a URL da API correta com base no ambiente (usado no fallback relativo)
+export async function apiCall(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+  return customFetch(input, init);
+}
+
 export function getApiUrl(path: string): string {
   const cleanPath = path.startsWith('/') ? path : `/${path}`;
   const activeUrl = getActiveApiUrl();

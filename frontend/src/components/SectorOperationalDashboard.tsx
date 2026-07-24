@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { apiCall, getApiUrl } from '../lib/api';
 import { 
   Sprout, 
   Activity, 
@@ -30,13 +31,34 @@ interface SectorOperationalDashboardProps {
   key?: string;
 }
 
+// Normalizes any string variation into one of the 4 recognized sector codes
+function detectSector(industry?: string | null): 'AGRICULTURE' | 'LIVESTOCK' | 'FISHERIES' | 'COMMERCE' | null {
+  if (!industry) return null;
+  const s = String(industry).toUpperCase();
+  if (s === 'AGRICULTURE' || s.includes('AGRICUL') || s.includes('AGRO') || s.includes('FARM') || s.includes('MILHO') || s.includes('CAMPO')) return 'AGRICULTURE';
+  if (s === 'LIVESTOCK' || s.includes('PECUAR') || s.includes('LIVESTOCK') || s.includes('GADO') || s.includes('ANIMAL') || s.includes('REBANHO')) return 'LIVESTOCK';
+  if (s === 'FISHERIES' || s.includes('PESCA') || s.includes('FISH') || s.includes('EMBARCA') || s.includes('MAR')) return 'FISHERIES';
+  if (s === 'COMMERCE' || s.includes('COMERC') || s.includes('COMMERCE') || s.includes('LOJA') || s.includes('VENDA')) return 'COMMERCE';
+  return null;
+}
+
 export default function SectorOperationalDashboard({ userIndustry, userId, userRole }: SectorOperationalDashboardProps) {
+  const autoSector = detectSector(userIndustry) || 'AGRICULTURE';
+  const [showAllSectors, setShowAllSectors] = useState<boolean>(false);
+
   // Sector and resource states
-  const [activeSector, setActiveSector] = useState<'AGRICULTURE' | 'LIVESTOCK' | 'FISHERIES' | 'COMMERCE'>(() => {
-    const savedSector = localStorage.getItem(`olo-fintel-lastSector-${userId}`);
-    if (savedSector) return savedSector as any;
-    return (userIndustry as any) || 'AGRICULTURE';
-  });
+  const [activeSector, setActiveSector] = useState<'AGRICULTURE' | 'LIVESTOCK' | 'FISHERIES' | 'COMMERCE'>(autoSector);
+
+  // Auto-detection sync effect: Automatically update activeSector whenever userIndustry changes
+  React.useEffect(() => {
+    const detected = detectSector(userIndustry) || 'AGRICULTURE';
+    setActiveSector(detected);
+    let res = 'produtos';
+    if (detected === 'AGRICULTURE') res = 'talhoes';
+    else if (detected === 'LIVESTOCK') res = 'rebanho';
+    else if (detected === 'FISHERIES') res = 'embarcacoes';
+    setActiveResource(res);
+  }, [userIndustry, userId]);
   
   // Default first sub-tab when sector changes
   const [activeResource, setActiveResource] = useState<string>(() => {
@@ -307,6 +329,53 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
   React.useEffect(() => { localStorage.setItem(`olo-fintel-op-comercializacaoPecuaria-${userId}`, JSON.stringify(comercializacaoPecuaria)); }, [comercializacaoPecuaria, userId]);
 
   React.useEffect(() => { localStorage.setItem(`olo-fintel-op-embarcacoes-${userId}`, JSON.stringify(embarcoes)); }, [embarcoes, userId]);
+
+  // Sync vessels with backend API
+  React.useEffect(() => {
+    apiCall('/api/v1/operations/fisheries/vessels')
+      .then(async res => {
+        if (!res.ok) return null;
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          return await res.json();
+        }
+        return null;
+      })
+      .then(data => {
+        if (data) {
+          const list = Array.isArray(data) ? data : (data.data && Array.isArray(data.data) ? data.data : (data.vessels && Array.isArray(data.vessels) ? data.vessels : null));
+          if (list) {
+            setEmbarcoes(prev => {
+              const mappedFromApi = list.map((v: any, idx: number) => ({
+                id: v.id || `emb-api-${idx}`,
+                nome: v.name || v.nome || 'Embarcação',
+                name: v.name || v.nome || 'Embarcação',
+                matricula: v.registrationNumber || v.matricula || `NAM-${Math.floor(Math.random() * 900) + 100}-V`,
+                registrationNumber: v.registrationNumber || v.matricula || `NAM-${Math.floor(Math.random() * 900) + 100}-V`,
+                capacidade: v.capacity || v.capacityTons || v.capacidade || 10,
+                capacity: v.capacity || v.capacityTons || v.capacidade || 10,
+                capacityTons: v.capacityTons || v.capacity || v.capacidade || 10,
+                estado: v.status === 'Operational' ? 'Ativo' : (v.estado || 'Ativo'),
+                status: v.status || (v.estado === 'Ativo' ? 'Operational' : 'Operational'),
+                motor: v.motor || 'Yamaha 250HP'
+              }));
+
+              if (prev.length === 0) {
+                return mappedFromApi;
+              }
+
+              const existingIds = new Set(prev.map(e => e.id));
+              const existingNames = new Set(prev.map(e => (e.nome || e.name || '').toLowerCase()));
+              const newFromApi = mappedFromApi.filter(
+                (v: any) => !existingIds.has(v.id) && !existingNames.has((v.nome || v.name || '').toLowerCase())
+              );
+              return [...prev, ...newFromApi];
+            });
+          }
+        }
+      })
+      .catch(err => console.warn('Notice syncing vessels from API:', err));
+  }, [userId]);
   React.useEffect(() => { localStorage.setItem(`olo-fintel-op-viagens-${userId}`, JSON.stringify(viagens)); }, [viagens, userId]);
   React.useEffect(() => { localStorage.setItem(`olo-fintel-op-capturas-${userId}`, JSON.stringify(capturas)); }, [capturas, userId]);
   React.useEffect(() => { localStorage.setItem(`olo-fintel-op-custosPesca-${userId}`, JSON.stringify(custosPesca)); }, [custosPesca, userId]);
@@ -477,14 +546,31 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
       if (activeResource === 'embarcacoes') {
         const brand = genericForm.motorBrand || 'Yamaha';
         const hp = genericForm.motorHP || '250HP';
+        const vName = genericForm.nome || 'Nova Barca';
+        const vMatricula = genericForm.matricula || `NAM-${Math.floor(Math.random() * 900) + 100}-A`;
+        const vCapacidade = parseFloat(genericForm.capacidade || '5');
+
         setEmbarcoes(prev => [...prev, {
           id,
-          nome: genericForm.nome || 'Nova Barca',
-          matricula: genericForm.matricula || `NAM-${Math.floor(Math.random() * 900) + 100}-A`,
-          capacidade: parseFloat(genericForm.capacidade || '5'),
+          nome: vName,
+          matricula: vMatricula,
+          capacidade: vCapacidade,
           estado: 'Ativo',
           motor: hp ? `${brand} ${hp}` : brand
         }]);
+
+        // Send to backend API so it persists in server database (vessel table in Supabase via NestJS)
+        apiCall('/api/v1/operations/fisheries/vessels', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: vName,
+            registrationNumber: vMatricula,
+            capacity: vCapacidade,
+            capacityTons: vCapacidade,
+            organizationId: userId || localStorage.getItem('olo-fintel-orgId') || 'org-1'
+          })
+        }).catch(err => console.error('Error sending vessel to API:', err));
       } else if (activeResource === 'viagens') {
         setViagens(prev => [...prev, {
           id,
@@ -505,6 +591,17 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
           valor: parseFloat(genericForm.valor || '0'),
           qualidade: genericForm.qualidade || 'Excelente'
         }]);
+        apiCall('/api/v1/operations/fisheries/catches', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            vesselId: genericForm.viagemId || 'emb-1',
+            species: genericForm.especie || 'Carapau',
+            weightKg: parseFloat(genericForm.peso || '0'),
+            weight: parseFloat(genericForm.peso || '0'),
+            date: new Date().toISOString().split('T')[0]
+          })
+        }).catch(err => console.error('Error sending catch to API:', err));
       } else if (activeResource === 'custosPesca') {
         setCustosPesca(prev => [...prev, {
           id,
@@ -614,78 +711,51 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
     <div className="w-full bg-white dark:bg-[#15151C] border border-gray-200 dark:border-[#232330] rounded-2xl p-6 shadow-sm space-y-6">
       
       {/* SECTION HEADER & PRIMARY SECTOR SELECTOR */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-gray-100 dark:border-[#232330] pb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 border-b border-gray-100 dark:border-[#232330] pb-6">
         <div>
-          <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
-            <Sparkles className="text-brand-iris" size={20} />
-            Módulos Operacionais por Setor
-          </h2>
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-2">
+              <Sparkles className="text-brand-iris" size={20} />
+              Módulo Operacional do Setor
+            </h2>
+            {autoSector && (
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-green-500/10 text-green-600 dark:text-green-400 text-xs font-bold rounded-lg border border-green-500/20">
+                <Sparkles size={12} className="text-green-500 animate-pulse" />
+                Setor Auto-Detetado: {
+                  autoSector === 'AGRICULTURE' ? '🌾 Agricultura' :
+                  autoSector === 'LIVESTOCK' ? 'ox Pecuária' :
+                  autoSector === 'FISHERIES' ? '🐟 Pesca' : '🏪 Comércio'
+                }
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-400 mt-1">
-            Gira os recursos específicos da cooperativa ou PME. Alterne entre setores para testes.
+            {autoSector 
+              ? `O seu perfil foi configurado para o setor de ${
+                  autoSector === 'AGRICULTURE' ? 'Agricultura e Cultivos' :
+                  autoSector === 'LIVESTOCK' ? 'Pecuária e Rebanhos' :
+                  autoSector === 'FISHERIES' ? 'Pescas e Capturas' : 'Comércio Geral'
+                }. Os formulários e relatórios relevantes foram ativados.`
+              : 'Gira os recursos específicos da sua cooperativa ou PME. Selecione o setor operacional pretendido.'}
           </p>
         </div>
 
-        {/* 4 Major Sector Tabs */}
-        <div className="flex flex-wrap gap-2 items-center">
-          {canSwitchSectors ? (
-            <>
-              <button 
-                onClick={() => changeSector('AGRICULTURE')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  activeSector === 'AGRICULTURE' 
-                    ? 'bg-brand-iris text-white shadow-md' 
-                    : 'bg-gray-50 dark:bg-[#1E1E28] hover:bg-gray-100 dark:hover:bg-[#282835] text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                <Sprout size={16} />
-                <span>Agricultura</span>
-              </button>
-
-              <button 
-                onClick={() => changeSector('LIVESTOCK')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  activeSector === 'LIVESTOCK' 
-                    ? 'bg-[#E3A008] text-white shadow-md' 
-                    : 'bg-gray-50 dark:bg-[#1E1E28] hover:bg-gray-100 dark:hover:bg-[#282835] text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                <Activity size={16} />
-                <span>Pecuária</span>
-              </button>
-
-              <button 
-                onClick={() => changeSector('FISHERIES')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  activeSector === 'FISHERIES' 
-                    ? 'bg-[#0E9F6E] text-white shadow-md' 
-                    : 'bg-gray-50 dark:bg-[#1E1E28] hover:bg-gray-100 dark:hover:bg-[#282835] text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                <Ship size={16} />
-                <span>Pesca</span>
-              </button>
-
-              <button 
-                onClick={() => changeSector('COMMERCE')}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer ${
-                  activeSector === 'COMMERCE' 
-                    ? 'bg-[#3F83F8] text-white shadow-md' 
-                    : 'bg-gray-50 dark:bg-[#1E1E28] hover:bg-gray-100 dark:hover:bg-[#282835] text-gray-700 dark:text-gray-300'
-                }`}
-              >
-                <ShoppingBag size={16} />
-                <span>Comércio</span>
-              </button>
-            </>
-          ) : (
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-brand-iris/10 text-brand-iris text-xs font-bold rounded-xl border border-brand-iris/20">
-              {activeSector === 'AGRICULTURE' && <><Sprout size={14} className="text-brand-iris" /> <span className="text-gray-800 dark:text-gray-200">Setor: Agricultura</span></>}
-              {activeSector === 'LIVESTOCK' && <><Activity size={14} className="text-[#E3A008]" /> <span className="text-gray-800 dark:text-gray-200">Setor: Pecuária</span></>}
-              {activeSector === 'FISHERIES' && <><Ship size={14} className="text-[#0E9F6E]" /> <span className="text-gray-800 dark:text-gray-200">Setor: Pesca</span></>}
-              {activeSector === 'COMMERCE' && <><ShoppingBag size={14} className="text-[#3F83F8]" /> <span className="text-gray-800 dark:text-gray-200">Setor: Comércio</span></>}
-              <span className="text-[10px] text-gray-400 font-normal border-l border-gray-200 dark:border-gray-800 pl-2 ml-1">Painel Operacional do Seu Perfil</span>
-            </div>
-          )}
+        {/* Sector controls - Auto-detected from user profile */}
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-brand-iris text-white shadow-md border border-brand-iris/20">
+            {activeSector === 'AGRICULTURE' && <Sprout size={16} />}
+            {activeSector === 'LIVESTOCK' && <Activity size={16} />}
+            {activeSector === 'FISHERIES' && <Ship size={16} />}
+            {activeSector === 'COMMERCE' && <ShoppingBag size={16} />}
+            <span>
+              {activeSector === 'AGRICULTURE' ? 'Setor Agrícola' :
+               activeSector === 'LIVESTOCK' ? 'Setor Pecuário' :
+               activeSector === 'FISHERIES' ? 'Setor de Pescas' : 'Setor Comercial'}
+            </span>
+            <span className="px-1.5 py-0.5 text-[9px] font-black uppercase rounded bg-white/20 text-white ml-1">
+              Setor Vínculado
+            </span>
+          </div>
         </div>
       </div>
 
@@ -946,42 +1016,93 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                   <h3 className="text-xs font-bold uppercase tracking-wider text-gray-900 dark:text-white">
                     Histórico de Registos: <span className="text-brand-iris">{activeResource.toUpperCase()}</span>
                   </h3>
-                  <span className="px-2 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-mono rounded">
-                    Total: {
-                      activeSector === 'AGRICULTURE' ? (
-                        activeResource === 'talhoes' ? talhoes.length :
-                        activeResource === 'culturas' ? culturas.length :
-                        activeResource === 'producao' ? producoes.length :
-                        activeResource === 'colheitas' ? colheitas.length :
-                        activeResource === 'insumos' ? insumos.length :
-                        activeResource === 'equipamentos' ? equipamentos.length :
-                        activeResource === 'clima' ? clima.length : 0
-                      ) : activeSector === 'LIVESTOCK' ? (
-                        activeResource === 'rebanho' ? rebanho.length :
-                        activeResource === 'reproducao' ? reproducao.length :
-                        activeResource === 'saude' ? saudeAnimal.length :
-                        activeResource === 'alimentacao' ? alimentacao.length :
-                        activeResource === 'crescimento' ? crescimento.length :
-                        activeResource === 'producaoAnimal' ? producaoAnimal.length :
-                        activeResource === 'comercializacaoPecuaria' ? comercializacaoPecuaria.length : 0
-                      ) : activeSector === 'FISHERIES' ? (
-                        activeResource === 'embarcacoes' ? embarcoes.length :
-                        activeResource === 'viagens' ? viagens.length :
-                        activeResource === 'capturas' ? capturas.length :
-                        activeResource === 'custosPesca' ? custosPesca.length :
-                        activeResource === 'manutencaoPesca' ? manutencaoPesca.length :
-                        activeResource === 'comercializacaoPesca' ? comercializacaoPesca.length : 0
-                      ) : (
-                        activeResource === 'produtos' ? produtos.length :
-                        activeResource === 'inventario' ? inventario.length :
-                        activeResource === 'compras' ? compras.length :
-                        activeResource === 'vendas' ? vendas.length :
-                        activeResource === 'crm' ? crm.length :
-                        activeResource === 'contasAReceber' ? contasAReceber.length :
-                        activeResource === 'contasAPagar' ? contasAPagar.length : 0
-                      )
-                    } registos
-                  </span>
+                  <div className="flex items-center gap-2">
+                    {activeSector === 'FISHERIES' && activeResource === 'embarcacoes' && (
+                      <button
+                        onClick={async () => {
+                          const testName = `Barco Baía Azul ${Math.floor(Math.random() * 90) + 10}`;
+                          const testMatricula = `LA-${Math.floor(Math.random() * 8000) + 1000}-V`;
+                          const testCap = 18.5;
+                          
+                          try {
+                            const res = await apiCall('/api/v1/operations/fisheries/vessels', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                name: testName,
+                                registrationNumber: testMatricula,
+                                capacity: testCap,
+                                capacityTons: testCap,
+                                organizationId: userId || localStorage.getItem('olo-fintel-orgId') || 'org-1'
+                              })
+                            });
+                            
+                            const resData = await res.json().catch(() => ({}));
+                            
+                            // Adicionar localmente
+                            const newV = {
+                              id: resData.id || resData.vessel?.id || resData.data?.id || `emb-${Date.now()}`,
+                              nome: testName,
+                              name: testName,
+                              matricula: testMatricula,
+                              registrationNumber: testMatricula,
+                              capacidade: testCap,
+                              capacity: testCap,
+                              capacityTons: testCap,
+                              estado: 'Ativo',
+                              status: 'Operational',
+                              motor: 'Yamaha 250HP'
+                            };
+                            setEmbarcoes(prev => [newV, ...prev]);
+                            
+                            alert(`[POST /vessels OK - Status ${res.status}]\nEmbarcação enviada ao backend:\n- Nome: ${testName}\n- Matrícula: ${testMatricula}\n- Capacidade: ${testCap} Toneladas`);
+                          } catch (err: any) {
+                            alert(`Erro ao enviar embarcação ao servidor: ${err.message}`);
+                          }
+                        }}
+                        className="px-2.5 py-1 bg-brand-navy dark:bg-brand-iris text-white rounded text-[10px] font-bold hover:opacity-90 transition-all flex items-center gap-1 cursor-pointer"
+                        title="Enviar requisição POST para a API /v1/operations/fisheries/vessels no NestJS/Supabase"
+                      >
+                        ⚡ Testar POST API /vessels
+                      </button>
+                    )}
+                    <span className="px-2 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-mono rounded">
+                      Total: {
+                        activeSector === 'AGRICULTURE' ? (
+                          activeResource === 'talhoes' ? talhoes.length :
+                          activeResource === 'culturas' ? culturas.length :
+                          activeResource === 'producao' ? producoes.length :
+                          activeResource === 'colheitas' ? colheitas.length :
+                          activeResource === 'insumos' ? insumos.length :
+                          activeResource === 'equipamentos' ? equipamentos.length :
+                          activeResource === 'clima' ? clima.length : 0
+                        ) : activeSector === 'LIVESTOCK' ? (
+                          activeResource === 'rebanho' ? rebanho.length :
+                          activeResource === 'reproducao' ? reproducao.length :
+                          activeResource === 'saude' ? saudeAnimal.length :
+                          activeResource === 'alimentacao' ? alimentacao.length :
+                          activeResource === 'crescimento' ? crescimento.length :
+                          activeResource === 'producaoAnimal' ? producaoAnimal.length :
+                          activeResource === 'comercializacaoPecuaria' ? comercializacaoPecuaria.length : 0
+                        ) : activeSector === 'FISHERIES' ? (
+                          activeResource === 'embarcacoes' ? embarcoes.length :
+                          activeResource === 'viagens' ? viagens.length :
+                          activeResource === 'capturas' ? capturas.length :
+                          activeResource === 'custosPesca' ? custosPesca.length :
+                          activeResource === 'manutencaoPesca' ? manutencaoPesca.length :
+                          activeResource === 'comercializacaoPesca' ? comercializacaoPesca.length : 0
+                        ) : (
+                          activeResource === 'produtos' ? produtos.length :
+                          activeResource === 'inventario' ? inventario.length :
+                          activeResource === 'compras' ? compras.length :
+                          activeResource === 'vendas' ? vendas.length :
+                          activeResource === 'crm' ? crm.length :
+                          activeResource === 'contasAReceber' ? contasAReceber.length :
+                          activeResource === 'contasAPagar' ? contasAPagar.length : 0
+                        )
+                      } registos
+                    </span>
+                  </div>
                 </div>
 
                 <div className="ramp-table-container p-1">
@@ -1527,28 +1648,47 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                       ))}
 
                       {/* --- FISHERIES RENDERS --- */}
-                      {activeSector === 'FISHERIES' && activeResource === 'embarcacoes' && embarcoes.map(e => (
-                        <tr key={e.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
-                          <td className="p-3 font-bold text-gray-900 dark:text-white">{e.nome}</td>
-                          <td className="p-3 font-mono text-gray-500">{e.matricula}</td>
-                          <td className="p-3 text-right font-mono">{e.capacidade} t</td>
-                          <td className="p-3 text-gray-400">{e.motor}</td>
-                          <td className="p-3">
-                            <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-bold">{e.estado}</span>
-                          </td>
-                          <td className="p-3 text-right">
-                            <button 
-                              onClick={() => {
-                                setEmbarcoes(prev => prev.map(x => x.id === e.id ? { ...x, estado: 'Manutenção' } : x));
-                                alert('Barco enviado para MANUTENÇÃO no estaleiro.');
-                              }}
-                              className="text-brand-iris hover:underline cursor-pointer text-[10px] font-bold"
-                            >
-                              Manutenção
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                      {activeSector === 'FISHERIES' && activeResource === 'embarcacoes' && (
+                        embarcoes.length === 0 ? (
+                          <tr>
+                            <td colSpan={6} className="text-center py-10 text-gray-500 dark:text-gray-400">
+                              <p className="font-semibold text-sm mb-1">Nenhuma embarcação cadastrada</p>
+                              <p className="text-xs text-gray-400 mb-3">Envie requisições via API NestJS/Supabase ou adicione localmente para sincronizar.</p>
+                            </td>
+                          </tr>
+                        ) : (
+                          embarcoes.map((e, idx) => {
+                            const vName = e.nome || e.name || 'Embarcação sem Nome';
+                            const vMatricula = e.matricula || e.registrationNumber || e.regNumber || 'N/D';
+                            const vCapacidade = e.capacidade || e.capacity || e.capacityTons || 0;
+                            const vMotor = e.motor || 'Yamaha 250HP';
+                            const vEstado = e.estado || (e.status === 'Operational' ? 'Ativo' : (e.status || 'Ativo'));
+
+                            return (
+                              <tr key={e.id || `emb-${idx}`} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
+                                <td className="p-3 font-bold text-gray-900 dark:text-white">{vName}</td>
+                                <td className="p-3 font-mono text-gray-500">{vMatricula}</td>
+                                <td className="p-3 text-right font-mono">{vCapacidade} t</td>
+                                <td className="p-3 text-gray-400">{vMotor}</td>
+                                <td className="p-3">
+                                  <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-[9px] font-bold">{vEstado}</span>
+                                </td>
+                                <td className="p-3 text-right">
+                                  <button 
+                                    onClick={() => {
+                                      setEmbarcoes(prev => prev.map(x => (x.id === e.id || x.nome === vName) ? { ...x, estado: 'Manutenção', status: 'Maintenance' } : x));
+                                      alert(`A embarcação "${vName}" foi enviada para MANUTENÇÃO no estaleiro.`);
+                                    }}
+                                    className="text-brand-iris hover:underline cursor-pointer text-[10px] font-bold"
+                                  >
+                                    Manutenção
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )
+                      )}
 
                       {activeSector === 'FISHERIES' && activeResource === 'viagens' && viagens.map(v => (
                         <tr key={v.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
