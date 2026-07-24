@@ -470,7 +470,24 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
             const parts = fullName.split(' ').filter(Boolean);
             const firstName = parts[0] || 'Gestor';
             const lastName = parts.slice(1).join(' ') || 'Fintel';
-            const sectorVal = body.industry || body.sector || 'AGRICULTURE';
+            
+            // Normalize sector / industry value for NestJS enum (AGRICULTURE, LIVESTOCK, FISHERIES, COMMERCE, SERVICES)
+            let rawSector = (body.industry || body.sector || body.industryType || 'AGRICULTURE').toString().toUpperCase();
+            if (rawSector.includes('PESCA') || rawSector.includes('FISH') || rawSector === 'FISHERIES') {
+              rawSector = 'FISHERIES';
+            } else if (rawSector.includes('PECUAR') || rawSector.includes('LIVESTOCK')) {
+              rawSector = 'LIVESTOCK';
+            } else if (rawSector.includes('COMERC') || rawSector === 'COMMERCE') {
+              rawSector = 'COMMERCE';
+            } else if (rawSector.includes('SERVIC') || rawSector === 'SERVICES') {
+              rawSector = 'SERVICES';
+            } else if (rawSector.includes('AGRI') || rawSector === 'AGRICULTURE') {
+              rawSector = 'AGRICULTURE';
+            } else {
+              rawSector = 'AGRICULTURE';
+            }
+
+            const compName = body.companyName || body.organizationName || body.company_name || 'Cooperativa OLO';
 
             const payload = {
               name: fullName || 'Gestor Fintel',
@@ -479,9 +496,11 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
               email: body.email,
               password: body.password,
               phone: body.phone || '+244900000000',
-              organizationName: body.organizationName || 'Cooperativa OLO',
-              sector: sectorVal,
-              industry: sectorVal,
+              companyName: compName,
+              organizationName: compName,
+              sector: rawSector,
+              industry: rawSector,
+              industryType: rawSector,
               role: body.role || 'OWNER',
               province: body.province || 'Luanda'
             };
@@ -606,14 +625,27 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
                   if (tokenVal) {
                     safeStorage.setItem('olo_fintel_token', tokenVal);
                   }
+
+                  let rawInd = userObj.industry || userObj.sector || userObj.industryType || orgObj.sector || orgObj.industry || 'AGRICULTURE';
+                  if (typeof rawInd === 'string') {
+                    const s = rawInd.toUpperCase();
+                    if (s.includes('PESCA') || s.includes('FISH') || s === 'FISHERIES') rawInd = 'FISHERIES';
+                    else if (s.includes('PECUAR') || s.includes('LIVESTOCK')) rawInd = 'LIVESTOCK';
+                    else if (s.includes('COMERC') || s === 'COMMERCE') rawInd = 'COMMERCE';
+                    else if (s.includes('SERVIC') || s === 'SERVICES') rawInd = 'SERVICES';
+                    else if (s.includes('AGRI') || s === 'AGRICULTURE') rawInd = 'AGRICULTURE';
+                  }
+
+                  const compName = orgObj.name || userObj.organizationName || userObj.companyName || userObj.company_name || 'Cooperativa OLO';
+
                   const flatUser = {
                     id: userObj.id || `usr-${Date.now()}`,
                     name: userObj.name || `${userObj.firstName || ''} ${userObj.lastName || ''}`.trim() || userObj.email || 'Utilizador',
                     email: userObj.email || 'utilizador@olofintel.ao',
                     role: userObj.role || 'OWNER',
                     organizationId: userObj.organizationId || orgObj.id || `org-${Date.now()}`,
-                    organizationName: orgObj.name || userObj.organizationName || 'Cooperativa Agropecuária OLO',
-                    industry: orgObj.sector || userObj.industry || userObj.sector || 'AGRICULTURE',
+                    organizationName: compName,
+                    industry: rawInd,
                     province: userObj.province || 'Luanda'
                   };
                   safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(flatUser));

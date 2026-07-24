@@ -62,14 +62,20 @@ import SupportCostsModule from './SupportCostsModule.js';
 import BackendConnectionManager from './BackendConnectionManager.js';
 
 export function getNormalizedSector(industry?: string | null, orgName?: string | null): 'AGRICULTURE' | 'LIVESTOCK' | 'FISHERIES' | 'COMMERCE' {
+  const ind = (industry || '').toUpperCase();
+  if (ind === 'FISHERIES' || ind.includes('PESCA') || ind.includes('FISH')) return 'FISHERIES';
+  if (ind === 'LIVESTOCK' || ind.includes('PECUAR') || ind.includes('LIVESTOCK')) return 'LIVESTOCK';
+  if (ind === 'COMMERCE' || ind.includes('COMERC') || ind.includes('COMMERCE')) return 'COMMERCE';
+  if (ind === 'AGRICULTURE' || ind.includes('AGRI')) return 'AGRICULTURE';
+
   const combined = `${industry || ''} ${orgName || ''}`.toUpperCase();
-  if (combined.includes('PESCA') || combined.includes('FISH') || combined.includes('MAR') || combined.includes('EMBARCA') || combined.includes('CAPTUR')) {
+  if (combined.includes('FISHERIES') || combined.includes('PESCA') || combined.includes('FISH') || combined.includes('MAR') || combined.includes('EMBARCA') || combined.includes('CAPTUR')) {
     return 'FISHERIES';
   }
-  if (combined.includes('PECUAR') || combined.includes('LIVESTOCK') || combined.includes('GADO') || combined.includes('ANIMAL') || combined.includes('REBANHO') || combined.includes('BOVINO')) {
+  if (combined.includes('LIVESTOCK') || combined.includes('PECUAR') || combined.includes('GADO') || combined.includes('ANIMAL') || combined.includes('REBANHO') || combined.includes('BOVINO')) {
     return 'LIVESTOCK';
   }
-  if (combined.includes('COMERC') || combined.includes('COMMERCE') || combined.includes('RETAIL') || combined.includes('LOJA') || combined.includes('VENDA')) {
+  if (combined.includes('COMMERCE') || combined.includes('COMERC') || combined.includes('RETAIL') || combined.includes('LOJA') || combined.includes('VENDA')) {
     return 'COMMERCE';
   }
   return 'AGRICULTURE';

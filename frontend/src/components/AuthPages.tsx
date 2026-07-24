@@ -121,10 +121,12 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
       name,
       email,
       password,
-      role,
-      industry: ['OWNER', 'MANAGER', 'FINANCIAL_OFFICER'].includes(role) ? industry : undefined,
-      province,
-      organizationName: ['OWNER', 'MANAGER', 'FINANCIAL_OFFICER'].includes(role) ? organizationName : undefined
+      role: role || 'OWNER',
+      industry: industry || 'AGRICULTURE',
+      sector: industry || 'AGRICULTURE',
+      province: province || 'Luanda',
+      companyName: organizationName || 'Cooperativa OLO',
+      organizationName: organizationName || 'Cooperativa OLO'
     };
 
     const res = await register(payload);
