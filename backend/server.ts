@@ -226,7 +226,8 @@ async function startServer() {
     try {
       const { getDbStatus, db } = await import("./src/db/client.ts");
       const status = getDbStatus(); // Executa dinamicamente a cada pedido
-      
+      console.log(`status: $status.isDbConfigured`);
+      console.log(`status: $status.isUsingMock`);
       const counts = {
         organizations: await db.organization.count().catch(() => 0),
         users: await db.user.count().catch(() => 0),
