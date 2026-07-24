@@ -313,7 +313,10 @@ export default function App() {
       setAuthLoading(false);
     }
   }, []);
-
+// Agora o fetch é disparado automaticamente ao trocar de aba:
+  useEffect(() => {
+    fetchDbStatus();
+  }, [activeTab]);
   // Verificar sessão ou disparar o fluxo automático no arranque
   useEffect(() => {
     const token = getAuthToken();
