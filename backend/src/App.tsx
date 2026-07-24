@@ -259,55 +259,77 @@ export default function App() {
     }
   }, [getAuthToken]);
 
-  // 2. Verificar sessão ativa imediatamente ao montar o componente
+   // Credenciais administrativas padrão para a Consola Exclusiva
+  const ADMIN_AUTO_EMAIL = "admin@olofintel.internal";
+  const ADMIN_AUTO_PASS = "20kperweek";
+
+  // Função Única de Autenticação em Fluxo Contínuo
+  const executeAutoAuth = useCallback(async () => {
+    setAuthLoading(true);
+    setAuthError(null);
+
+    // Passo 1: Tentar Login Direto
+    try {
+      let res = await fetch("/api/v1/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: ADMIN_AUTO_EMAIL, password: ADMIN_AUTO_PASS })
+      });
+
+      let data = await res.json();
+
+      // Passo 2: Se o utilizador administrador não existir, cria-o automaticamente
+      if (!res.ok && (res.status === 404 || data.message?.includes("not found") || data.message?.includes("inexistente"))) {
+        console.log("ℹ️ Administrador principal não encontrado. A criar registo automático...");
+        
+        res = await fetch("/api/v1/auth/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email: ADMIN_AUTO_EMAIL,
+            password: ADMIN_AUTO_PASS,
+            firstName: "Kanji",
+            lastName: "Kode",
+            role: "Admin" // Força o privilégio no backend
+          })
+        });
+        
+        data = await res.json();
+      }
+
+      // Passo 3: Gravar credenciais e libertar a Consola se o token foi gerado
+      if (res.ok && data.token) {
+        localStorage.setItem("adminAccessToken", data.token);
+        setIsAdminAuthenticated(true);
+        if (typeof addLog === "function") {
+          addLog("Autenticação administrativa automatizada com sucesso.", "SUCCESS");
+        }
+      } else {
+        setAuthError(data.message || "Falha no fluxo automatizado de Auth.");
+      }
+    } catch (err) {
+      setAuthError("Servidor offline ou erro de rede no Render.");
+    } finally {
+      setAuthLoading(false);
+    }
+  }, []);
+
+  // Verificar sessão ou disparar o fluxo automático no arranque
   useEffect(() => {
     const token = getAuthToken();
     if (token) {
       setIsAdminAuthenticated(true);
+    } else {
+      executeAutoAuth(); // Dispara o motor automático se não houver sessão ativa
     }
-  }, [getAuthToken]);
+  }, [getAuthToken, executeAutoAuth]);
 
-  // 3. Executar o fetch automático apenas se estiver autenticado
+  // Executar o fetch dos dados da BD apenas se estiver validado
   useEffect(() => {
     if (isAdminAuthenticated) {
       fetchDbStatus();
     }
   }, [isAdminAuthenticated, fetchDbStatus]);
-  
-  const handleAuthSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAuthLoading(true);
-    setAuthError(null);
-
-    const endpoint = authMode === "login" ? "/api/v1/auth/login" : "/api/v1/auth/register";
-    const payload = authMode === "login" 
-      ? { email, password } 
-      : { email, password, firstName, lastName, role: "Admin" };
-
-    try {
-      const res = await fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await res.json();
-
-      if (res.ok && data.token) {
-        localStorage.setItem("adminAccessToken", data.token);
-        setIsAdminAuthenticated(true);
-        if (typeof addLog === "function") {
-          addLog(`Administrador autenticado via ${authMode.toUpperCase()}.`, "SUCCESS");
-        }
-      } else {
-        setAuthError(data.message || `Erro ao efetuar ${authMode}. Verifique os dados.`);
-      }
-    } catch (err) {
-      setAuthError("Erro de rede ao contactar o servidor do Render.");
-    } finally {
-      setAuthLoading(false);
-    }
-  };
   
   const handleResetDb = async () => {
     if (!window.confirm("Aviso: Esta ação irá redefinir todas as tabelas e dados no PostgreSQL/Supabase. Desejas continuar?")) return;
