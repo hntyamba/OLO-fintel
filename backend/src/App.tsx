@@ -206,6 +206,66 @@ export default function App() {
 
   const [authError, setAuthError] = useState<string | null>(null);
 
+  // 1. Estados de Autenticação do Administrador
+  const [isAdminAuthenticated, setIsAdminAuthenticated] = useState<boolean>(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
+  
+  const getAuthToken = () => localStorage.getItem("adminAccessToken");
+
+  // 2. Verificar sessão ativa imediatamente ao montar o componente
+  useEffect(() => {
+    const token = getAuthToken();
+    if (token) {
+      setIsAdminAuthenticated(true);
+    }
+  }, []);
+
+  // 3. Executar o fetch automático APENAS se estiver autenticado
+  useEffect(() => {
+    if (isAdminAuthenticated) {
+      fetchDbStatus();
+    }
+  }, [isAdminAuthenticated, fetchDbStatus]);
+  
+  const handleAuthSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthLoading(true);
+    setAuthError(null);
+
+    const endpoint = authMode === "login" ? "/api/v1/auth/login" : "/api/v1/auth/register";
+    const payload = authMode === "login" 
+      ? { email, password } 
+      : { email, password, firstName, lastName, role: "Admin" }; // Garante a role correta
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.token) {
+        localStorage.setItem("adminAccessToken", data.token);
+        setIsAdminAuthenticated(true);
+        addLog(`Administrador autenticado via ${authMode.toUpperCase()}.`, "SUCCESS");
+      } else {
+        setAuthError(data.message || `Erro ao efetuar ${authMode}. Verifique os dados.`);
+      }
+    } catch (err) {
+      setAuthError("Erro de rede ao contactar o servidor do Render.");
+    } finally {
+      setAuthLoading(false);
+    }
+  };
+  
   // Helper to retrieve auth token
   const getAuthToken = () => localStorage.getItem("adminAccessToken");
 
