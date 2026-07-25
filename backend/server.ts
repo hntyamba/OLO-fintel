@@ -224,7 +224,7 @@ async function startServer() {
   // ==========================================
   // ADMIN/DEVELOPER UTILITIES & DB VISUALIZER
   // ==========================================
-  app.get("/api/v1/admin/db-status", requireAuth, requireRoles(["Admin"]), async (req, res) => {
+  app.get("/api/v1/admin/db-status", requireAuth, requireRoles(["ADMIN"]), async (req, res) => {
     try {
       const counts = {
         organizations: await db.organization.count().catch(() => 0),
