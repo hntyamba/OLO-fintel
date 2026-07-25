@@ -109,7 +109,8 @@ async function startServer() {
   app.post("/api/v1/auth/login", login);
   app.post("/api/v1/auth/refresh", refresh);
   app.post("/api/v1/auth/logout", logout);
-
+  app.get("/api/v1/auth/me", requireAuth, me);
+  
   // ==========================================
   // SECURED MULTI-TENANT ROUTES (requireAuth)
   // ==========================================
