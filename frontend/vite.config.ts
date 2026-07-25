@@ -5,18 +5,24 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    // Garante que os ficheiros dentro de 'frontend/public' vão para a raiz do build final
+    publicDir: path.resolve(__dirname, 'public'),
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    build: {
+      // Força a pasta de saída a ser a 'dist' na raiz do subprojeto
+      outDir: 'dist',
+      // Garante que a pasta public é limpa e reinserida a cada build
+      emptyOutDir: true,
+    },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };
 });
+
