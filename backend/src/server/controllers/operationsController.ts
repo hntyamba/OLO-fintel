@@ -142,25 +142,43 @@ export async function getAnimals(req: AuthenticatedRequest, res: Response) {
 
 export async function registerVessel(req: AuthenticatedRequest, res: Response) {
   try {
-    const { name, registrationNumber, capacity } = req.body;
+    const {
+      name, vesselName, nome,
+      registrationNumber, registration, matricula,
+      capacity, capacityTons, capacidade,
+      engineBrand, marcaMotor, marca,
+      enginePower, potenciaMotor, potencia,
+      details, detalhes
+    } = req.body;
     const { organizationId } = req.user || {};
 
-    if (!name || !registrationNumber || !organizationId) {
-      return res.status(400).json({ success: false, message: "Nome e matrícula da embarcação obrigatórios." });
+    const finalName = name || vesselName || nome;
+    const finalReg = registrationNumber || registration || matricula;
+    const finalCap = capacity !== undefined ? capacity : (capacityTons !== undefined ? capacityTons : capacidade);
+    const finalEngineBrand = engineBrand || marcaMotor || marca || null;
+    const finalEnginePower = enginePower || potenciaMotor || potencia || null;
+    const finalDetails = details || detalhes || null;
+
+    if (!finalName || !finalReg || !organizationId) {
+      return res.status(400).json({ success: false, message: "Nome e matrícula da embarcação são obrigatórios." });
     }
 
     const vessel = await db.vessel.create({
       data: {
         organizationId,
-        name,
-        registrationNumber,
-        capacity: capacity ? parseFloat(capacity) : 0.0,
+        name: finalName,
+        registrationNumber: finalReg,
+        capacity: finalCap ? parseFloat(finalCap) : 0.0,
+        engineBrand: finalEngineBrand,
+        enginePower: finalEnginePower,
+        details: finalDetails,
         status: "Operational"
       }
     });
 
     return res.status(201).json({ success: true, data: vessel });
   } catch (error: any) {
+    console.error("Erro ao registar embarcação:", error);
     return res.status(500).json({ success: false, message: "Erro ao registar embarcação." });
   }
 }
