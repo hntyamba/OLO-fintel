@@ -235,6 +235,54 @@ export async function login(req: AuthenticatedRequest, res: Response) {
   }
 }
 
+export async function me(req: AuthenticatedRequest, res: Response) {
+  try {
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ success: false, message: "Utilizador não autenticado." });
+    }
+
+    const user = await db.user.findUnique({ where: { id: userId } });
+    if (!user) {
+      return res.status(404).json({ success: false, message: "Utilizador não encontrado." });
+    }
+
+    const membership = await db.organizationMembership.findFirst({
+      where: { userId: user.id, status: "Active" }
+    });
+
+    const role = membership ? membership.roleId : (req.user?.role || "Member");
+    const organizationId = membership ? membership.organizationId : req.user?.organizationId;
+
+    const org = organizationId ? await db.organization.findUnique({ where: { id: organizationId } }) : null;
+
+    return res.json({
+      success: true,
+      data: {
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          email: user.email,
+          phone: user.phone
+        },
+        organizationId,
+        organization: org ? {
+          id: org.id,
+          name: org.name,
+          sector: org.sector,
+          status: org.status
+        } : null,
+        sector: org ? org.sector : null,
+        role
+      }
+    });
+  } catch (error: any) {
+    console.error("Erro ao obter perfil do utilizador:", error);
+    return res.status(500).json({ success: false, message: "Erro interno ao carregar perfil do utilizador." });
+  }
+}
+
 export async function refresh(req: AuthenticatedRequest, res: Response) {
   try {
     const { refreshToken } = req.body;
