@@ -1,5 +1,5 @@
 import "./src/db/env.ts";
-import { db, getDbStatus } from "./src/db/client.ts";
+import { db, getIsDbConfigured, getIsUsingMock } from "./src/db/client.ts";
 import express from "express";
 import path from "path";
 import swaggerUi from "swagger-ui-express";
@@ -226,9 +226,6 @@ async function startServer() {
   // ==========================================
   app.get("/api/v1/admin/db-status", requireAuth, requireRoles(["Admin"]), async (req, res) => {
     try {
-      const status = getDbStatus(); // Executa dinamicamente a cada pedido
-      console.log(`status: ${status.isDbConfigured}`);
-      console.log(`status: ${status.isUsingMock}`);
       const counts = {
         organizations: await db.organization.count().catch(() => 0),
         users: await db.user.count().catch(() => 0),
@@ -268,8 +265,8 @@ async function startServer() {
       res.json({
         success: true,
         engine: "OLO Fintel Administrative Console",
-        dbConfigured: status.isDbConfigured,
-        isUsingMock: status.isUsingMock,
+        dbConfigured: getIsDbConfigured(),
+        isUsingMock: getIsUsingMock(),
         databaseUrl: process.env.DATABASE_URL ? "postgresql://postgres.zxtvhwrqxeychyehqcqv:colege@aws-1-sa-east-1.pooler.supabase.com:6543/postgres?pgbouncer=true" : "Not Defined",
         counts,
         lastUsers,
@@ -285,7 +282,7 @@ async function startServer() {
   app.post("/api/v1/admin/db-reset", requireAuth, requireRoles(["Admin"]), async (req, res) => {
     try {
       
-      if (!isUsingMock) {
+      if (!getIsUsingMock()) {
         // Safe delete cascade or deletion of dependants first
         await db.surveyAnswer.deleteMany().catch(() => {});
         await db.surveyResponse.deleteMany().catch(() => {});
