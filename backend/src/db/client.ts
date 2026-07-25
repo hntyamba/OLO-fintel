@@ -2,8 +2,14 @@
 import "./env.ts";
 // @ts-ignore
 import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcryptjs";
 
-let isDbConfigured = false;
+export let isDbConfigured = false;
+export let isUsingMock = true;
+
+export const getIsDbConfigured = () => !fallbackToMemory && isDbConfigured;
+export const getIsUsingMock = () => fallbackToMemory || isUsingMock;
+
 // @ts-ignore
 let prismaInstance: PrismaClient | null = null;
 
@@ -12,19 +18,59 @@ if (process.env.DATABASE_URL && process.env.DATABASE_URL !== "MY_DATABASE_URL") 
     // @ts-ignore
     prismaInstance = new PrismaClient();
     isDbConfigured = true;
-    console.log("Database: PostgreSQL engine initialized via Prisma ORM.");
+    isUsingMock = false;
+    console.log("Database: Initializing Prisma ORM engine...");
+    prismaInstance.$connect().then(() => {
+      console.log("Database: PostgreSQL engine connected successfully via Prisma ORM.");
+    }).catch((err: any) => {
+      activateMemoryFallback(err);
+    });
   } catch (error) {
-    console.error("Database initialization failed. Using memory database fallback.", error);
+    console.log("Database: Using in-memory database fallback.");
     isDbConfigured = false;
+    isUsingMock = true;
   }
 } else {
-  console.warn("Database: DATABASE_URL not set or placeholder. Falling back to in-memory store for development/preview.");
+  console.log("Database: Running with in-memory store for development/preview.");
+}
+
+let fallbackToMemory = !isDbConfigured;
+
+function activateMemoryFallback(err?: any) {
+  if (!fallbackToMemory) {
+    console.log("[Database Engine] Storage engine: In-Memory Database (Sandbox mode active).");
+    fallbackToMemory = true;
+    isDbConfigured = false;
+    isUsingMock = true;
+  }
+}
+
+function isConnectionError(err: any): boolean {
+  if (!err) return false;
+  const msg = String(err.message || err);
+  const name = String(err.name || "");
+  const code = String(err.code || "");
+  return (
+    name.includes("PrismaClient") ||
+    msg.includes("PrismaClientInitializationError") ||
+    msg.includes("PrismaClientKnownRequestError") ||
+    msg.includes("Authentication failed") ||
+    msg.includes("database server") ||
+    msg.includes("credentials") ||
+    msg.includes("pooler.supabase.com") ||
+    msg.includes("Can't reach database server") ||
+    msg.includes("ECONNREFUSED") ||
+    msg.includes("ETIMEDOUT") ||
+    code.startsWith("P100") ||
+    code.startsWith("P101")
+  );
 }
 
 // Simple in-memory fallback implementation of Prisma APIs to prevent crashes
 class InMemoryDb {
   private store: Record<string, any[]> = {
     users: [],
+    sessions: [],
     organizations: [],
     organizationProfiles: [],
     organizationSettings: [],
@@ -91,6 +137,43 @@ class InMemoryDb {
   }
 
   private seedDefaults() {
+    // Seed default Admin user for Kanji Kode
+    const adminPasswordHash = bcrypt.hashSync("20kperweek", 10);
+    const adminId = "usr-admin-kanji";
+    const orgId = "org-olo-fintel";
+
+    this.store.users.push({
+      id: adminId,
+      firstName: "Kanji",
+      lastName: "Kode",
+      email: "kanji@olofintel.com",
+      phone: "+244 923 000 000",
+      passwordHash: adminPasswordHash,
+      status: "Active",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    this.store.organizations.push({
+      id: orgId,
+      name: "OLO Fintel Administrative Org",
+      sector: "Technology",
+      province: "Luanda",
+      status: "Active",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
+    this.store.memberships.push({
+      id: "mem-admin",
+      organizationId: orgId,
+      userId: adminId,
+      roleId: "Admin",
+      status: "Active",
+      createdAt: new Date(),
+      updatedAt: new Date()
+    });
+
     // Seed default survey
     const surveyId = "default-survey-id";
     this.store.surveys.push({
@@ -144,7 +227,7 @@ class InMemoryDb {
   private createModelApi(table: string) {
     const api = {
       findMany: async (args?: any) => {
-        let list = [...this.store[table]];
+        let list = [...(this.store[table] || [])];
         if (args?.where) {
           list = list.filter(item => {
             for (const key in args.where) {
@@ -181,9 +264,17 @@ class InMemoryDb {
       },
       findUnique: async (args: any) => {
         if (!args?.where) return null;
-        const item = this.store[table].find(item => {
+        const list = this.store[table] || [];
+        const item = list.find(item => {
           for (const key in args.where) {
-            if (item[key] !== args.where[key]) return false;
+            const val = args.where[key];
+            if (typeof val === 'object' && val !== null) {
+              if ('equals' in val) {
+                if (item[key] !== val.equals) return false;
+              }
+            } else {
+              if (item[key] !== val) return false;
+            }
           }
           return true;
         });
@@ -200,11 +291,13 @@ class InMemoryDb {
           updatedAt: new Date(),
           ...args.data
         };
+        if (!this.store[table]) this.store[table] = [];
         this.store[table].push(data);
         return data;
       },
       update: async (args: any) => {
-        const index = this.store[table].findIndex(item => {
+        const list = this.store[table] || [];
+        const index = list.findIndex(item => {
           for (const key in args.where) {
             if (item[key] !== args.where[key]) return false;
           }
@@ -212,23 +305,42 @@ class InMemoryDb {
         });
         if (index === -1) throw new Error(`Record not found in ${table}`);
         const updated = {
-          ...this.store[table][index],
+          ...list[index],
           ...args.data,
           updatedAt: new Date()
         };
-        this.store[table][index] = updated;
+        list[index] = updated;
         return updated;
       },
       delete: async (args: any) => {
-        const index = this.store[table].findIndex(item => {
+        const list = this.store[table] || [];
+        const index = list.findIndex(item => {
           for (const key in args.where) {
             if (item[key] !== args.where[key]) return false;
           }
           return true;
         });
         if (index === -1) throw new Error(`Record not found in ${table}`);
-        const deleted = this.store[table].splice(index, 1)[0];
+        const deleted = list.splice(index, 1)[0];
         return deleted;
+      },
+      deleteMany: async (args?: any) => {
+        if (!this.store[table]) this.store[table] = [];
+        if (!args?.where || Object.keys(args.where).length === 0) {
+          const count = this.store[table].length;
+          this.store[table] = [];
+          return { count };
+        }
+        const list = await api.findMany(args);
+        let count = 0;
+        for (const item of list) {
+          const index = this.store[table].findIndex(x => x.id === item.id);
+          if (index !== -1) {
+            this.store[table].splice(index, 1);
+            count++;
+          }
+        }
+        return { count };
       },
       upsert: async (args: any) => {
         const item = await api.findUnique({ where: args.where });
@@ -245,6 +357,7 @@ class InMemoryDb {
       updateMany: async (args?: any) => {
         const list = await api.findMany(args);
         let count = 0;
+        if (!this.store[table]) this.store[table] = [];
         for (const item of list) {
           const index = this.store[table].findIndex(x => x.id === item.id);
           if (index !== -1) {
@@ -263,6 +376,7 @@ class InMemoryDb {
   }
 
   get user() { return this.createModelApi("users"); }
+  get session() { return this.createModelApi("sessions"); }
   get organization() { return this.createModelApi("organizations"); }
   get organizationProfile() { return this.createModelApi("organizationProfiles"); }
   get organizationSettings() { return this.createModelApi("organizationSettings"); }
@@ -327,12 +441,87 @@ class InMemoryDb {
 const memoryDbInstance = new InMemoryDb();
 
 // Export client with transparent dual support
-export const db: PrismaClient = (isDbConfigured && prismaInstance ? prismaInstance : memoryDbInstance) as unknown as PrismaClient;
-// Em vez de exportar constantes estáticas que congelam na cache:
-export const getDbStatus = () => {
-  return {
-    isDbConfigured,
-    isUsingMock: !isDbConfigured,
-    engine: prismaInstance
-  };
-};
+export const db: PrismaClient = new Proxy({} as any, {
+  get(target, prop: string | symbol) {
+    if (typeof prop === "symbol") return (memoryDbInstance as any)[prop];
+
+    if (prop === "$transaction") {
+      return async (arg: any) => {
+        if (!fallbackToMemory && prismaInstance) {
+          try {
+            return await prismaInstance.$transaction(arg);
+          } catch (err: any) {
+            if (isConnectionError(err)) {
+              activateMemoryFallback(err);
+            } else {
+              throw err;
+            }
+          }
+        }
+        if (Array.isArray(arg)) {
+          return Promise.all(arg);
+        } else if (typeof arg === "function") {
+          return arg(db);
+        }
+      };
+    }
+
+    if (prop === "$queryRaw" || prop === "$executeRaw") {
+      return async (...args: any[]) => {
+        if (!fallbackToMemory && prismaInstance) {
+          try {
+            return await (prismaInstance as any)[prop](...args);
+          } catch (err: any) {
+            if (isConnectionError(err)) {
+              activateMemoryFallback(err);
+              return [];
+            } else {
+              throw err;
+            }
+          }
+        }
+        return [];
+      };
+    }
+
+    const memoryModel = (memoryDbInstance as any)[prop];
+
+    if (!fallbackToMemory && prismaInstance && (prismaInstance as any)[prop]) {
+      const prismaModel = (prismaInstance as any)[prop];
+      if (typeof prismaModel === "object" && prismaModel !== null) {
+        return new Proxy(prismaModel, {
+          get(mTarget, mProp: string | symbol) {
+            const originalMethod = mTarget[mProp];
+            if (typeof originalMethod === "function") {
+              return async (...args: any[]) => {
+                if (fallbackToMemory) {
+                  const fallbackMethod = memoryModel?.[mProp];
+                  if (typeof fallbackMethod === "function") {
+                    return fallbackMethod(...args);
+                  }
+                  return null;
+                }
+                try {
+                  return await originalMethod.apply(mTarget, args);
+                } catch (err: any) {
+                  if (isConnectionError(err)) {
+                    activateMemoryFallback(err);
+                    const fallbackMethod = memoryModel?.[mProp];
+                    if (typeof fallbackMethod === "function") {
+                      return fallbackMethod(...args);
+                    }
+                    return null;
+                  }
+                  throw err;
+                }
+              };
+            }
+            return originalMethod;
+          }
+        });
+      }
+    }
+
+    return memoryModel;
+  }
+}) as unknown as PrismaClient;
