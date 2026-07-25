@@ -11,7 +11,7 @@ import { swaggerDocument } from "./src/server/swagger.ts";
 import { requireAuth, requireRoles, injectTenant } from "./src/server/middleware/auth.ts";
 
 // Controllers
-import { register, login, refresh, logout, updateProfile } from "./src/server/controllers/authController.ts";
+import { register, login, refresh, logout, updateProfile, me } from "./src/server/controllers/authController.ts";
 import { getActiveSurvey, submitResponse, getSurveyStatistics, getJuryDashboard } from "./src/server/controllers/surveyController.ts";
 import { getPublicPlatformMetrics, getExecutiveDashboard } from "./src/server/controllers/dashboardController.ts";
 import {
