@@ -229,21 +229,26 @@ export default function App() {
     setAuthLoading(true);
     setAuthError(null);
 
-    // Passo 1: Tentar Login Direto
     try {
+      // Passo 1: Tentar Login Direto
       let res = await fetch(`${API_BASE}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: ADMIN_AUTO_EMAIL, password: ADMIN_AUTO_PASS })
       });
 
-      let data = await res.json();
+      let data: any = {};
+      try {
+        data = await res.json();
+      } catch (e) {
+        data = {};
+      }
 
-      // Passo 2: Se o utilizador administrador não existir, cria-o automaticamente
-      if (!res.ok && (res.status === 404 || data.message?.includes("not found") || data.message?.includes("inexistente") || data.message?.includes("Inválidas") || data.message?.includes("inválidas"))) {
-        console.log("ℹ️ Administrador principal não encontrado. A criar registo automático...");
+      // Passo 2: Se o login falhar por qualquer motivo, tenta registar o administrador automaticamente
+      if (!res.ok) {
+        console.log("ℹ️ Login não teve sucesso. A registar/garantir administrador automático...");
         
-        res = await fetch(`${API_BASE}/api/v1/auth/register`, {
+        let regRes = await fetch(`${API_BASE}/api/v1/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -251,27 +256,54 @@ export default function App() {
             password: ADMIN_AUTO_PASS,
             firstName: "Kanji",
             lastName: "Kode",
-            role: "ADMIN"
+            role: "ADMIN",
+            organizationName: "OLO Fintel Administrative Org",
+            sector: "Technology"
           })
         });
         
-        data = await res.json();
+        let regData: any = {};
+        try {
+          regData = await regRes.json();
+        } catch (e) {
+          regData = {};
+        }
+
+        if (regRes.ok) {
+          res = regRes;
+          data = regData;
+        } else {
+          // Se o registo informou que o e-mail já existe (409 Conflict), tenta o login novamente
+          let retryLoginRes = await fetch(`${API_BASE}/api/v1/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: ADMIN_AUTO_EMAIL, password: ADMIN_AUTO_PASS })
+          });
+          if (retryLoginRes.ok) {
+            res = retryLoginRes;
+            try {
+              data = await retryLoginRes.json();
+            } catch (e) {}
+          }
+        }
       }
 
-      // Passo 3: Gravar credenciais e libertar a Consola se o token foi gerado
+      // Passo 3: Extrair token e autorizar acesso
       const token = data.token || data.data?.accessToken || data.data?.token || data.accessToken || (res.ok ? "session_admin_active" : null);
-      if (res.ok && token) {
+      if (token) {
         localStorage.setItem("adminAccessToken", token);
         setIsAdminAuthenticated(true);
         setDbFetchError(null);
         addLog("Autenticação administrativa automatizada com sucesso.", "SUCCESS");
         return token;
       } else {
-        setAuthError(data.message || "Falha no fluxo automatizado de Auth.");
+        const errMsg = data.message || "Falha no fluxo automatizado de Auth.";
+        setAuthError(errMsg);
         return null;
       }
     } catch (err: any) {
-      setAuthError("Servidor offline ou erro de rede no Render.");
+      const errMsg = "Servidor offline ou erro de rede no Render.";
+      setAuthError(errMsg);
       return null;
     } finally {
       setAuthLoading(false);
@@ -286,7 +318,7 @@ export default function App() {
       setDbFetchError("A autenticar administrador automaticamente...");
       token = await executeAutoAuth();
       if (!token) {
-        setDbFetchError("Não foi possível autenticar o administrador automático.");
+        setDbFetchError(authError || "Não foi possível autenticar o administrador automático.");
         return;
       }
     }
