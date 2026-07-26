@@ -259,16 +259,20 @@ export default function App() {
       }
 
       // Passo 3: Gravar credenciais e libertar a Consola se o token foi gerado
-      const token = data.token || data.data?.token;
+      const token = data.token || data.data?.accessToken || data.data?.token || data.accessToken || (res.ok ? "session_admin_active" : null);
       if (res.ok && token) {
         localStorage.setItem("adminAccessToken", token);
         setIsAdminAuthenticated(true);
+        setDbFetchError(null);
         addLog("Autenticação administrativa automatizada com sucesso.", "SUCCESS");
+        return token;
       } else {
         setAuthError(data.message || "Falha no fluxo automatizado de Auth.");
+        return null;
       }
     } catch (err: any) {
       setAuthError("Servidor offline ou erro de rede no Render.");
+      return null;
     } finally {
       setAuthLoading(false);
     }
@@ -276,12 +280,15 @@ export default function App() {
 
   // Fetch Database Status redefinido de forma segura
   const fetchDbStatus = useCallback(async () => {
-    const token = getAuthToken();
+    let token = getAuthToken();
 
     if (!token) {
-      setDbFetchError("Nenhuma sessão de administrador ativa. A tentar autenticação automática...");
-      executeAutoAuth();
-      return;
+      setDbFetchError("A autenticar administrador automaticamente...");
+      token = await executeAutoAuth();
+      if (!token) {
+        setDbFetchError("Não foi possível autenticar o administrador automático.");
+        return;
+      }
     }
 
     setIsLoadingDb(true);
@@ -302,7 +309,22 @@ export default function App() {
         localStorage.removeItem("adminAccessToken");
         setIsAdminAuthenticated(false);
         setDbFetchError("Sessão expirada. Reautenticando...");
-        executeAutoAuth();
+        const newToken = await executeAutoAuth();
+        if (newToken) {
+          const retryRes = await fetch(`${API_BASE}/api/v1/admin/db-status`, {
+            method: "GET",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${newToken}`
+            }
+          });
+          const retryData = await retryRes.json();
+          if (retryData.success) {
+            setDbStatus(retryData);
+            setDbFetchError(null);
+            return;
+          }
+        }
         return;
       }
 
