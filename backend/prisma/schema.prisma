@@ -392,6 +392,9 @@ model Vessel {
   name               String
   registrationNumber String       @unique
   capacity           Float        @default(0.0) // in tons
+  engineBrand        String?
+  enginePower        String?
+  details            String?
   status             String       @default("Operational") // Operational, Maintenance, Sea, Docked
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
