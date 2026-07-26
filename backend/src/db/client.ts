@@ -22,8 +22,9 @@ if (process.env.DATABASE_URL && process.env.DATABASE_URL !== "MY_DATABASE_URL") 
     console.log("Database: Initializing Prisma ORM engine...");
     prismaInstance.$connect().then(() => {
       console.log("Database: PostgreSQL engine connected successfully via Prisma ORM.");
+      fallbackToMemory = false;
     }).catch((err: any) => {
-      activateMemoryFallback(err);
+      console.warn("Database: Initial connection warning (will retry on query):", err?.message || err);
     });
   } catch (error) {
     console.log("Database: Using in-memory database fallback.");
@@ -488,7 +489,7 @@ export const db: PrismaClient = new Proxy({} as any, {
 
     const memoryModel = (memoryDbInstance as any)[prop];
 
-    if (!fallbackToMemory && prismaInstance && (prismaInstance as any)[prop]) {
+    if (prismaInstance && (prismaInstance as any)[prop]) {
       const prismaModel = (prismaInstance as any)[prop];
       if (typeof prismaModel === "object" && prismaModel !== null) {
         return new Proxy(prismaModel, {
@@ -496,15 +497,10 @@ export const db: PrismaClient = new Proxy({} as any, {
             const originalMethod = mTarget[mProp];
             if (typeof originalMethod === "function") {
               return async (...args: any[]) => {
-                if (fallbackToMemory) {
-                  const fallbackMethod = memoryModel?.[mProp];
-                  if (typeof fallbackMethod === "function") {
-                    return fallbackMethod(...args);
-                  }
-                  return null;
-                }
                 try {
-                  return await originalMethod.apply(mTarget, args);
+                  const res = await originalMethod.apply(mTarget, args);
+                  fallbackToMemory = false;
+                  return res;
                 } catch (err: any) {
                   if (isConnectionError(err)) {
                     activateMemoryFallback(err);
