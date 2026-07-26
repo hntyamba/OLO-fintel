@@ -404,135 +404,665 @@ export default function App() {
 
   const ENDPOINTS = [
     {
-      name: "Autenticação: Registo de Novo Gestor",
+      name: "1. Autenticação: Registo de Utilizador e Organização",
+      module: "AUTENTICAÇÃO & PERFIL",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
       method: "POST",
       path: "/api/v1/auth/register",
+      aliases: ["/api/auth/register"],
       auth: "Livre (Público)",
-      tenant: "Não aplicável",
-      description: "Cria uma conta de utilizador gestor e cria a respetiva Organização com papel de 'Owner'.",
+      tenant: "Automático",
+      description: "Registo de novos utilizadores e criação automática da organização/cooperativa.",
       payload: {
-        firstName: "Kiala",
-        lastName: "Mateus",
-        email: "kiala.mateus@coop.ao",
-        password: "SenhaSuperSegura",
-        phone: "+244923000000",
-        organizationName: "Cooperativa Agrícola de Catabola",
-        sector: "Agriculture"
+        firstName: "Vala",
+        lastName: "Silva",
+        email: "vala@exemplo.com",
+        password: "12345678",
+        phone: "+244900000000",
+        organizationName: "Mana Vala",
+        sector: "Fishing"
       }
     },
     {
-      name: "Autenticação: Iniciar Sessão (Login)",
+      name: "2. Autenticação: Iniciar Sessão (Login)",
+      module: "AUTENTICAÇÃO & PERFIL",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
       method: "POST",
       path: "/api/v1/auth/login",
+      aliases: ["/api/auth/login"],
       auth: "Livre (Público)",
       tenant: "Não aplicável",
-      description: "Autentica o utilizador e devolve tokens JWT de acesso (1h) e de atualização (7 dias).",
+      description: "Autenticação e geração de token JWT.",
       payload: {
-        email: "raisingpigs252@gmail.com",
-        password: "SenhaSuperSegura"
+        email: "vala@exemplo.com",
+        password: "12345678"
       }
     },
     {
-      name: "Estudo de Mercado: Obter Estudo Ativo",
+      name: "3. Autenticação: Obter Dados do Utilizador (Me)",
+      module: "AUTENTICAÇÃO & PERFIL",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
       method: "GET",
-      path: "/api/v1/surveys/active",
-      auth: "Livre (Público)",
-      tenant: "Não aplicável",
-      description: "Retorna a estrutura das perguntas do estudo de validação de mercado (Epic 15) e progresso.",
+      path: "/api/v1/auth/me/use-rzkk70rle",
+      aliases: ["/api/auth/me/use-rzkk70rle", "/api/v1/auth/me"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Automático",
+      description: "Obtém os dados do utilizador autenticado e o estado da sua organização.",
       payload: null
     },
     {
-      name: "Estudo de Mercado: Submeter Resposta",
+      name: "4. Autenticação: Atualizar Perfil de Utilizador",
+      module: "AUTENTICAÇÃO & PERFIL",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
       method: "POST",
-      path: "/api/v1/surveys/responses",
-      auth: "Livre (Público)",
-      tenant: "Não aplicável",
-      description: "Regista as respostas de um respondente. Controlado por fingerprint de IP para evitar duplicados.",
+      path: "/api/v1/auth/profile/update",
+      aliases: ["/api/auth/profile/update"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Opcional",
+      description: "Atualiza os dados de contacto, província ou credenciais do utilizador.",
       payload: {
-        surveyId: "default-survey-id",
-        organizationTypeHint: "Cooperativa",
-        provinceHint: "Benguela",
-        personaHint: "Presidente",
-        answers: [
-          { questionId: "q-sector", value: "Agricultura" },
-          { questionId: "q-province", value: "Benguela" },
-          { questionId: "q-challenge", value: "Falta de controle de fluxo de caixa." }
-        ]
+        userId: "use-rzkk70rle",
+        firstName: "Vala",
+        lastName: "Silva",
+        phone: "+244923000000",
+        province: "Luanda"
       }
     },
     {
-      name: "Estatísticas: Painel de Júri de Validação",
+      name: "5. Operações Pesca: Listar Embarcações Marítimas",
+      module: "OPERAÇÕES - PESCA",
+      sector: "FISHERIES",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/operations/fisheries/vessels",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Lista todas as embarcações / frota marítima associadas à organização.",
+      payload: null
+    },
+    {
+      name: "6. Operações Pesca: Cadastrar Nova Embarcação",
+      module: "OPERAÇÕES - PESCA",
+      sector: "FISHERIES",
+      allowed_roles: ["OWNER"],
+      method: "POST",
+      path: "/api/v1/operations/fisheries/vessels",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Cadastra uma nova embarcação marítima.",
+      payload: {
+        name: "Navegador do Atlântico",
+        registrationNumber: "LA-2026-X",
+        capacity: 22.5,
+        engineBrand: "Yamaha",
+        enginePower: "250 HP",
+        details: "Embarcação artesanal reformada em 2026"
+      }
+    },
+    {
+      name: "7. Operações Pesca: Listar Registos de Capturas",
+      module: "OPERAÇÕES - PESCA",
+      sector: "FISHERIES",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/operations/fisheries/catches",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Lista os registos de capturas/captura diária de pesca da organização.",
+      payload: null
+    },
+    {
+      name: "8. Operações Pesca: Registar Nova Captura de Pescado",
+      module: "OPERAÇÕES - PESCA",
+      sector: "FISHERIES",
+      allowed_roles: ["OWNER"],
+      method: "POST",
+      path: "/api/v1/operations/fisheries/catches",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Regista uma nova captura de pesca.",
+      payload: {
+        vesselId: "ves-be7s1w2li",
+        species: "Garoupa / Carapau",
+        quantityKg: 1200,
+        catchDate: "2026-07-25",
+        estimatedValueAoa: 2400000
+      }
+    },
+    {
+      name: "9. Operações Agricultura: Listar Parcelas Agrícolas",
+      module: "OPERAÇÕES - AGRICULTURA",
+      sector: "AGRICULTURE",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/operations/agriculture/parcels",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Lista as parcelas/terrenos agrícolas da organização.",
+      payload: null
+    },
+    {
+      name: "10. Operações Agricultura: Cadastrar Nova Parcela",
+      module: "OPERAÇÕES - AGRICULTURA",
+      sector: "AGRICULTURE",
+      allowed_roles: ["OWNER"],
+      method: "POST",
+      path: "/api/v1/operations/agriculture/parcels",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Cadastra uma nova parcela agrícola.",
+      payload: {
+        name: "Parcela Sol Nascente",
+        areaHectares: 45,
+        cropType: "Milho / Mandioca",
+        irrigationType: "Gotejamento / Gravidade",
+        province: "Huambo"
+      }
+    },
+    {
+      name: "11. Operações Pecuária: Listar Rebanhos / Efetivo Pecuário",
+      module: "OPERAÇÕES - PECUÁRIA",
+      sector: "LIVESTOCK",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/operations/livestock/herds",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Lista os rebanhos / efetivo pecuário (Bovino, Caprino, Suíno).",
+      payload: null
+    },
+    {
+      name: "12. Operações Comércio: Listar Inventário e Stock",
+      module: "OPERAÇÕES - COMÉRCIO E SERVIÇOS",
+      sector: "COMMERCE",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/operations/commerce/inventories",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Lista o inventário / stock de comércio.",
+      payload: null
+    },
+    {
+      name: "13. Operações Unificadas: Listar Operações por Organização",
+      module: "OPERAÇÕES - GENÉRICO / RETROCOMPATIBILIDADE",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/operations/list/org-dwgy5kqb6",
+      aliases: ["/api/operations/list/org-dwgy5kqb6"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "No URL / Header",
+      description: "Retorna o registo unificado de operações da organização para abastecer os dashboards.",
+      payload: null
+    },
+    {
+      name: "14. Operações Unificadas: Adicionar Operação Genérica",
+      module: "OPERAÇÕES - GENÉRICO / RETROCOMPATIBILIDADE",
+      sector: "ALL",
+      allowed_roles: ["OWNER"],
+      method: "POST",
+      path: "/api/v1/operations/add",
+      aliases: ["/api/operations/add"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "In Body / Header",
+      description: "Adiciona uma nova operação genérica no sistema.",
+      payload: {
+        organizationId: "org-dwgy5kqb6",
+        type: "PESCA",
+        title: "Desembarque do Navio Atlântico",
+        value: 2400000,
+        details: "1200kg de pescados variados"
+      }
+    },
+    {
+      name: "15. Documentos & KYC: Listar Documentos Submetidos",
+      module: "DOCUMENTOS & KYC",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/documents/list/org-dwgy5kqb6",
+      aliases: ["/api/documents/list/org-dwgy5kqb6"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "No URL / Header",
+      description: "Lista todos os documentos KYC / Legais submetidos pela organização.",
+      payload: null
+    },
+    {
+      name: "16. Documentos & KYC: Enviar Novo Documento KYC",
+      module: "DOCUMENTOS & KYC",
+      sector: "ALL",
+      allowed_roles: ["OWNER"],
+      method: "POST",
+      path: "/api/v1/documents/upload",
+      aliases: ["/api/documents/upload"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "In Body / Header",
+      description: "Envio de novos documentos KYC para análise.",
+      payload: {
+        organizationId: "org-dwgy5kqb6",
+        title: "Demonstração Financeira 2025",
+        category: "FINANCIAL",
+        fileBase64: "data:application/pdf;base64,JVBERi0xLjQK..."
+      }
+    },
+    {
+      name: "17. Diagnóstico & Survey: Submeter Inquérito de Elegibilidade",
+      module: "DIAGNOSTICO & SURVEY",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
+      method: "POST",
+      path: "/api/v1/survey/submit",
+      aliases: ["/api/survey/submit"],
+      auth: "Livre (Público / Token)",
+      tenant: "In Body",
+      description: "Guarda as respostas do Inquérito de Elegibilidade / Diagnóstico e calcula a pontuação de bancabilidade.",
+      payload: {
+        sector: "Fishing",
+        annualRevenueAoa: 50000000,
+        hasBankAccount: true,
+        hasAccountingRecords: true,
+        employeeCount: 15,
+        answers: {
+          governance: "COOPERATIVE",
+          creditHistory: "CLEAN"
+        }
+      }
+    },
+    {
+      name: "18. Elegibilidade & Crédito: Obter Candidaturas de Financiamento",
+      module: "ELEGIBILIDADE & CREDITO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/funding/applications/org-dwgy5kqb6",
+      aliases: ["/api/funding/applications/org-dwgy5kqb6"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "No URL / Header",
+      description: "Obtém as candidaturas ativas de financiamento e estado de aprovação.",
+      payload: null
+    },
+    {
+      name: "19. Elegibilidade & Crédito: Submeter Candidatura a Crédito",
+      module: "ELEGIBILIDADE & CREDITO",
+      sector: "ALL",
+      allowed_roles: ["OWNER"],
+      method: "POST",
+      path: "/api/v1/funding/apply",
+      aliases: ["/api/funding/apply"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "In Body / Header",
+      description: "Submete o pedido formal de candidatura a crédito ou linha de garantia.",
+      payload: {
+        organizationId: "org-dwgy5kqb6",
+        requestedAmountAoa: 30000000,
+        purpose: "Aquisição de motor de embarcação e arrefecimento de pescado",
+        termMonths: 24
+      }
+    },
+    {
+      name: "20. Copiloto & IA: Consultoria Inteligente (Gemini AI)",
+      module: "COPILOTO & IA",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "ANALYST", "SUPERADMIN"],
+      method: "POST",
+      path: "/api/v1/ai/advisor",
+      aliases: ["/api/ai/advisor"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "In Body / Header",
+      description: "Consultoria inteligente com base nos dados operacionais, financeiros e KYC da organização.",
+      payload: {
+        organizationId: "org-dwgy5kqb6",
+        prompt: "Como posso aumentar a pontuação de financiamento da minha cooperativa de pesca?",
+        context: {
+          sector: "Fishing",
+          fundingScore: 78
+        }
+      }
+    },
+    {
+      name: "21. Administração & Júri: Painel de Controlo do Júri/Analistas",
+      module: "ADMINISTRAÇÃO & JÚRI",
+      sector: "ALL",
+      allowed_roles: ["SUPERADMIN", "ANALYST", "CONSULTANT"],
       method: "GET",
       path: "/api/v1/surveys/jury-dashboard",
-      auth: "Autenticado (Jury / Analyst / Admin)",
+      auth: "Autenticado (Bearer Token)",
       tenant: "Opcional",
-      description: "Disponibiliza dados agregados e métricas anónimas. Requer o perfil correspondente.",
+      description: "Painel de controlo para Júri/Analistas acompanharem todos os diagnósticos e projetos submetidos.",
       payload: null
     },
     {
-      name: "Consultoria: Chat com Advisor de IA (Gemini)",
+      name: "22. Administração & Júri: Aprovação / Rejeição de Documento KYC",
+      module: "ADMINISTRAÇÃO & JÚRI",
+      sector: "ALL",
+      allowed_roles: ["SUPERADMIN", "ANALYST"],
       method: "POST",
-      path: "/api/v1/ai/chat",
-      auth: "Autenticado (Qualquer papel)",
-      tenant: "Requerido (Cabeçalho 'x-organization-id')",
-      description: "Envia o prompt para o consultor especializado selecionado (Executive, Financial, Operations, Funding).",
+      path: "/api/v1/admin/document-action",
+      aliases: ["/api/admin/document-action"],
+      auth: "Autenticado (Bearer Token)",
+      tenant: "In Body / Header",
+      description: "Aprova ou rejeita formalmente um documento KYC de uma organização.",
       payload: {
-        prompt: "Como reduzir os custos na colheita e otimizar adubos?",
-        advisorType: "Operations"
+        documentId: "doc-8812",
+        action: "APPROVE",
+        feedback: "Documento verificado com sucesso junto da conservatória."
       }
     },
     {
-      name: "Funding: Calcular Score de Elegibilidade",
+      name: "23. Administração & Júri: Lista Global de Organizações",
+      module: "ADMINISTRAÇÃO & JÚRI",
+      sector: "ALL",
+      allowed_roles: ["SUPERADMIN"],
       method: "GET",
-      path: "/api/v1/funding/score",
-      auth: "Autenticado (Owner / FinancialOfficer / Analyst / Admin)",
-      tenant: "Requerido (Cabeçalho 'x-organization-id')",
-      description: "Calcula dinamicamente a prontidão financeira de 0 a 100 com base nos lançamentos reais.",
-      payload: null
-    },
-    {
-      name: "Funding: Submeter Dossiê à Banca",
-      method: "POST",
-      path: "/api/v1/funding/applications",
-      auth: "Autenticado (Owner / FinancialOfficer / Admin)",
-      tenant: "Requerido (Cabeçalho 'x-organization-id')",
-      description: "Cria um dossiê de candidatura de crédito e envia para análise analítica dos bancos parceiros.",
-      payload: {
-        requestedAmount: 5000000,
-        purpose: "Compra de Trator de Pneus e Equipamentos de Rega por Aspersão"
-      }
-    },
-    {
-      name: "Notificações: Listar Notificações",
-      method: "GET",
-      path: "/api/v1/notifications",
-      auth: "Autenticado (Qualquer papel)",
+      path: "/api/v1/admin/organizations",
+      aliases: ["/api/admin/organizations"],
+      auth: "Autenticado (Bearer Token)",
       tenant: "Não aplicável",
-      description: "Obtém todas as notificações enviadas para o utilizador autenticado (notificações operacionais, financeiras, etc.).",
+      description: "Lista global de organizações / cooperativas no Fintel OS.",
       payload: null
     },
     {
-      name: "Notificações: Marcar Todas como Lidas",
+      name: "24. Sistema: Healthcheck do Servidor Render",
+      module: "SISTEMA",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
+      method: "GET",
+      path: "/api/health",
+      auth: "Livre (Público)",
+      tenant: "Não aplicável",
+      description: "Healthcheck e estado do servidor NestJS/Render.",
+      payload: null
+    },
+    {
+      name: "25. REST Users: Listar Utilizadores",
+      module: "REST - UTILIZADORES",
+      sector: "ALL",
+      allowed_roles: ["SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/users",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Não aplicável",
+      description: "Lista de utilizadores registados no sistema.",
+      payload: null
+    },
+    {
+      name: "26. REST Users: Obter Detalhes do Utilizador por ID",
+      module: "REST - UTILIZADORES",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
+      method: "GET",
+      path: "/api/v1/users/use-rzkk70rle",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Não aplicável",
+      description: "Retorna o perfil completo de um utilizador específico.",
+      payload: null
+    },
+    {
+      name: "27. REST Users: Atualizar Utilizador por ID",
+      module: "REST - UTILIZADORES",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
       method: "PATCH",
-      path: "/api/v1/notifications/read-all",
-      auth: "Autenticado (Qualquer papel)",
+      path: "/api/v1/users/use-rzkk70rle",
+      auth: "Autenticado (Bearer Token)",
       tenant: "Não aplicável",
-      description: "Marca instantaneamente todas as notificações pendentes do utilizador como lidas.",
-      payload: {}
+      description: "Atualiza atributos do utilizador (nome, telefone, estado).",
+      payload: {
+        firstName: "Vala",
+        lastName: "Silva",
+        phone: "+244923111222",
+        status: "Active"
+      }
     },
     {
-      name: "Notificações: Criar Notificação Simulada",
-      method: "POST",
-      path: "/api/v1/notifications",
-      auth: "Autenticado (Qualquer papel)",
+      name: "28. REST Users: Remover Utilizador por ID",
+      module: "REST - UTILIZADORES",
+      sector: "ALL",
+      allowed_roles: ["SUPERADMIN"],
+      method: "DELETE",
+      path: "/api/v1/users/use-rzkk70rle",
+      auth: "Autenticado (Bearer Token)",
       tenant: "Não aplicável",
-      description: "Dispara/Simula o envio de uma notificação customizada para fins de auditoria ou alertamento operacional.",
+      description: "Remove ou desativa um utilizador no sistema.",
+      payload: null
+    },
+    {
+      name: "29. REST Organizations: Criar Nova Organização",
+      module: "REST - ORGANIZAÇÕES",
+      sector: "ALL",
+      allowed_roles: ["ALL"],
+      method: "POST",
+      path: "/api/v1/organizations",
+      auth: "Autenticado / Livre",
+      tenant: "Automático",
+      description: "Cria uma nova cooperativa/empresa na plataforma.",
       payload: {
-        userId: "usr-sim-uuid-benguela",
-        type: "Operational",
-        title: "Alerta de Colheita Crítica",
-        body: "A humidade do solo no Setor C da fazenda atingiu limites críticos. Agendar irrigação prioritária."
+        name: "Cooperativa Agrícola do Huambo",
+        sector: "Agriculture",
+        province: "Huambo",
+        taxId: "500098231"
       }
+    },
+    {
+      name: "30. REST Organizations: Listar Todas as Organizações",
+      module: "REST - ORGANIZAÇÕES",
+      sector: "ALL",
+      allowed_roles: ["SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/organizations",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Não aplicável",
+      description: "Listagem RESTful de organizações ativas.",
+      payload: null
+    },
+    {
+      name: "31. REST Organizations: Obter Organização por ID",
+      module: "REST - ORGANIZAÇÕES",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "SUPERADMIN", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/organizations/org-dwgy5kqb6",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Via ID no URL",
+      description: "Obtém detalhes e perfil de uma organização por ID.",
+      payload: null
+    },
+    {
+      name: "32. REST Organizations: Atualizar Organização por ID",
+      module: "REST - ORGANIZAÇÕES",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "SUPERADMIN"],
+      method: "PATCH",
+      path: "/api/v1/organizations/org-dwgy5kqb6",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Via ID no URL",
+      description: "Atualiza os dados cadastrais da organização.",
+      payload: {
+        name: "Mana Vala - Cooperativa de Pesca",
+        province: "Luanda",
+        taxId: "5412982310"
+      }
+    },
+    {
+      name: "33. REST Financial: Criar Registo Financeiro",
+      module: "REST - FINANCEIRO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "FINANCIAL"],
+      method: "POST",
+      path: "/api/v1/financial-records",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Cria um novo registo de receita ou despesa.",
+      payload: {
+        organizationId: "org-dwgy5kqb6",
+        type: "REVENUE",
+        amount: 2400000,
+        category: "Vendas Pescado",
+        description: "Venda de lote de garoupa",
+        date: "2026-07-25"
+      }
+    },
+    {
+      name: "34. REST Financial: Listar Registos Financeiros",
+      module: "REST - FINANCEIRO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "FINANCIAL", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/financial-records",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Lista o histórico unificado de lançamentos financeiros.",
+      payload: null
+    },
+    {
+      name: "35. REST Financial: Obter Registo Financeiro por ID",
+      module: "REST - FINANCEIRO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "FINANCIAL"],
+      method: "GET",
+      path: "/api/v1/financial-records/rev-101",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Via ID no URL",
+      description: "Retorna o detalhe de um lançamento financeiro.",
+      payload: null
+    },
+    {
+      name: "36. REST Financial: Atualizar Registo Financeiro por ID",
+      module: "REST - FINANCEIRO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "FINANCIAL"],
+      method: "PATCH",
+      path: "/api/v1/financial-records/rev-101",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Via ID no URL",
+      description: "Edita valor ou descrição de um lançamento financeiro.",
+      payload: {
+        amount: 2500000,
+        description: "Ajuste do valor de venda lote Garoupa"
+      }
+    },
+    {
+      name: "37. REST Financial: Remover Registo Financeiro por ID",
+      module: "REST - FINANCEIRO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "FINANCIAL"],
+      method: "DELETE",
+      path: "/api/v1/financial-records/rev-101",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Via ID no URL",
+      description: "Elimina um registo financeiro por ID.",
+      payload: null
+    },
+    {
+      name: "38. REST Productions: Registar Lote de Produção",
+      module: "REST - PRODUÇÃO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "OPERATIONS"],
+      method: "POST",
+      path: "/api/v1/productions",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Regista um novo lote de colheita, pesca ou produto comercial.",
+      payload: {
+        organizationId: "org-dwgy5kqb6",
+        sector: "Fishing",
+        batchName: "Desembarque Garoupa / Carapau",
+        quantity: 1200,
+        unit: "kg",
+        valueAoa: 2400000
+      }
+    },
+    {
+      name: "39. REST Productions: Listar Registos de Produção",
+      module: "REST - PRODUÇÃO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "OPERATIONS", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/productions",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Lista o histórico de volumes e lotes de produção.",
+      payload: null
+    },
+    {
+      name: "40. REST Productions: Atualizar Lote de Produção por ID",
+      module: "REST - PRODUÇÃO",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "OPERATIONS"],
+      method: "PATCH",
+      path: "/api/v1/productions/prod-881",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Via ID no URL",
+      description: "Atualiza quantidade ou valor estimado de um lote de produção.",
+      payload: {
+        quantity: 1350,
+        valueAoa: 2700000
+      }
+    },
+    {
+      name: "41. REST Reports: Resumo Financeiro Consolidado",
+      module: "REST - RELATÓRIOS",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "FINANCIAL", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/reports/financial-summary",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Retorna o acumulado de receitas, despesas, lucro líquido e margem operatória.",
+      payload: null
+    },
+    {
+      name: "42. REST Reports: Relatório de Fluxo de Caixa (Cashflow)",
+      module: "REST - RELATÓRIOS",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "FINANCIAL", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/reports/cashflow",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Gera o relatório mensal/trimestral de fluxo de caixa.",
+      payload: null
+    },
+    {
+      name: "43. REST Reports: Pontuação de Prontidão de Crédito (Credit Readiness)",
+      module: "REST - RELATÓRIOS",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "ANALYST", "SUPERADMIN"],
+      method: "GET",
+      path: "/api/v1/reports/credit-readiness",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Relatório com a pontuação e os vetores de bancabilidade/elegibilidade.",
+      payload: null
+    },
+    {
+      name: "44. REST Dashboard: Visão Geral de Indicadores",
+      module: "REST - DASHBOARD",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "ANALYST", "SUPERADMIN"],
+      method: "GET",
+      path: "/api/v1/dashboard/overview",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Visão executiva agregada para o painel de bordo.",
+      payload: null
+    },
+    {
+      name: "45. REST Dashboard: KPIs Operacionais e Financeiros",
+      module: "REST - DASHBOARD",
+      sector: "ALL",
+      allowed_roles: ["OWNER", "ANALYST"],
+      method: "GET",
+      path: "/api/v1/dashboard/kpis",
+      auth: "Autenticado (Bearer Token)",
+      tenant: "Requerido (x-organization-id)",
+      description: "Retorna métricas chave de desempenho (crescimento, faturação, bancabilidade).",
+      payload: null
     }
   ];
 
@@ -542,10 +1072,11 @@ export default function App() {
     const endpoint = ENDPOINTS[selectedEndpointIdx];
     
     try {
+      const activeToken = getAuthToken() || "mock-access-token-jwt";
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
-        "Authorization": "Bearer mock-access-token-jwt",
-        "x-organization-id": "org-sim-uuid-benguela"
+        "Authorization": `Bearer ${activeToken}`,
+        "x-organization-id": "org-dwgy5kqb6"
       };
 
       const options: RequestInit = {
@@ -2180,7 +2711,19 @@ export default function App() {
 
                   <div>
                     <h4 className="text-xs font-bold text-white">{ENDPOINTS[selectedEndpointIdx]?.name}</h4>
-                    <p className="text-xs text-zinc-400 mt-1 leading-relaxed">
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {ENDPOINTS[selectedEndpointIdx]?.module && (
+                        <span className="text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded font-mono font-bold">
+                          {ENDPOINTS[selectedEndpointIdx]?.module}
+                        </span>
+                      )}
+                      {ENDPOINTS[selectedEndpointIdx]?.sector && (
+                        <span className="text-[9px] bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-mono font-bold">
+                          SECTOR: {ENDPOINTS[selectedEndpointIdx]?.sector}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-xs text-zinc-400 mt-2 leading-relaxed">
                       {ENDPOINTS[selectedEndpointIdx]?.description}
                     </p>
                   </div>
@@ -2194,6 +2737,20 @@ export default function App() {
                       <span className="text-zinc-500">Escopo Multi-Tenant:</span>
                       <span className="text-zinc-300 font-bold">{ENDPOINTS[selectedEndpointIdx]?.tenant}</span>
                     </div>
+                    {ENDPOINTS[selectedEndpointIdx]?.allowed_roles && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-500">Papéis Permitidos:</span>
+                        <span className="text-emerald-400 font-bold">{ENDPOINTS[selectedEndpointIdx]?.allowed_roles.join(", ")}</span>
+                      </div>
+                    )}
+                    {ENDPOINTS[selectedEndpointIdx]?.aliases && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-zinc-500">Aliases (Retro):</span>
+                        <span className="text-zinc-400 text-[10px] text-right font-mono">
+                          {ENDPOINTS[selectedEndpointIdx]?.aliases.join(", ")}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   {/* CODE GENERATOR: cURL COMPILER */}
@@ -2288,3 +2845,4 @@ export default function App() {
     </div>
   );
 }
+
