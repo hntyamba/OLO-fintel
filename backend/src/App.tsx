@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
+
+const API_BASE = ((import.meta as any).env?.VITE_API_URL || "").replace(/\/$/, "");
 import { 
   Sparkles, 
   TrendingUp, 
@@ -62,7 +64,7 @@ export default function App() {
   // SIMULATION STATE (Owner / Sector / User Role Selector)
   // -------------------------------------------------------------
   const [activeSector, setActiveSector] = useState<"Agriculture" | "Livestock" | "Fisheries" | "Commerce">("Agriculture");
-  const [activeRole, setActiveRole] = useState<"Owner" | "FinancialOfficer" | "Analyst" | "Jury" | "Guest" | "Admin">("Admin");
+  const [activeRole, setActiveRole] = useState<"Owner" | "FinancialOfficer" | "Analyst" | "Jury" | "Guest" | "Admin">("Owner");
   const [activeProvince, setActiveProvince] = useState<string>("Benguela");
   const [orgName, setOrgName] = useState<string>("Cooperativa Agrícola de Catabola");
   const [nifValue, setNifValue] = useState<string>("5001228941");
@@ -192,11 +194,12 @@ export default function App() {
     setSysLogs(prev => [{ time, action, type }, ...prev].slice(0, 30));
   };
 
-// -------------------------------------------------------------
+  // -------------------------------------------------------------
   // ADMIN/DEVELOPER CONSOLE STATE & UTILITIES
   // -------------------------------------------------------------
   const [activeTab, setActiveTab] = useState<"simulator" | "database" | "api">("simulator");
   const [dbStatus, setDbStatus] = useState<any>(null);
+  const [dbFetchError, setDbFetchError] = useState<string | null>(null);
   const [isLoadingDb, setIsLoadingDb] = useState(false);
   const [dbSuccessMsg, setDbSuccessMsg] = useState("");
   const [selectedEndpointIdx, setSelectedEndpointIdx] = useState(0);
@@ -217,49 +220,7 @@ export default function App() {
   // Helper único para ler o Token
   const getAuthToken = useCallback(() => localStorage.getItem("adminAccessToken"), []);
 
-  // Fetch Database Status redefinido de forma segura
-  const fetchDbStatus = useCallback(async () => {
-    const token = getAuthToken();
-
-    if (!token) {
-      setAuthError("No active admin session. Please log in.");
-      return;
-    }
-
-    setIsLoadingDb(true);
-    setAuthError(null);
-
-    try {
-      const res = await fetch("/api/v1/admin/db-status", {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
-        },
-      });
-
-      if (res.status === 401 || res.status === 403) {
-        localStorage.removeItem("adminAccessToken");
-        setIsAdminAuthenticated(false); // Força retorno ao ecrã de login
-        setAuthError("Session expired. Please log in again.");
-        return;
-      }
-
-      const data = await res.json();
-      if (data.success) {
-        setDbStatus(data);
-      } else {
-        setAuthError(data.message || "Failed to fetch database status.");
-      }
-    } catch (err: any) {
-      console.error("Erro a carregar status da BD:", err);
-      setAuthError("Network error while reaching the server.");
-    } finally {
-      setIsLoadingDb(false);
-    }
-  }, [getAuthToken]);
-
-   // Credenciais administrativas padrão para a Consola Exclusiva
+  // Credenciais administrativas padrão para a Consola Exclusiva
   const ADMIN_AUTO_EMAIL = "kanji@olofintel.com";
   const ADMIN_AUTO_PASS = "20kperweek";
 
@@ -270,7 +231,7 @@ export default function App() {
 
     // Passo 1: Tentar Login Direto
     try {
-      let res = await fetch("/api/v1/auth/login", {
+      let res = await fetch(`${API_BASE}/api/v1/auth/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: ADMIN_AUTO_EMAIL, password: ADMIN_AUTO_PASS })
@@ -279,10 +240,10 @@ export default function App() {
       let data = await res.json();
 
       // Passo 2: Se o utilizador administrador não existir, cria-o automaticamente
-      if (!res.ok && (res.status === 404 || data.message?.includes("not found") || data.message?.includes("inexistente"))) {
+      if (!res.ok && (res.status === 404 || data.message?.includes("not found") || data.message?.includes("inexistente") || data.message?.includes("Inválidas") || data.message?.includes("inválidas"))) {
         console.log("ℹ️ Administrador principal não encontrado. A criar registo automático...");
         
-        res = await fetch("/api/v1/auth/register", {
+        res = await fetch(`${API_BASE}/api/v1/auth/register`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -290,7 +251,7 @@ export default function App() {
             password: ADMIN_AUTO_PASS,
             firstName: "Kanji",
             lastName: "Kode",
-            role: "ADMIN" // Força o privilégio no backend
+            role: "ADMIN"
           })
         });
         
@@ -298,47 +259,79 @@ export default function App() {
       }
 
       // Passo 3: Gravar credenciais e libertar a Consola se o token foi gerado
-      if (res.ok && data.token) {
-        localStorage.setItem("adminAccessToken", data.token);
+      const token = data.token || data.data?.token;
+      if (res.ok && token) {
+        localStorage.setItem("adminAccessToken", token);
         setIsAdminAuthenticated(true);
-        if (typeof addLog === "function") {
-          addLog("Autenticação administrativa automatizada com sucesso.", "SUCCESS");
-        }
+        addLog("Autenticação administrativa automatizada com sucesso.", "SUCCESS");
       } else {
         setAuthError(data.message || "Falha no fluxo automatizado de Auth.");
       }
-    } catch (err) {
+    } catch (err: any) {
       setAuthError("Servidor offline ou erro de rede no Render.");
     } finally {
       setAuthLoading(false);
     }
   }, []);
-// Agora o fetch é disparado automaticamente ao trocar de aba:
-  useEffect(() => {
-    fetchDbStatus();
-  }, [activeTab]);
-  // Verificar sessão ou disparar o fluxo automático no arranque
-  useEffect(() => {
+
+  // Fetch Database Status redefinido de forma segura
+  const fetchDbStatus = useCallback(async () => {
     const token = getAuthToken();
-    if (token) {
-      setIsAdminAuthenticated(true);
-    } else {
-      executeAutoAuth(); // Dispara o motor automático se não houver sessão ativa
+
+    if (!token) {
+      setDbFetchError("Nenhuma sessão de administrador ativa. A tentar autenticação automática...");
+      executeAutoAuth();
+      return;
+    }
+
+    setIsLoadingDb(true);
+    setDbFetchError(null);
+
+    try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${token}`
+      };
+
+      const res = await fetch(`${API_BASE}/api/v1/admin/db-status`, {
+        method: "GET",
+        headers,
+      });
+
+      if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("adminAccessToken");
+        setIsAdminAuthenticated(false);
+        setDbFetchError("Sessão expirada. Reautenticando...");
+        executeAutoAuth();
+        return;
+      }
+
+      const data = await res.json();
+      if (data.success) {
+        setDbStatus(data);
+      } else {
+        setDbFetchError(data.message || data.error || "Falha ao obter status da base de dados.");
+      }
+    } catch (err: any) {
+      console.error("Erro a carregar status da BD:", err);
+      setDbFetchError(err.message || "Erro de rede ao contactar o servidor.");
+    } finally {
+      setIsLoadingDb(false);
     }
   }, [getAuthToken, executeAutoAuth]);
 
-  // Executar o fetch dos dados da BD apenas se estiver validado
-  useEffect(() => {
-    if (isAdminAuthenticated) {
-      fetchDbStatus();
-    }
-  }, [isAdminAuthenticated, fetchDbStatus]);
-  
   const handleResetDb = async () => {
     if (!window.confirm("Aviso: Esta ação irá redefinir todas as tabelas e dados no PostgreSQL/Supabase. Desejas continuar?")) return;
     setIsLoadingDb(true);
     try {
-      const res = await fetch("/api/v1/admin/db-reset", { method: "POST" });
+      const token = getAuthToken();
+      const headers: Record<string, string> = { "Content-Type": "application/json" };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE}/api/v1/admin/db-reset`, { 
+        method: "POST", 
+        headers 
+      });
       const data = await res.json();
       if (data.success) {
         setDbSuccessMsg("Base de dados redefinida e sincronizada com sucesso!");
@@ -346,7 +339,7 @@ export default function App() {
         addLog("Redefinição total da Base de Dados executada pelo Administrador.", "WARN");
         setTimeout(() => setDbSuccessMsg(""), 4000);
       } else {
-        alert("Erro ao redefinir base de dados: " + data.error);
+        alert("Erro ao redefinir base de dados: " + (data.message || data.error));
       }
     } catch (err: any) {
       alert("Erro de conexão ao servidor: " + err.message);
@@ -510,7 +503,8 @@ export default function App() {
         options.body = customPayload;
       }
 
-      const res = await fetch(endpoint.path, options);
+      const targetPath = endpoint.path.startsWith("http") ? endpoint.path : `${API_BASE}${endpoint.path}`;
+      const res = await fetch(targetPath, options);
       const contentType = res.headers.get("content-type");
       const text = await res.text();
       
@@ -527,6 +521,7 @@ export default function App() {
       
       if (res.ok) {
         addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Retornado com sucesso (${res.status})`, "SUCCESS");
+        fetchDbStatus();
       } else {
         addLog(`Playground API: ${endpoint.method} ${endpoint.path} - Servidor respondeu com erro (${res.status})`, "WARN");
       }
@@ -538,9 +533,22 @@ export default function App() {
     }
   };
 
+  // Verificar sessão ou disparar o fluxo automático no arranque
   useEffect(() => {
-    fetchDbStatus();
-  }, []);
+    const token = getAuthToken();
+    if (token) {
+      setIsAdminAuthenticated(true);
+    } else {
+      executeAutoAuth(); // Dispara o motor automático se não houver sessão ativa
+    }
+  }, [getAuthToken, executeAutoAuth]);
+
+  // Executar o fetch dos dados da BD apenas se estiver validado
+  useEffect(() => {
+    if (isAdminAuthenticated) {
+      fetchDbStatus();
+    }
+  }, [isAdminAuthenticated, activeTab, fetchDbStatus]);
 
   useEffect(() => {
     const endpoint = ENDPOINTS[selectedEndpointIdx];
@@ -727,7 +735,7 @@ export default function App() {
 
     // Live backend integration with server.ts endpoint
     try {
-      const response = await fetch("/api/v1/ai/chat", {
+      const response = await fetch(`${API_BASE}/api/v1/ai/chat`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -1863,6 +1871,18 @@ export default function App() {
             {dbSuccessMsg && (
               <div className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 px-4 py-3 rounded-xl text-xs font-mono mb-6 animate-pulse">
                 {dbSuccessMsg}
+              </div>
+            )}
+
+            {dbFetchError && (
+              <div className="bg-red-500/10 border border-red-500/30 text-red-400 px-4 py-3 rounded-xl text-xs font-mono mb-6 flex justify-between items-center">
+                <span>⚠️ Erro ao consultar servidor Render: {dbFetchError}</span>
+                <button 
+                  onClick={fetchDbStatus} 
+                  className="underline hover:text-white text-[11px]"
+                >
+                  Tentar novamente
+                </button>
               </div>
             )}
 
