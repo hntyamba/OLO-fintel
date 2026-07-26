@@ -51,9 +51,8 @@ function isConnectionError(err: any): boolean {
   const name = String(err.name || "");
   const code = String(err.code || "");
   return (
-    name.includes("PrismaClient") ||
+    name === "PrismaClientInitializationError" ||
     msg.includes("PrismaClientInitializationError") ||
-    msg.includes("PrismaClientKnownRequestError") ||
     msg.includes("Authentication failed") ||
     msg.includes("database server") ||
     msg.includes("credentials") ||
@@ -61,8 +60,11 @@ function isConnectionError(err: any): boolean {
     msg.includes("Can't reach database server") ||
     msg.includes("ECONNREFUSED") ||
     msg.includes("ETIMEDOUT") ||
-    code.startsWith("P100") ||
-    code.startsWith("P101")
+    code === "P1000" ||
+    code === "P1001" ||
+    code === "P1002" ||
+    code === "P1003" ||
+    code === "P1017"
   );
 }
 
