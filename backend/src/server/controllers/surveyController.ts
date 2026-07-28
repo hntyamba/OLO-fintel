@@ -53,6 +53,66 @@ export async function getActiveSurvey(req: Request, res: Response) {
   }
 }
 
+// Helper to calculate derived metrics dynamically from survey input data
+export function calculateSurveyMetrics(dataMap: Record<string, any>) {
+  const A3_lostSales = dataMap.A3_lostSales;
+  const C1_profitMarginIdea = dataMap.C1_profitMarginIdea;
+  const D2_shareRealData = dataMap.D2_shareRealData;
+  const D1_probabilityToUse = dataMap.D1_probabilityToUse;
+  const D3_willingToPay = dataMap.D3_willingToPay;
+  const C3_sectorConditionalAnswer = dataMap.C3_sectorConditionalAnswer;
+  const B3_trustReport = dataMap.B3_trustReport;
+
+  // 1. isUrgentPain (boolean)
+  const isUrgentPain = ["4_6", "MORE_6"].includes(String(A3_lostSales)) && String(C1_profitMarginIdea) === "NO";
+
+  // 2. isHighIntent (boolean)
+  const isHighIntent = String(D2_shareRealData) === "ALL_GOLD" && ["51_80", "81_100"].includes(String(D1_probabilityToUse));
+
+  // 3. adoptionScore (0-100)
+  let d1Score = 10;
+  if (D1_probabilityToUse === "81_100") d1Score = 100;
+  else if (D1_probabilityToUse === "51_80") d1Score = 70;
+  else if (D1_probabilityToUse === "21_50") d1Score = 40;
+  else if (D1_probabilityToUse === "0_20") d1Score = 10;
+
+  let d3Score = 10;
+  if (D3_willingToPay === "MORE_7500") d3Score = 100;
+  else if (D3_willingToPay === "2500_7500") d3Score = 80;
+  else if (D3_willingToPay === "UP_2500") d3Score = 50;
+  else if (D3_willingToPay === "FREE") d3Score = 10;
+
+  let d2Score = 20;
+  if (D2_shareRealData === "ALL_GOLD") d2Score = 100;
+  else if (D2_shareRealData === "AGGREGATED_SILVER") d2Score = 60;
+  else if (D2_shareRealData === "FICTIONAL_BRONZE") d2Score = 20;
+
+  let c1Score = 10;
+  if (C1_profitMarginIdea === "YES") c1Score = 100;
+  else if (C1_profitMarginIdea === "MAYBE") c1Score = 50;
+  else if (C1_profitMarginIdea === "NO") c1Score = 10;
+
+  let c3Score = 10;
+  if (["SIM_HISTORICO", "PLANILHA", "COM_DADOS", "EXATO"].includes(String(C3_sectorConditionalAnswer))) {
+    c3Score = 100;
+  } else if (["MAIS_OU_MENOS", "A_VULSO", "ACHO"].includes(String(C3_sectorConditionalAnswer))) {
+    c3Score = 50;
+  } else {
+    c3Score = 10;
+  }
+  const maturityScore = (c1Score + c3Score) / 2;
+
+  let b3Score = 10;
+  if (B3_trustReport === "YES") b3Score = 100;
+  else if (B3_trustReport === "MAYBE") b3Score = 50;
+  else if (B3_trustReport === "NO") b3Score = 10;
+
+  const rawAdoptionScore = (d1Score * 0.30) + (d3Score * 0.20) + (d2Score * 0.20) + (maturityScore * 0.20) + (b3Score * 0.10);
+  const adoptionScore = Math.min(100, Math.max(0, Math.round(rawAdoptionScore)));
+
+  return { adoptionScore, isHighIntent, isUrgentPain };
+}
+
 export async function submitResponse(req: Request, res: Response) {
   try {
     const body = req.body || {};
@@ -176,58 +236,8 @@ export async function submitResponse(req: Request, res: Response) {
         return res.status(400).json({ error: "Por favor, insira o seu contacto de e-mail ou telefone." });
       }
 
-      // 3. Calculation of Derived Metrics
-      // 3.1 isUrgentPain
-      const isUrgentPain = ["4_6", "MORE_6"].includes(String(A3_lostSales)) && String(C1_profitMarginIdea) === "NO";
-
-      // 3.2 isHighIntent
-      const isHighIntent = String(D2_shareRealData) === "ALL_GOLD" && ["51_80", "81_100"].includes(String(D1_probabilityToUse));
-
-      // 3.3 adoptionScore (0-100)
-      // Component 1: D1_probabilityToUse (weight 30%)
-      let d1Score = 10;
-      if (D1_probabilityToUse === "81_100") d1Score = 100;
-      else if (D1_probabilityToUse === "51_80") d1Score = 70;
-      else if (D1_probabilityToUse === "21_50") d1Score = 40;
-      else if (D1_probabilityToUse === "0_20") d1Score = 10;
-
-      // Component 2: D3_willingToPay (weight 20%)
-      let d3Score = 10;
-      if (D3_willingToPay === "MORE_7500") d3Score = 100;
-      else if (D3_willingToPay === "2500_7500") d3Score = 80;
-      else if (D3_willingToPay === "UP_2500") d3Score = 50;
-      else if (D3_willingToPay === "FREE") d3Score = 10;
-
-      // Component 3: D2_shareRealData (weight 20%)
-      let d2Score = 20;
-      if (D2_shareRealData === "ALL_GOLD") d2Score = 100;
-      else if (D2_shareRealData === "AGGREGATED_SILVER") d2Score = 60;
-      else if (D2_shareRealData === "FICTIONAL_BRONZE") d2Score = 20;
-
-      // Component 4: Digital Maturity (weight 20%) -> C1_profitMarginIdea + C3_sectorConditionalAnswer
-      let c1Score = 10;
-      if (C1_profitMarginIdea === "YES") c1Score = 100;
-      else if (C1_profitMarginIdea === "MAYBE") c1Score = 50;
-      else if (C1_profitMarginIdea === "NO") c1Score = 10;
-
-      let c3Score = 10;
-      if (["SIM_HISTORICO", "PLANILHA", "COM_DADOS", "EXATO"].includes(String(C3_sectorConditionalAnswer))) {
-        c3Score = 100;
-      } else if (["MAIS_OU_MENOS", "A_VULSO", "ACHO"].includes(String(C3_sectorConditionalAnswer))) {
-        c3Score = 50;
-      } else {
-        c3Score = 10;
-      }
-      const maturityScore = (c1Score + c3Score) / 2;
-
-      // Component 5: B3_trustReport (weight 10%)
-      let b3Score = 10;
-      if (B3_trustReport === "YES") b3Score = 100;
-      else if (B3_trustReport === "MAYBE") b3Score = 50;
-      else if (B3_trustReport === "NO") b3Score = 10;
-
-      const rawAdoptionScore = (d1Score * 0.30) + (d3Score * 0.20) + (d2Score * 0.20) + (maturityScore * 0.20) + (b3Score * 0.10);
-      const adoptionScore = Math.min(100, Math.max(0, Math.round(rawAdoptionScore)));
+      // 3. Calculation of Derived Metrics dynamically
+      const { adoptionScore, isHighIntent, isUrgentPain } = calculateSurveyMetrics(body);
 
       // 4. Persistence in Database (background / safe execution)
       try {
@@ -236,38 +246,39 @@ export async function submitResponse(req: Request, res: Response) {
         const fingerprint = hashFingerprint(ip, userAgent);
 
         const activeSurvey = await db.survey.findFirst({ where: { status: "Open" } });
-        const surveyId = activeSurvey ? activeSurvey.id : "d112b0c7-9776-44a4-a562-b1ff7d695c64";
+        const targetSurveyId = activeSurvey ? activeSurvey.id : "d112b0c7-9776-44a4-a562-b1ff7d695c64";
 
-        if (activeSurvey) {
-          const responseRecord = await db.surveyResponse.create({
-            data: {
-              surveyId: activeSurvey.id,
-              respondentFingerprint: fingerprint,
-              organizationTypeHint: String(E3_sector),
-              provinceHint: String(E4_province),
-              personaHint: String(E6_persona)
-            }
-          });
+        const responseRecord = await db.surveyResponse.create({
+          data: {
+            surveyId: targetSurveyId,
+            respondentFingerprint: fingerprint,
+            organizationTypeHint: String(E3_sector),
+            provinceHint: String(E4_province),
+            personaHint: String(E6_persona),
+            adoptionScore,
+            isHighIntent,
+            isUrgentPain
+          }
+        });
 
-          // Save main answers as key-value pairs
-         const keysToSave = [
-            "A1_usesPaper", "A1_usesExcel", "A1_usesWhatsApp", "A1_usesBillingSoftware", "A1_usesNone",
-            "A2_lostHours", "A3_lostSales", "B1_appliedFunding", "B2_rejectionReason",
-            "B3_trustReport", "C1_profitMarginIdea", "C2_biggestHeadache", "C3_sectorConditionalAnswer",
-            "D1_probabilityToUse", "D2_shareRealData", "D3_willingToPay", "E1_orgName", "E2_nif",
-            "E3_sector", "E4_province", "E5_employeeCount", "E6_persona", "E7_contact"
-          ];
+        // Save main answers as key-value pairs
+        const keysToSave = [
+          "A1_usesPaper", "A1_usesExcel", "A1_usesWhatsApp", "A1_usesBillingSoftware", "A1_usesNone",
+          "A2_lostHours", "A3_lostSales", "B1_appliedFunding", "B2_rejectionReason",
+          "B3_trustReport", "C1_profitMarginIdea", "C2_biggestHeadache", "C3_sectorConditionalAnswer",
+          "D1_probabilityToUse", "D2_shareRealData", "D3_willingToPay", "E1_orgName", "E2_nif",
+          "E3_sector", "E4_province", "E5_employeeCount", "E6_persona", "E7_contact"
+        ];
 
-          for (const key of keysToSave) {
-            if (body[key] !== undefined && body[key] !== null) {
-              await db.surveyAnswer.create({
-                data: {
-                  responseId: responseRecord.id,
-                  questionId: key,
-                  value: String(body[key])
-                }
-              }).catch(() => {});
-            }
+        for (const key of keysToSave) {
+          if (body[key] !== undefined && body[key] !== null) {
+            await db.surveyAnswer.create({
+              data: {
+                responseId: responseRecord.id,
+                questionId: key,
+                value: String(body[key])
+              }
+            }).catch(() => {});
           }
         }
       } catch (dbErr) {
@@ -301,6 +312,13 @@ export async function submitResponse(req: Request, res: Response) {
       return res.status(400).json({ error: "Este estudo de validação está encerrado ou é inexistente." });
     }
 
+    const legacyMap: Record<string, any> = {};
+    for (const answer of answers) {
+      if (answer.questionId) legacyMap[answer.questionId] = answer.value;
+    }
+
+    const { adoptionScore, isHighIntent, isUrgentPain } = calculateSurveyMetrics(legacyMap);
+
     const ip = req.ip || req.socket.remoteAddress || "unknown-ip";
     const userAgent = req.headers["user-agent"] || "unknown-ua";
     const fingerprint = hashFingerprint(ip, userAgent);
@@ -309,9 +327,12 @@ export async function submitResponse(req: Request, res: Response) {
       data: {
         surveyId,
         respondentFingerprint: fingerprint,
-        organizationTypeHint: body.organizationTypeHint || "Outro",
-        provinceHint: body.provinceHint || "Luanda",
-        personaHint: body.personaHint || "Visitante"
+        organizationTypeHint: body.organizationTypeHint || legacyMap.E3_sector || "Outro",
+        provinceHint: body.provinceHint || legacyMap.E4_province || "Luanda",
+        personaHint: body.personaHint || legacyMap.E6_persona || "Visitante",
+        adoptionScore,
+        isHighIntent,
+        isUrgentPain 
       }
     });
 
@@ -326,9 +347,9 @@ export async function submitResponse(req: Request, res: Response) {
     }
 
     const surveyResult = {
-      adoptionScore: 75,
-      isHighIntent: true,
-      isUrgentPain: false
+      adoptionScore,
+      isHighIntent,
+      isUrgentPain
     };
 
     return res.status(200).json({
