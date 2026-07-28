@@ -207,7 +207,7 @@ class InMemoryDb {
         order: 2,
         type: "single_choice",
         text: "Em qual província angolana está localizado?",
-        options: ["Luanda", "Benguela", "Huambo", "Huíla", "Cabinda", "Cuanza Sul", "Outra"]
+        options: ["Luanda", "Benguela", "Huambo", "Huíla", "Cabinda", "Cuanza Sul", "Bengo", "Zaire", "Icolo e Bengo", "Malanje", "Uíge", "Lunda Sul", "Lunda Norte", "Cuanza Norte", "Cunene", "Moxico Leste", "Moxico", "Cuando", "Cubango", "Namibe", "Outra"]
       },
       {
         id: q3Id,
