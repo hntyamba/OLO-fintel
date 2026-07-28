@@ -1,6 +1,0 @@
-{
-  "name": "OLO Fintel",
-  "description": "Economic Operating System and Funding Readiness Platform for Angolan SMEs and Cooperatives",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}
