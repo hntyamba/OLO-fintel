@@ -250,7 +250,8 @@ export async function submitResponse(req: Request, res: Response) {
           });
 
           // Save main answers as key-value pairs
-          const keysToSave = [
+         const keysToSave = [
+            "A1_usesPaper", "A1_usesExcel", "A1_usesWhatsApp", "A1_usesBillingSoftware", "A1_usesNone",
             "A2_lostHours", "A3_lostSales", "B1_appliedFunding", "B2_rejectionReason",
             "B3_trustReport", "C1_profitMarginIdea", "C2_biggestHeadache", "C3_sectorConditionalAnswer",
             "D1_probabilityToUse", "D2_shareRealData", "D3_willingToPay", "E1_orgName", "E2_nif",
