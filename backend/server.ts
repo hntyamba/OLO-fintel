@@ -208,14 +208,24 @@ async function startServer() {
   // Documents Module & Aliases
   app.post("/api/v1/documents", requireAuth, injectTenant, uploadDocument);
   app.get("/api/v1/documents", requireAuth, injectTenant, getDocuments);
+  app.get("/api/v1/documents/list/all", getDocuments);
+  app.get("/api/documents/list/all", getDocuments);
   app.get("/api/v1/documents/list/:organizationId", getDocuments);
   app.get("/api/documents/list/:organizationId", getDocuments);
   app.post("/api/v1/documents/upload", uploadDocument);
   app.post("/api/documents/upload", uploadDocument);
 
   // Survey / Diagnostic
+  app.post("/api/v1/surveys/responses", submitResponse);
+  app.post("/api/surveys/responses", submitResponse);
+  app.post("/api/v1/survey/responses", submitResponse);
+  app.post("/api/survey/responses", submitResponse);
   app.post("/api/v1/survey/submit", submitResponse);
   app.post("/api/survey/submit", submitResponse);
+  app.get("/api/v1/surveys/active", getActiveSurvey);
+  app.get("/api/surveys/active", getActiveSurvey);
+  app.get("/api/v1/survey/active", getActiveSurvey);
+  app.get("/api/survey/active", getActiveSurvey);
 
   // Funding Scores & Applications & Aliases
   app.get("/api/v1/funding/score", requireAuth, injectTenant, calculateAndGetScore);
