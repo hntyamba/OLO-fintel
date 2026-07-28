@@ -935,6 +935,9 @@ model SurveyResponse {
   personaHint          String?  // Presidente, Gestor, Analista, Consultor
   completedAt          DateTime @default(now())
 
+  adoptionScore  Float?
+  isHighIntent   Boolean?
+  isUrgentPain   Boolean?
   // Relations
   answers              SurveyAnswer[]
 }
