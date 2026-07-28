@@ -357,19 +357,23 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                 capacityTons: v.capacityTons || v.capacity || v.capacidade || 10,
                 estado: v.status === 'Operational' ? 'Ativo' : (v.estado || 'Ativo'),
                 status: v.status || (v.estado === 'Ativo' ? 'Operational' : 'Operational'),
-                motor: v.motor || 'Yamaha 250HP'
+                motor: v.motor || (v.engineBrand ? `${v.engineBrand} ${v.enginePower || ''}`.trim() : 'Yamaha 250HP'),
+                engineBrand: v.engineBrand || v.marcaMotor,
+                enginePower: v.enginePower || v.potenciaMotor,
+                details: v.details || v.detalhes
               }));
 
-              if (prev.length === 0) {
-                return mappedFromApi;
+              if (mappedFromApi.length > 0) {
+                const hasOnlyMocks = prev.every(p => String(p.id).startsWith('emb-') && !String(p.id).startsWith('ves-'));
+                if (hasOnlyMocks || prev.length === 0) {
+                  return mappedFromApi;
+                }
+                const apiIds = new Set(mappedFromApi.map(v => v.id));
+                const apiNames = new Set(mappedFromApi.map(v => (v.nome || v.name || '').toLowerCase()));
+                const localCreated = prev.filter(p => !apiIds.has(p.id) && !apiNames.has((p.nome || p.name || '').toLowerCase()));
+                return [...mappedFromApi, ...localCreated];
               }
-
-              const existingIds = new Set(prev.map(e => e.id));
-              const existingNames = new Set(prev.map(e => (e.nome || e.name || '').toLowerCase()));
-              const newFromApi = mappedFromApi.filter(
-                (v: any) => !existingIds.has(v.id) && !existingNames.has((v.nome || v.name || '').toLowerCase())
-              );
-              return [...prev, ...newFromApi];
+              return prev;
             });
           }
         }
@@ -544,33 +548,95 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
       }
     } else if (activeSector === 'FISHERIES') {
       if (activeResource === 'embarcacoes') {
-        const brand = genericForm.motorBrand || 'Yamaha';
-        const hp = genericForm.motorHP || '250HP';
-        const vName = genericForm.nome || 'Nova Barca';
-        const vMatricula = genericForm.matricula || `NAM-${Math.floor(Math.random() * 900) + 100}-A`;
-        const vCapacidade = parseFloat(genericForm.capacidade || '5');
+        const brand = genericForm.motorBrand || genericForm.engineBrand || genericForm.marcaMotor || 'Yamaha';
+        const hp = genericForm.motorHP || genericForm.enginePower || genericForm.potenciaMotor || '250 HP';
+        const vDetails = genericForm.detalhes || genericForm.details || 'Embarcação de pesca artesanal com motor de popa reformado em 2025';
+        const vName = genericForm.nome || genericForm.name || 'Nova Barca';
+        const vMatricula = genericForm.matricula || genericForm.registrationNumber || `LA-${Math.floor(Math.random() * 8000) + 1000}`;
+        const vCapacidade = parseFloat(genericForm.capacidade || genericForm.capacity || '15.5');
 
         setEmbarcoes(prev => [...prev, {
           id,
           nome: vName,
+          name: vName,
           matricula: vMatricula,
+          registrationNumber: vMatricula,
           capacidade: vCapacidade,
+          capacity: vCapacidade,
+          capacityTons: vCapacidade,
           estado: 'Ativo',
-          motor: hp ? `${brand} ${hp}` : brand
+          status: 'Operational',
+          motor: hp ? `${brand} ${hp}` : brand,
+          engineBrand: brand,
+          enginePower: hp,
+          details: vDetails
         }]);
+
+        const orgCandidate = userId || localStorage.getItem('olo-fintel-orgId') || localStorage.getItem('organizationId') || 'org-1';
+
+        const postBody: Record<string, any> = {
+          name: vName,
+          vesselName: vName,
+          nome: vName,
+
+          registrationNumber: vMatricula,
+          registration: vMatricula,
+          matricula: vMatricula,
+
+          capacity: vCapacidade,
+          capacityTons: vCapacidade,
+          capacidade: vCapacidade,
+
+          engineBrand: brand,
+          engine_brand: brand,
+          marcaMotor: brand,
+          marca: brand,
+          motorBrand: brand,
+
+          enginePower: hp,
+          engine_power: hp,
+          potenciaMotor: hp,
+          potencia: hp,
+          motorHP: hp,
+
+          details: vDetails,
+          detalhes: vDetails,
+          observacoes: vDetails,
+
+          organizationId: orgCandidate
+        };
 
         // Send to backend API so it persists in server database (vessel table in Supabase via NestJS)
         apiCall('/api/v1/operations/fisheries/vessels', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            name: vName,
-            registrationNumber: vMatricula,
-            capacity: vCapacidade,
-            capacityTons: vCapacidade,
-            organizationId: userId || localStorage.getItem('olo-fintel-orgId') || 'org-1'
+          body: JSON.stringify(postBody)
+        })
+          .then(async res => {
+            if (res.ok) {
+              const resData = await res.json().catch(() => ({}));
+              const serverObj = resData?.data || resData?.vessel || (resData?.id ? resData : null);
+              if (serverObj && serverObj.id) {
+                setEmbarcoes(prev => prev.map(item => {
+                  if (item.id === id) {
+                    return {
+                      ...item,
+                      id: serverObj.id,
+                      nome: serverObj.name || item.nome,
+                      name: serverObj.name || item.name,
+                      matricula: serverObj.registrationNumber || item.matricula,
+                      registrationNumber: serverObj.registrationNumber || item.registrationNumber,
+                      capacidade: serverObj.capacity || item.capacidade,
+                      capacity: serverObj.capacity || item.capacity,
+                      details: serverObj.details || item.details
+                    };
+                  }
+                  return item;
+                }));
+              }
+            }
           })
-        }).catch(err => console.error('Error sending vessel to API:', err));
+          .catch(err => console.error('Error sending vessel to API:', err));
       } else if (activeResource === 'viagens') {
         setViagens(prev => [...prev, {
           id,
@@ -1025,16 +1091,44 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                           const testCap = 18.5;
                           
                           try {
+                            const orgCandidate = userId || localStorage.getItem('olo-fintel-orgId') || localStorage.getItem('organizationId') || 'org-1';
+
+                            const testBody: Record<string, any> = {
+                              name: testName,
+                              vesselName: testName,
+                              nome: testName,
+
+                              registrationNumber: testMatricula,
+                              registration: testMatricula,
+                              matricula: testMatricula,
+
+                              capacity: testCap,
+                              capacityTons: testCap,
+                              capacidade: testCap,
+
+                              engineBrand: 'Yamaha',
+                              engine_brand: 'Yamaha',
+                              marcaMotor: 'Yamaha',
+                              marca: 'Yamaha',
+                              motorBrand: 'Yamaha',
+
+                              enginePower: '250 HP',
+                              engine_power: '250 HP',
+                              potenciaMotor: '250 HP',
+                              potencia: '250 HP',
+                              motorHP: '250 HP',
+
+                              details: 'Embarcação de pesca artesanal com motor de popa reformado em 2025',
+                              detalhes: 'Embarcação de pesca artesanal com motor de popa reformado em 2025',
+                              observacoes: 'Embarcação de pesca artesanal com motor de popa reformado em 2025',
+
+                              organizationId: orgCandidate
+                            };
+
                             const res = await apiCall('/api/v1/operations/fisheries/vessels', {
                               method: 'POST',
                               headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                name: testName,
-                                registrationNumber: testMatricula,
-                                capacity: testCap,
-                                capacityTons: testCap,
-                                organizationId: userId || localStorage.getItem('olo-fintel-orgId') || 'org-1'
-                              })
+                              body: JSON.stringify(testBody)
                             });
                             
                             const resData = await res.json().catch(() => ({}));
@@ -2064,13 +2158,23 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                         </select>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Potência do Motor (HP) / Detalhes</label>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Potência do Motor (HP)</label>
                         <input 
                           type="text" 
                           required
                           value={genericForm.motorHP || ''} 
                           onChange={e => setGenericForm(p => ({ ...p, motorHP: e.target.value }))}
-                          placeholder="Ex: 250HP" 
+                          placeholder="Ex: 250 HP" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Detalhes / Observações</label>
+                        <textarea 
+                          value={genericForm.detalhes || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, detalhes: e.target.value }))}
+                          placeholder="Ex: Embarcação de pesca artesanal com motor de popa reformado em 2025" 
+                          rows={2}
                           className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
                         />
                       </div>

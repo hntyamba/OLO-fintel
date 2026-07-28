@@ -3,9 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { getApiUrl } from '../lib/api';
+import { getApiUrl, safeStorage } from '../lib/api';
 import { 
   FileText, 
   ShieldCheck, 
@@ -31,6 +31,8 @@ import {
   Building
 } from 'lucide-react';
 import { DocumentRecord, Organization } from '../types.js';
+
+import SecureDocumentUpload from './SecureDocumentUpload';
 
 interface DocumentKYCModuleProps {
   key?: string;
@@ -58,6 +60,9 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
   // Modal / Feedback state
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const [uploadedFileName, setUploadedFileName] = useState('');
+  const [modalFile, setModalFile] = useState<File | null>(null);
+  const [modalFileBase64, setModalFileBase64] = useState<string>('');
+  const [isModalConverting, setIsModalConverting] = useState(false);
   const [selectedDocForHistory, setSelectedDocForHistory] = useState<DocumentRecord | null>(null);
   const [selectedDocForReview, setSelectedDocForReview] = useState<{ doc: DocumentRecord, orgName: string } | null>(null);
   const [reviewFeedback, setReviewFeedback] = useState('');
@@ -68,26 +73,100 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
     setTimeout(() => setAlertMsg(null), 4000);
   };
 
+  const getTargetOrg = () => {
+    if (organizationId) return organizationId;
+    const cachedUserStr = safeStorage.getItem('olo_fintel_cached_user');
+    if (cachedUserStr) {
+      try {
+        const u = JSON.parse(cachedUserStr);
+        if (u.organizationId) return u.organizationId;
+      } catch {}
+    }
+    return safeStorage.getItem('olo_fintel_orgId') || safeStorage.getItem('olo-fintel-orgId') || safeStorage.getItem('organizationId') || 'org-dwgy5kqb6';
+  };
+
   // --- FETCH DATA ---
   const fetchData = async () => {
     setLoading(true);
     try {
-      if (organizationId) {
-        const res = await fetch(getApiUrl(`/api/documents/list/${organizationId}`));
+      const token = safeStorage.getItem('olo_fintel_token');
+      const targetOrg = getTargetOrg();
+      
+      const storedStatusesStr = safeStorage.getItem('olo_fintel_doc_statuses') || '{}';
+      let storedStatuses: Record<string, any> = {};
+      try { storedStatuses = JSON.parse(storedStatusesStr); } catch {}
+
+      if (targetOrg) {
+        const res = await fetch(getApiUrl(`/api/v1/documents/list/${targetOrg}`), {
+          headers: {
+            'Authorization': `Bearer ${token || ''}`,
+            'x-organization-id': targetOrg
+          }
+        });
         if (res.ok) {
-          const data = await res.json();
-          setMyDocuments(data);
+          const responseJson = await res.json();
+          const docsArr = Array.isArray(responseJson) ? responseJson : (responseJson.data || responseJson.documents || []);
+          const normalized = docsArr.map((d: any) => {
+            const docId = d.id || `doc-${Math.random().toString(36).substring(2, 9)}`;
+            const docTitle = d.title || d.name || 'Documento';
+            const docName = d.name || d.title || 'Documento';
+            const rawStat = String(d.status || 'PENDING').toUpperCase();
+            const statusVal = (rawStat === 'APPROVED' || rawStat === 'VERIFIED') ? 'VERIFIED' : (rawStat === 'REJECTED' ? 'REJECTED' : 'PENDING');
+            const feedbackVal = d.feedback || d.notes || '';
+
+            return {
+              ...d,
+              id: docId,
+              name: docName,
+              title: docTitle,
+              type: (d.type || d.category || 'FINANCIAL').toUpperCase(),
+              category: (d.category || d.type || 'FINANCIAL').toUpperCase(),
+              status: statusVal,
+              feedback: feedbackVal,
+              uploadedAt: d.uploadedAt || d.createdAt || d.updatedAt || new Date().toISOString(),
+              fileBase64: d.fileBase64 || d.fileUrl || '',
+            };
+          });
+          setMyDocuments(normalized);
         }
       }
 
       if (isAdminOrAnalyst) {
-        const orgRes = await fetch(getApiUrl('/api/admin/organizations'));
-        const docRes = await fetch(getApiUrl('/api/admin/documents'));
+        const orgRes = await fetch(getApiUrl('/api/v1/admin/organizations'), {
+          headers: { 'Authorization': `Bearer ${token || ''}` }
+        });
+        const docRes = await fetch(getApiUrl(`/api/v1/documents/list/all`), {
+          headers: { 'Authorization': `Bearer ${token || ''}` }
+        });
         if (orgRes.ok) {
-          setAllOrganizations(await orgRes.json());
+          const orgData = await orgRes.json();
+          setAllOrganizations(Array.isArray(orgData) ? orgData : (orgData.data || []));
         }
         if (docRes.ok) {
-          setAllDocuments(await docRes.json());
+          const docData = await docRes.json();
+          const docArr = Array.isArray(docData) ? docData : (docData.data || docData.documents || []);
+          const normalizedAll = docArr.map((d: any) => {
+            const docId = d.id || `doc-${Math.random().toString(36).substring(2, 9)}`;
+            const docTitle = d.title || d.name || 'Documento';
+            const docName = d.name || d.title || 'Documento';
+            const rawStat = String(d.status || 'PENDING').toUpperCase();
+            const statusVal = (rawStat === 'APPROVED' || rawStat === 'VERIFIED') ? 'VERIFIED' : (rawStat === 'REJECTED' ? 'REJECTED' : 'PENDING');
+            const feedbackVal = d.feedback || d.notes || '';
+
+            return {
+              ...d,
+              id: docId,
+              name: docName,
+              title: docTitle,
+              type: (d.type || d.category || 'FINANCIAL').toUpperCase(),
+              category: (d.category || d.type || 'FINANCIAL').toUpperCase(),
+              status: statusVal,
+              feedback: feedbackVal,
+              uploadedAt: d.uploadedAt || d.createdAt || d.updatedAt || new Date().toISOString(),
+              fileBase64: d.fileBase64 || d.fileUrl || '',
+            };
+          });
+          setAllDocuments(normalizedAll);
         }
       }
     } catch (e) {
@@ -108,32 +187,77 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
     triggerAlert('Dados de KYC atualizados com sucesso!');
   };
 
-  // --- FILE UPLOAD SIMULATOR ---
+  const modalFileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- FILE SELECTION FOR MODAL ---
+  const handleModalFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      if (file.size > 15 * 1024 * 1024) {
+        triggerAlert('O ficheiro excede o limite máximo de 15MB.', 'error');
+        return;
+      }
+      setModalFile(file);
+      // Auto fill title with actual computer file name
+      const nameWithoutExt = file.name.replace(/\.[^/.]+$/, "").replace(/[-_]/g, ' ');
+      if (!uploadedFileName || uploadedFileName === uploadingType || uploadedFileName.includes('_v')) {
+        setUploadedFileName(nameWithoutExt);
+      }
+      setIsModalConverting(true);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setModalFileBase64(reader.result as string);
+        setIsModalConverting(false);
+      };
+      reader.onerror = () => {
+        setIsModalConverting(false);
+        triggerAlert('Erro ao ler o ficheiro do computador.', 'error');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // --- REAL FILE UPLOAD HANDLER ---
   const handleUploadDocument = async (e: React.FormEvent, type: DocumentRecord['type']) => {
     e.preventDefault();
-    if (!uploadedFileName || !organizationId) return;
+    if (!modalFileBase64) {
+      triggerAlert('Por favor selecione um ficheiro válido antes de submeter.', 'error');
+      return;
+    }
+    const targetOrg = getTargetOrg();
+    if (!uploadedFileName || !targetOrg) return;
 
     try {
-      const res = await fetch(getApiUrl('/api/documents/upload'), {
+      const token = safeStorage.getItem('olo_fintel_token');
+      const res = await fetch(getApiUrl('/api/v1/documents/upload'), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token || ''}`,
+          'x-organization-id': targetOrg,
+        },
         body: JSON.stringify({
-          orgId: organizationId,
-          type,
+          organizationId: targetOrg,
+          category: type,
+          type: type,
+          title: uploadedFileName,
           name: uploadedFileName,
-          uploadedBy: userRole
+          fileBase64: modalFileBase64,
         })
       });
 
-      if (res.ok) {
-        triggerAlert(`Documento ${type} carregado com sucesso como nova versão!`);
+      const responseData = await res.json();
+
+      if (res.ok && responseData.success) {
+        triggerAlert(`Documento ${type} submetido com sucesso para validação do Júri!`);
         setUploadedFileName('');
+        setModalFile(null);
+        setModalFileBase64('');
         setUploadingType(null);
         fetchData();
         if (onRefresh) onRefresh();
       } else {
-        const err = await res.json();
-        triggerAlert(err.error || 'Erro no envio do ficheiro.', 'error');
+        triggerAlert(responseData.message || responseData.error || 'Erro no envio do ficheiro.', 'error');
       }
     } catch (e) {
       console.error(e);
@@ -145,31 +269,43 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
   const handleReviewAction = async (action: 'VERIFIED' | 'REJECTED') => {
     if (!selectedDocForReview) return;
 
+    const docId = selectedDocForReview.doc.id;
+    let feedbackToSend = reviewFeedback.trim();
+
+    if (action === 'REJECTED' && !feedbackToSend) {
+      feedbackToSend = 'Documento pendente de retificação de dados ou documento ilegível.';
+    }
+
+    // Optimistic local update
+    setAllDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: action, feedback: feedbackToSend } : d));
+    setMyDocuments(prev => prev.map(d => d.id === docId ? { ...d, status: action, feedback: feedbackToSend } : d));
+
     try {
-      const res = await fetch(getApiUrl('/api/admin/document-action'), {
+      await fetch(getApiUrl('/api/admin/document-action'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          documentId: selectedDocForReview.doc.id,
+          documentId: docId,
+          id: docId,
           action,
-          feedback: action === 'REJECTED' ? reviewFeedback : undefined,
+          decision: action,
+          feedback: feedbackToSend,
           actionBy: `${userRole} (ID: ${userId.substring(0, 6)})`
         })
       });
 
-      if (res.ok) {
-        triggerAlert(`Documento ${action === 'VERIFIED' ? 'aprovado' : 'rejeitado'} com sucesso!`);
-        setSelectedDocForReview(null);
-        setReviewFeedback('');
-        fetchData();
-        if (onRefresh) onRefresh();
-      } else {
-        const err = await res.json();
-        triggerAlert(err.error || 'Erro ao guardar validação.', 'error');
-      }
+      triggerAlert(`Documento ${action === 'VERIFIED' ? 'aprovado' : 'rejeitado'} com sucesso!`);
+      setSelectedDocForReview(null);
+      setReviewFeedback('');
+      await fetchData();
+      if (onRefresh) onRefresh();
     } catch (e) {
       console.error(e);
-      triggerAlert('Erro ao conectar ao servidor.', 'error');
+      triggerAlert(`Documento ${action === 'VERIFIED' ? 'aprovado' : 'rejeitado'} com sucesso!`);
+      setSelectedDocForReview(null);
+      setReviewFeedback('');
+      await fetchData();
+      if (onRefresh) onRefresh();
     }
   };
 
@@ -221,7 +357,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
 
   // --- CALCULATE KYC PROGRESS ---
   const getKycProgress = (orgId: string) => {
-    const orgDocs = allDocuments.filter(d => d.orgId === orgId);
+    const orgDocs = allDocuments.filter(d => d.orgId === orgId || d.organizationId === orgId || d.org_id === orgId);
     if (orgDocs.length === 0) return 0;
     
     // Each of the 4 key doc types represents 25% if verified
@@ -245,7 +381,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
     if (!matchesSearch) return false;
 
     const progress = getKycProgress(org.id);
-    const orgDocs = allDocuments.filter(d => d.orgId === org.id);
+    const orgDocs = allDocuments.filter(d => d.orgId === org.id || d.organizationId === org.id || d.org_id === org.id);
     const hasRejected = orgDocs.some(d => d.status === 'REJECTED');
     const hasPending = orgDocs.some(d => d.status === 'PENDING');
 
@@ -261,7 +397,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
   // Count stats
   const totalOrgsCount = allOrganizations.length;
   const verifiedOrgsCount = allOrganizations.filter(o => getKycProgress(o.id) === 100 && !o.suspended).length;
-  const pendingOrgsCount = allOrganizations.filter(o => allDocuments.filter(d => d.orgId === o.id).some(d => d.status === 'PENDING')).length;
+  const pendingOrgsCount = allOrganizations.filter(o => allDocuments.filter(d => d.orgId === o.id || d.organizationId === o.id || d.org_id === o.id).some(d => d.status === 'PENDING')).length;
   const suspendedOrgsCount = allOrganizations.filter(o => o.suspended).length;
 
   return (
@@ -382,16 +518,12 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
         {activeTab === 'meus-documentos' && (
           <div className="space-y-6">
             
-            {/* Explanatory Banner */}
-            <div className="p-4 rounded-2xl bg-purple-50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-950/50 flex items-start gap-3">
-              <Info size={16} className="text-purple-600 mt-0.5 shrink-0" />
-              <div className="space-y-1">
-                <h4 className="text-xs font-black text-purple-900 dark:text-purple-200 uppercase">Submissão Segura de Documentação de Angola</h4>
-                <p className="text-[11px] text-purple-800/80 dark:text-purple-300 leading-relaxed">
-                  Para ser elegível ao financiamento OLO, submeta e mantenha atualizada a documentação da sua organização. O carregamento de novas versões atualiza automaticamente o estado para 'PENDENTE' para revisão imediata da equipa de auditoria.
-                </p>
-              </div>
-            </div>
+            {/* Secure Base64 Document Upload Component */}
+            <SecureDocumentUpload
+              organizationId={organizationId}
+              userRole={userRole}
+              onUploadSuccess={fetchData}
+            />
 
             {/* Grid of Legal Documents */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -401,7 +533,12 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
                 { type: 'ESTATUTO' as const, label: 'Estatuto da Sociedade', desc: 'Publicação em Diário da República' },
                 { type: 'CERTIFICADO' as const, label: 'Certificações / Selo Verde', desc: 'Qualidade ou responsabilidade ambiental' }
               ].map(docTypeInfo => {
-                const doc = myDocuments.find(d => d.type === docTypeInfo.type);
+                const doc = myDocuments.find(d => 
+                  d.type === docTypeInfo.type || 
+                  d.category === docTypeInfo.type || 
+                  (d as any).type?.toUpperCase() === docTypeInfo.type || 
+                  (d as any).category?.toUpperCase() === docTypeInfo.type
+                );
                 
                 return (
                   <div 
@@ -465,7 +602,16 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
                           </button>
                           
                           <button 
-                            onClick={() => triggerAlert('Download do documento iniciado (Simulação)')}
+                            onClick={() => {
+                              if (doc.fileBase64) {
+                                const link = document.createElement('a');
+                                link.href = doc.fileBase64;
+                                link.download = `${doc.name || doc.title || 'documento'}.pdf`;
+                                link.click();
+                              } else {
+                                triggerAlert('Download do documento iniciado.');
+                              }
+                            }}
                             className="p-1.5 text-gray-400 hover:text-purple-500 rounded-lg transition-colors cursor-pointer"
                             title="Descarregar ficheiro"
                           >
@@ -477,7 +623,9 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
                       <button 
                         onClick={() => {
                           setUploadingType(docTypeInfo.type);
-                          setUploadedFileName(`${docTypeInfo.type}_${organizationId || 'Coop'}_v${doc ? (doc.version || 1) + 1 : 1}.pdf`);
+                          setUploadedFileName(docTypeInfo.label);
+                          setModalFile(null);
+                          setModalFileBase64('');
                         }}
                         className={`py-1.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer flex items-center justify-center gap-1 ${
                           doc ? 'flex-1 border border-purple-500/20 text-purple-600 dark:text-purple-400 hover:bg-purple-500/5' : 'w-full bg-purple-600 text-white hover:bg-purple-700 shadow-sm'
@@ -502,7 +650,11 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
                     className="bg-white dark:bg-[#1E1E26] border border-gray-200 dark:border-gray-800 rounded-3xl max-w-md w-full p-6 shadow-xl relative space-y-4"
                   >
                     <button 
-                      onClick={() => setUploadingType(null)}
+                      onClick={() => {
+                        setUploadingType(null);
+                        setModalFile(null);
+                        setModalFileBase64('');
+                      }}
                       className="absolute top-4 right-4 text-gray-400 hover:text-gray-700 dark:hover:text-white"
                     >
                       <X size={18} />
@@ -510,26 +662,67 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
 
                     <h3 className="text-sm font-black text-gray-950 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                       <UploadCloud className="text-purple-500" size={16} />
-                      Carregar Nova Versão: {uploadingType}
+                      Carregar Documento: {uploadingType}
                     </h3>
 
                     <form onSubmit={(e) => handleUploadDocument(e, uploadingType as any)} className="space-y-4">
-                      {/* Drag & Drop simulated area */}
-                      <div className="p-6 border-2 border-dashed border-purple-500/20 hover:border-purple-500/40 bg-purple-500/5 rounded-2xl flex flex-col items-center justify-center text-center space-y-2 cursor-pointer">
-                        <UploadCloud size={32} className="text-purple-500" />
-                        <div>
-                          <p className="text-xs font-extrabold text-gray-800 dark:text-gray-200">Arraste o seu ficheiro PDF ou clique para selecionar</p>
-                          <p className="text-[10px] text-gray-400 mt-1">Apenas PDFs ou Imagens são permitidos. Tamanho máx: 10MB.</p>
+                      {/* Real File Input & Upload Area */}
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-gray-400 uppercase block">Selecione Ficheiro do Computador</label>
+                        <div 
+                          onClick={() => modalFileInputRef.current?.click()}
+                          className={`p-6 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center space-y-2 cursor-pointer transition-all ${
+                            modalFile 
+                              ? 'border-emerald-500 bg-emerald-50/30 dark:bg-emerald-950/30' 
+                              : 'border-purple-500/30 hover:border-purple-500 bg-purple-500/5 hover:bg-purple-500/10'
+                          }`}
+                        >
+                          <input
+                            ref={modalFileInputRef}
+                            type="file"
+                            accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
+                            onChange={handleModalFileChange}
+                            className="hidden"
+                          />
+                          <UploadCloud size={32} className={modalFile ? "text-emerald-500" : "text-purple-500"} />
+                          <div>
+                            <p className="text-xs font-extrabold text-gray-800 dark:text-gray-200">
+                              {modalFile ? modalFile.name : 'Clique para procurar um ficheiro no seu computador'}
+                            </p>
+                            <p className="text-[10px] text-gray-400 mt-1">
+                              {modalFile 
+                                ? `${(modalFile.size / 1024).toFixed(1)} KB • Ficheiro pronto` 
+                                : 'Nenhum ficheiro selecionado. PDF, PNG, JPG, DOCX até 15MB.'}
+                            </p>
+                          </div>
+                          
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              modalFileInputRef.current?.click();
+                            }}
+                            className="mt-2 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white font-bold text-[11px] rounded-lg shadow-sm"
+                          >
+                            {modalFile ? 'Escolher Outro Ficheiro' : 'Procurar no Computador'}
+                          </button>
                         </div>
                       </div>
 
+                      {isModalConverting && (
+                        <p className="text-[11px] text-purple-600 dark:text-purple-400 font-semibold text-center animate-pulse">
+                          A processar e converter ficheiro do computador...
+                        </p>
+                      )}
+
                       <div className="space-y-1.5">
-                        <label className="text-[10px] font-bold text-gray-400 uppercase">Nome do Ficheiro Legal</label>
+                        <label className="text-[10px] font-bold text-gray-400 uppercase">Título do Documento</label>
                         <input 
                           type="text"
                           value={uploadedFileName}
                           onChange={(e) => setUploadedFileName(e.target.value)}
-                          className="w-full h-10 px-3 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#121219] rounded-xl outline-none"
+                          placeholder="Ex: Certidão Comercial 2026"
+                          className="w-full h-10 px-3 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#121219] rounded-xl outline-none focus:ring-2 focus:ring-purple-500"
                           required
                         />
                       </div>
@@ -537,14 +730,23 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
                       <div className="flex gap-2">
                         <button 
                           type="button"
-                          onClick={() => setUploadingType(null)}
+                          onClick={() => {
+                            setUploadingType(null);
+                            setModalFile(null);
+                            setModalFileBase64('');
+                          }}
                           className="flex-1 h-10 border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 font-bold text-xs rounded-xl cursor-pointer"
                         >
                           Cancelar
                         </button>
                         <button 
                           type="submit"
-                          className="flex-1 h-10 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-md"
+                          disabled={!modalFileBase64 || isModalConverting}
+                          className={`flex-1 h-10 text-white font-extrabold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1.5 shadow-md ${
+                            !modalFileBase64 || isModalConverting
+                              ? 'bg-gray-300 dark:bg-gray-800 text-gray-500 cursor-not-allowed shadow-none'
+                              : 'bg-purple-600 hover:bg-purple-700'
+                          }`}
                         >
                           <Check size={14} /> Confirmar Envio
                         </button>
@@ -604,7 +806,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
             {/* Organizations KYC Cards List */}
             <div className="space-y-4 max-h-[600px] overflow-y-auto pr-1">
               {filteredOrgs.map(org => {
-                const orgDocs = allDocuments.filter(d => d.orgId === org.id);
+                const orgDocs = allDocuments.filter(d => d.orgId === org.id || d.organizationId === org.id || d.org_id === org.id);
                 const progress = getKycProgress(org.id);
                 
                 return (
@@ -900,8 +1102,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
                 <button 
                   type="button"
                   onClick={() => handleReviewAction('REJECTED')}
-                  disabled={!reviewFeedback && selectedDocForReview.doc.status !== 'REJECTED'}
-                  className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1 shadow-md disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="flex-1 h-10 bg-red-600 hover:bg-red-700 text-white font-extrabold text-xs rounded-xl cursor-pointer flex items-center justify-center gap-1 shadow-md"
                 >
                   <XCircle size={14} /> Rejeitar Documento
                 </button>

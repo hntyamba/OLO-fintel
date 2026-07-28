@@ -623,7 +623,22 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
                       <option value="Benguela">Benguela</option>
                       <option value="Namibe">Namibe</option>
                       <option value="Huíla">Huíla</option>
-                      <option value="Cabinda">Cabinda</option>
+                      <option value="Cunene">Cunene</option>
+                      <option value="Cubango">Cubango</option>
+                      <option value="Cuando">Cuando</option>
+                      <option value="Moxico Leste">Moxico Leste</option>
+                      <option value="Moxico">Moxico</option>
+                      <option value="Lunda Sul">Lunda Sul</option>
+                      <option value="Lunda Norte">Lunda Norte</option>
+                      <option value="Bié">Bié</option>
+                      <option value="Malanje">Malanje</option>
+                      <option value="Benguela">Benguela</option>
+                      <option value="Cuanza Sul">Cuanza Sul</option>
+                      <option value="Cuanza Norte">Cuanza Norte</option>
+                      <option value="Uíge">Uíge</option>
+                      <option value="Zaire">Zaire</option>
+                      <option value="Icolo e Bengo">Icolo e Bengo</option>
+                      <option value="Bengo">Bengo</option>
                     </select>
                   </div>
                 </div>

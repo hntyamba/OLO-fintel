@@ -3,8 +3,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from './AuthContext.js';
+import { safeStorage } from '../lib/api';
 import { useTheme } from './ThemeContext.js';
 import { useLanguage } from './LanguageContext.js';
 import { 
@@ -83,7 +84,9 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
     }
   };
 
-  // Drag-and-drop file simulation
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Drag-and-drop & Computer File Selection
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(true);
@@ -102,10 +105,11 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
     }
   };
 
-  const simulateFileUpload = () => {
-    const fileNames = ['Atas_Assembleia_Humpata.pdf', 'AGT_Certidao_NIF.pdf', 'Extrato_BAI_Recente.xlsx'];
-    const randomName = fileNames[Math.floor(Math.random() * fileNames.length)];
-    setUploadedFiles(prev => [...prev, randomName]);
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const files = Array.from(e.target.files) as File[];
+      setUploadedFiles(prev => [...prev, ...files.map(f => f.name)]);
+    }
   };
 
   const handleRegisterSubmit = async () => {
@@ -117,13 +121,16 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
     setLoading(true);
     setError(null);
     
+    const chosenSector = industry || 'AGRICULTURE';
+    safeStorage.setItem('olo_fintel_last_selected_sector', chosenSector);
+
     const payload = {
       name,
       email,
       password,
       role: role || 'OWNER',
-      industry: industry || 'AGRICULTURE',
-      sector: industry || 'AGRICULTURE',
+      industry: chosenSector,
+      sector: chosenSector,
       province: province || 'Luanda',
       companyName: organizationName || 'Cooperativa OLO',
       organizationName: organizationName || 'Cooperativa OLO'
@@ -138,7 +145,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
     }
   };
 
-  const provinces = ['Luanda', 'Huíla', 'Benguela', 'Huambo', 'Cabinda', 'Cuanza Sul', 'Namibe', 'Uíge', 'Malanje', 'Zaire'];
+  const provinces = ['Luanda', 'Huíla', 'Benguela', 'Bengo', 'Bié', 'Lunda Norte', 'Lunda Sul', 'Huambo', 'Cabinda', 'Cuanza Sul', 'Namibe', 'Uíge', 'Malanje', 'Zaire', 'Moxico Leste', 'Moxico', 'Cuanza Norte', 'Cuando', 'Cubango', 'Cunene', 'Icolo e Bengo'];
 
   const inputStyle = `w-full h-11 px-4 rounded-xl border bg-white dark:bg-[#1A1A21] border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white outline-none focus:border-brand-iris transition-all`;
 
@@ -329,16 +336,35 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
-                onClick={simulateFileUpload}
-                className={`h-40 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center p-4 cursor-pointer transition-all ${
+                onClick={() => fileInputRef.current?.click()}
+                className={`p-6 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
                   isDragging 
                     ? 'border-brand-iris bg-brand-iris/10' 
                     : 'border-gray-200 dark:border-gray-700 hover:border-brand-iris hover:bg-brand-iris/5'
                 }`}
               >
-                <FileUp className="text-brand-purple mb-2 animate-bounce" size={32} />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.xlsx,.xls,.docx,.doc,.png,.jpg,.jpeg"
+                  onChange={handleFileInputChange}
+                  className="hidden"
+                />
+                <FileUp className="text-brand-purple mb-2" size={32} />
                 <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{t('auth.drag_files')}</span>
                 <span className="text-[10px] text-gray-400 mt-1">{t('auth.accept_formats')}</span>
+                
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    fileInputRef.current?.click();
+                  }}
+                  className="mt-3 px-4 py-2 bg-brand-iris hover:bg-brand-iris-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+                >
+                  Procurar Ficheiros no Computador
+                </button>
               </div>
 
               {uploadedFiles.length > 0 && (

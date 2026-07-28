@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from './AuthContext.js';
 import { useLanguage } from './LanguageContext.js';
 import { useTheme } from './ThemeContext.js';
-import { getApiUrl } from '../lib/api';
+import { getApiUrl, safeStorage } from '../lib/api';
 import { 
   ShieldCheck, 
   Users, 
@@ -458,14 +458,50 @@ export default function Dashboards() {
     if (!res || !res.ok) return null;
     try {
       const contentType = res.headers.get('content-type') || '';
+      let json: any = null;
       if (!contentType.includes('application/json')) {
         const text = await res.text();
-        try { return JSON.parse(text); } catch { return null; }
+        try { json = JSON.parse(text); } catch { return null; }
+      } else {
+        json = await res.json();
       }
-      return await res.json();
+      if (json && typeof json === 'object' && !Array.isArray(json)) {
+        if (Array.isArray(json.data)) return json.data;
+        if (Array.isArray(json.documents)) return json.documents;
+        if (Array.isArray(json.users)) return json.users;
+        if (Array.isArray(json.organizations)) return json.organizations;
+        if (json.data !== undefined) return json.data;
+      }
+      return json;
     } catch {
       return null;
     }
+  };
+
+  // Helper to normalize backend document items
+  const normalizeDocQueueItem = (d: any) => {
+    const sUpper = String(d.status || 'PENDING').toUpperCase();
+    const normStatus = (sUpper === 'APPROVED' || sUpper === 'VERIFIED') ? 'VERIFIED' : (sUpper === 'REJECTED' ? 'REJECTED' : 'PENDING');
+    const docTitle = d.title || d.name || 'Documento Submetido';
+    const docName = d.name || d.title || 'Documento Submetido';
+    const docCat = (d.category || d.type || 'FINANCIAL').toUpperCase();
+    const docOrgId = d.organizationId || d.orgId || d.org_id || '';
+    const dateVal = d.date || (d.createdAt ? String(d.createdAt).split('T')[0].split(' ')[0] : '') || (d.updatedAt ? String(d.updatedAt).split('T')[0].split(' ')[0] : '') || new Date().toISOString().split('T')[0];
+
+    return {
+      ...d,
+      id: d.id || `doc-${Math.random().toString(36).substring(2, 8)}`,
+      title: docTitle,
+      name: docName,
+      type: docCat,
+      category: docCat,
+      status: normStatus,
+      rawStatus: d.status,
+      organizationId: docOrgId,
+      orgId: docOrgId,
+      date: dateVal,
+      updatedAt: d.updatedAt || d.createdAt || dateVal,
+    };
   };
 
   // Fetch dashboard data based on role
@@ -475,10 +511,14 @@ export default function Dashboards() {
       if (['SUPER_ADMIN', 'ADMIN', 'ANALYST', 'CONSULTANT'].includes(user?.role || '')) {
         const orgRes = await fetch(getApiUrl('/api/admin/organizations'));
         const userRes = await fetch(getApiUrl('/api/admin/users'));
+        const allDocRes = await fetch(getApiUrl('/api/v1/documents/list/all'));
         const orgs = await safeJson(orgRes);
         const users = await safeJson(userRes);
+        const allDocs = await safeJson(allDocRes);
         if (Array.isArray(orgs)) setOrganizations(orgs);
         if (Array.isArray(users)) setUsersList(users);
+        const docArr = Array.isArray(allDocs) ? allDocs : (allDocs?.data || allDocs?.documents || []);
+        setDocumentsQueue(docArr.map(normalizeDocQueueItem));
 
         if (user?.role === 'SUPER_ADMIN') {
           const consRes = await fetch(getApiUrl('/api/admin/consultants'));
@@ -493,7 +533,8 @@ export default function Dashboards() {
         const ops = await safeJson(opRes);
         const docs = await safeJson(docRes);
         if (Array.isArray(ops)) setOperationalLogs(ops);
-        if (Array.isArray(docs)) setDocumentsQueue(docs);
+        const orgDocArr = Array.isArray(docs) ? docs : (docs?.data || docs?.documents || []);
+        setDocumentsQueue(orgDocArr.map(normalizeDocQueueItem));
       }
     } catch (e) {
       console.warn('Dashboard fetch notice:', e);
@@ -854,21 +895,49 @@ export default function Dashboards() {
     }
   };
 
+  const getOrgNameForDoc = (doc: any) => {
+    if (doc?.orgName && doc.orgName !== 'Organização Registada') return doc.orgName;
+    if (doc?.organizationName && doc.organizationName !== 'Organização Registada') return doc.organizationName;
+    const orgId = doc?.organizationId || doc?.orgId || doc?.org_id;
+    if (orgId) {
+      const found = organizations.find(o => o.id === orgId);
+      if (found?.name) return found.name;
+    }
+    return user?.organizationName || 'Cooperativa Agrícola Humpata';
+  };
+
   // SuperAdmin: Verify/Reject KYC doc
   const handleDocAction = async (docId: string, action: 'VERIFIED' | 'REJECTED', fb?: string) => {
     try {
-      const res = await fetch(getApiUrl('/api/admin/document-action'), {
+      setDocumentsQueue(prev => prev.map((d: any) => {
+        if (d.id === docId || (viewingDoc && (d.title === viewingDoc.title || d.name === viewingDoc.name))) {
+          return { ...d, status: action, feedback: fb || d.feedback };
+        }
+        return d;
+      }));
+
+      await fetch(getApiUrl('/api/admin/document-action'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ documentId: docId, action, feedback: fb })
+        body: JSON.stringify({ 
+          documentId: docId, 
+          id: docId, 
+          action, 
+          decision: action, 
+          feedback: fb,
+          title: viewingDoc?.title || viewingDoc?.name,
+          name: viewingDoc?.name || viewingDoc?.title,
+          organizationId: viewingDoc?.organizationId
+        })
       });
-      if (res.ok) {
-        setViewingDoc(null);
-        fetchDashboardData();
-        refreshUser();
-      }
+      setViewingDoc(null);
+      await fetchDashboardData();
+      if (refreshUser) refreshUser();
     } catch (e) {
       console.error(e);
+      setViewingDoc(null);
+      await fetchDashboardData();
+      if (refreshUser) refreshUser();
     }
   };
 
@@ -1564,7 +1633,7 @@ export default function Dashboards() {
                   <div className="p-5 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl shadow-sm">
                     <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">KYC Pendente</p>
                     <p className="text-2xl font-bold text-amber-500 mt-2">
-                      {documentsQueue.filter(d => d.status === 'PENDING').length || 3} Documentos
+                      {documentsQueue.filter(d => d.status === 'PENDING').length} Documentos
                     </p>
                   </div>
                   <div className="p-5 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl shadow-sm">
@@ -1793,7 +1862,7 @@ export default function Dashboards() {
                         <FileCheck2 className="text-amber-500" size={18} />
                         Fila de Validação Documental (AML & KYC)
                       </h3>
-                      <span className="text-xs text-gray-400">Total de Documentos: {documentsQueue.length || 4}</span>
+                      <span className="text-xs text-gray-400">Total de Documentos: {documentsQueue.length}</span>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -1808,17 +1877,17 @@ export default function Dashboards() {
                           </tr>
                         </thead>
                         <tbody>
-                          {(documentsQueue.length > 0 ? documentsQueue : [
-                            { id: 'doc-q-1', orgName: 'Cooperativa Agrícola Humpata', name: 'NIF_Cooperativa_Humpata.pdf', type: 'NIF', status: 'VERIFIED' },
-                            { id: 'doc-q-2', orgName: 'Cooperativa Agrícola Humpata', name: 'Estatuto_Social_Publicado.pdf', type: 'ID_CARD', status: 'PENDING' },
-                            { id: 'doc-q-3', orgName: 'Cooperativa Agrícola Humpata', name: 'Extrato_Bancario_Banco_BAI_Q1.pdf', type: 'BANK_STATEMENT', status: 'PENDING' },
-                            { id: 'doc-q-4', orgName: 'Pescas Artesanais do Namibe', name: 'Licenca_Pesca_Maritima_2026.pdf', type: 'LICENSE', status: 'PENDING' }
-                          ]).map((doc: any) => (
+                          {documentsQueue.length === 0 ? (
+                            <tr className="border-b border-gray-100 dark:border-gray-850">
+                              <td colSpan={5} className="py-6 text-center text-gray-400">Nenhum documento pendente na fila.</td>
+                            </tr>
+                          ) : (
+                            documentsQueue.map((doc: any) => (
                             <tr key={doc.id} className="border-b border-gray-100 dark:border-gray-850 hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                              <td className="py-3 font-semibold text-gray-900 dark:text-white">{doc.orgName || 'Cooperativa Humpata'}</td>
-                              <td className="py-3 font-mono text-xs">{doc.name}</td>
+                              <td className="py-3 font-semibold text-gray-900 dark:text-white">{getOrgNameForDoc(doc)}</td>
+                              <td className="py-3 font-mono text-xs">{doc.name || doc.title || 'Documento Submetido'}</td>
                               <td className="py-3">
-                                <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] font-bold text-gray-500 uppercase">{doc.type}</span>
+                                <span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] font-bold text-gray-500 uppercase">{doc.type || doc.category || 'FINANCIAL'}</span>
                               </td>
                               <td className="py-3">
                                 <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
@@ -1828,7 +1897,7 @@ export default function Dashboards() {
                                     ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300'
                                     : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
                                 }`}>
-                                  {doc.status}
+                                  {doc.status === 'VERIFIED' ? 'Aprovado' : doc.status === 'REJECTED' ? 'Rejeitado' : 'Pendente'}
                                 </span>
                               </td>
                               <td className="py-3 text-right">
@@ -1841,7 +1910,7 @@ export default function Dashboards() {
                                 </button>
                               </td>
                             </tr>
-                          ))}
+                          )))}
                         </tbody>
                       </table>
                     </div>
@@ -2534,24 +2603,26 @@ export default function Dashboards() {
                               </tr>
                             </thead>
                             <tbody>
-                              {[
-                                { id: 'doc-q-1', orgName: 'Cooperativa Agrícola Humpata', name: 'NIF_Cooperativa_Humpata.pdf', type: 'NIF', date: '2026-07-15', status: 'VERIFIED' },
-                                { id: 'doc-q-2', orgName: 'Cooperativa Agrícola Humpata', name: 'Estatuto_Social_Publicado.pdf', type: 'ID_CARD', date: '2026-07-16', status: 'PENDING' },
-                                { id: 'doc-q-3', orgName: 'Cooperativa Agrícola Humpata', name: 'Extrato_Bancario_Banco_BAI_Q1.pdf', type: 'BANK_STATEMENT', date: '2026-07-17', status: 'PENDING' },
-                                { id: 'doc-q-4', orgName: 'Pescas Artesanais do Namibe', name: 'Licenca_Pesca_Maritima_2026.pdf', type: 'LICENSE', date: '2026-07-18', status: 'PENDING' }
-                              ].map(doc => (
+                              {documentsQueue.length === 0 ? (
+                                <tr className="border-b border-gray-100 dark:border-gray-850">
+                                  <td colSpan={6} className="py-6 text-center text-gray-400">Nenhum documento pendente na fila.</td>
+                                </tr>
+                              ) : (
+                                documentsQueue.map((doc: any) => (
                                 <tr key={doc.id} className="border-b border-gray-100 dark:border-gray-850 hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
-                                  <td className="py-3 font-semibold text-gray-900 dark:text-white">{doc.orgName}</td>
-                                  <td className="py-3 font-mono text-xs">{doc.name}</td>
-                                  <td className="py-3"><span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] font-bold text-gray-500">{doc.type}</span></td>
-                                  <td className="py-3 font-mono text-xs text-gray-400">{doc.date}</td>
+                                  <td className="py-3 font-semibold text-gray-900 dark:text-white">{getOrgNameForDoc(doc)}</td>
+                                  <td className="py-3 font-mono text-xs">{doc.name || doc.title || 'Documento Submetido'}</td>
+                                  <td className="py-3"><span className="px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-[10px] font-bold text-gray-500 uppercase">{doc.type || doc.category || 'FINANCIAL'}</span></td>
+                                  <td className="py-3 font-mono text-xs text-gray-400">{doc.date || doc.createdAt?.split(' ')[0] || '2026-07-28'}</td>
                                   <td className="py-3">
                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                                       doc.status === 'VERIFIED'
                                         ? 'bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300'
+                                        : doc.status === 'REJECTED'
+                                        ? 'bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300'
                                         : 'bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300'
                                     }`}>
-                                      {doc.status}
+                                      {doc.status === 'VERIFIED' ? 'Aprovado' : doc.status === 'REJECTED' ? 'Rejeitado' : 'Pendente'}
                                     </span>
                                   </td>
                                   <td className="py-3 text-right">
@@ -2564,7 +2635,7 @@ export default function Dashboards() {
                                     </button>
                                   </td>
                                 </tr>
-                              ))}
+                              )))}
                             </tbody>
                           </table>
                         </div>

@@ -97,8 +97,12 @@ export interface OperationalRecord {
 export interface DocumentRecord {
   id: string;
   orgId: string;
+  organizationId?: string;
   name: string;
-  type: 'NIF' | 'ID_CARD' | 'BANK_STATEMENT' | 'LICENSE' | 'ESTATUTO' | 'CERTIFICADO';
+  title?: string;
+  type: string;
+  category?: string;
+  fileBase64?: string;
   uploadedAt: string;
   status: 'PENDING' | 'VERIFIED' | 'REJECTED';
   feedback?: string;

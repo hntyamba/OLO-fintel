@@ -1,14 +1,6 @@
 {
   "cleanUrls": true,
   "rewrites": [
-    {
-      "source": "/google69739a77ef29e66e.html",
-      "destination": "/google69739a77ef29e66e.html"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
-

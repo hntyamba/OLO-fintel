@@ -293,7 +293,7 @@ export default function SurveyPage({
     }
   };
 
-  const provinces = ['Luanda', 'Huíla', 'Benguela', 'Huambo', 'Bié', 'Moxico', 'Cabinda', 'Cuanza Sul', 'Namibe', 'Uíge', 'Malanje', 'Zaire', 'Lunda Norte', 'Lunda Sul', 'Cunene', 'Cuando Cubango', 'Cuanza Norte', 'Bengo', 'Outra'];
+  const provinces = ['Luanda', 'Icolo e Bengo', 'Huíla', 'Benguela', 'Huambo', 'Bié', 'Moxico', 'Moxico Leste', 'Cabinda', 'Cuanza Sul', 'Namibe', 'Uíge', 'Malanje', 'Zaire', 'Lunda Norte', 'Lunda Sul', 'Cunene', 'Cuando', 'Cubango', 'Cuanza Norte', 'Bengo', 'Outra'];
   const sectorsList = [
     { id: 'AGRICULTURE', label: '🌾 Agro-Pecuária (Agricultura/Plantação)' },
     { id: 'LIVESTOCK', label: '🐄 Pecuária (Animais/Criação)' },

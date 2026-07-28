@@ -703,7 +703,9 @@ async function startServer() {
 
   // Authentication API: Register User and Org
   app.post('/api/auth/register', (req, res) => {
-    const { name, email, password, role, industry, province, organizationName } = req.body;
+    const { name, email, password, role, industry, sector, province, organizationName, companyName } = req.body;
+    const finalOrgName = organizationName || companyName;
+    const finalSector = industry || sector || 'AGRICULTURE';
 
     if (!name || !email || !password || !role) {
       return res.status(400).json({ error: 'Campos obrigatórios em falta.' });
@@ -715,16 +717,14 @@ async function startServer() {
     }
 
     let orgId: string | null = null;
-    let finalOrgName: string | null = null;
 
-    if (['OWNER', 'MANAGER', 'FINANCIAL_OFFICER'].includes(role) && organizationName) {
+    if (['OWNER', 'MANAGER', 'FINANCIAL_OFFICER'].includes(role) && finalOrgName) {
       orgId = `org-${Date.now()}`;
-      finalOrgName = organizationName;
       
       const newOrg: Organization = {
         id: orgId,
-        name: organizationName,
-        sector: industry || 'AGRICULTURE',
+        name: finalOrgName,
+        sector: finalSector,
         province: province || 'Luanda',
         maturity: 'BEGINNER',
         assignedConsultantId: null,
@@ -739,7 +739,7 @@ async function startServer() {
       email,
       password,
       role,
-      industry: orgId ? industry : null,
+      industry: finalSector,
       maturity: 'BEGINNER',
       organizationId: orgId,
       organizationName: finalOrgName,
@@ -846,10 +846,25 @@ async function startServer() {
 
   // Fisheries Operations API: Register Vessel
   const registerVesselHandler = (req: any, res: any) => {
-    const { name, registrationNumber, capacity, organizationId } = req.body;
+    const { 
+      name, vesselName, nome,
+      registrationNumber, registration, matricula,
+      capacity, capacityTons, capacidade,
+      engineBrand, marcaMotor, marca,
+      enginePower, potenciaMotor, potencia,
+      details, detalhes,
+      organizationId 
+    } = req.body;
     const orgId = organizationId || req.body.orgId || 'org-1';
 
-    if (!name) {
+    const finalName = name || vesselName || nome;
+    const finalReg = registrationNumber || registration || matricula;
+    const finalCap = capacity !== undefined ? capacity : (capacityTons !== undefined ? capacityTons : capacidade);
+    const finalEngineBrand = engineBrand || marcaMotor || marca || null;
+    const finalEnginePower = enginePower || potenciaMotor || potencia || null;
+    const finalDetails = details || detalhes || null;
+
+    if (!finalName) {
       return res.status(400).json({ success: false, message: 'Nome e matrícula da embarcação obrigatórios.' });
     }
 
@@ -858,9 +873,12 @@ async function startServer() {
     const newVessel = {
       id: `vessel-${Date.now()}`,
       organizationId: orgId,
-      name,
-      registrationNumber: registrationNumber || `NAM-${Math.floor(Math.random() * 900) + 100}-V`,
-      capacity: capacity ? parseFloat(capacity) : 10.0,
+      name: finalName,
+      registrationNumber: finalReg || `NAM-${Math.floor(Math.random() * 900) + 100}-V`,
+      capacity: finalCap ? parseFloat(finalCap) : 10.0,
+      engineBrand: finalEngineBrand,
+      enginePower: finalEnginePower,
+      details: finalDetails,
       status: 'Operational',
       createdAt: new Date().toISOString()
     };
@@ -904,26 +922,32 @@ async function startServer() {
   app.post('/api/operations/fisheries/catches', recordCatchHandler);
 
   // Documents API: List
-  app.get('/api/documents/list/:orgId', (req, res) => {
-    const docs = db.documentRecords.filter(d => d.orgId === req.params.orgId);
-    res.json(docs);
+  app.get(['/api/documents/list/:orgId', '/api/v1/documents/list/:orgId'], (req, res) => {
+    const orgId = req.params.orgId;
+    const docs = (orgId === 'all' || orgId === 'ALL')
+      ? db.documentRecords
+      : db.documentRecords.filter(d => d.orgId === orgId || d.organizationId === orgId);
+    res.json({ success: true, data: docs, documents: docs });
   });
 
   // Documents API: List All (Admin)
-  app.get('/api/admin/documents', (req, res) => {
-    res.json(db.documentRecords);
+  app.get(['/api/admin/documents', '/api/v1/admin/documents'], (req, res) => {
+    res.json({ success: true, data: db.documentRecords, documents: db.documentRecords });
   });
 
-  // Documents API: Upload (Simulated)
-  app.post('/api/documents/upload', (req, res) => {
-    const { orgId, type, name, uploadedBy } = req.body;
+  // Documents API: Upload
+  app.post(['/api/documents/upload', '/api/v1/documents/upload'], (req, res) => {
+    const orgId = req.body.orgId || req.body.organizationId || 'org-dwgy5kqb6';
+    const type = req.body.type || req.body.category || req.body.docType || 'FINANCIAL';
+    const name = req.body.name || req.body.title || req.body.docType || 'Documento Submetido';
+    const fileBase64 = req.body.fileBase64 || req.body.base64 || '';
+    const uploadedBy = req.body.uploadedBy || 'Utilizador';
 
     if (!orgId || !type || !name) {
-      return res.status(400).json({ error: 'Faltam metadados do documento.' });
+      return res.status(400).json({ success: false, error: 'Faltam metadados do documento.' });
     }
 
-    const uBy = uploadedBy || 'Utilizador';
-    let doc = db.documentRecords.find(d => d.orgId === orgId && d.type === type);
+    let doc = db.documentRecords.find(d => (d.orgId === orgId || d.organizationId === orgId) && d.type === type);
 
     if (doc) {
       // Overwrite/version update
@@ -934,7 +958,7 @@ async function startServer() {
         doc.history = [
           {
             version: currentVersion,
-            name: doc.name,
+            name: doc.name || doc.title,
             uploadedAt: doc.uploadedAt,
             actionBy: 'Utilizador',
             actionType: 'UPLOAD'
@@ -943,6 +967,8 @@ async function startServer() {
       }
 
       doc.name = name;
+      doc.title = name;
+      doc.fileBase64 = fileBase64;
       doc.uploadedAt = new Date().toISOString();
       doc.status = 'PENDING';
       delete doc.feedback;
@@ -952,7 +978,7 @@ async function startServer() {
         version: nextVersion,
         name: name,
         uploadedAt: new Date().toISOString(),
-        actionBy: uBy,
+        actionBy: uploadedBy,
         actionType: 'REPLACE'
       });
     } else {
@@ -960,8 +986,12 @@ async function startServer() {
       doc = {
         id: `doc-${Date.now()}`,
         orgId,
+        organizationId: orgId,
         name,
+        title: name,
         type,
+        category: type,
+        fileBase64,
         uploadedAt: new Date().toISOString(),
         status: 'PENDING',
         version: 1,
@@ -970,7 +1000,7 @@ async function startServer() {
             version: 1,
             name: name,
             uploadedAt: new Date().toISOString(),
-            actionBy: uBy,
+            actionBy: uploadedBy,
             actionType: 'UPLOAD'
           }
         ]
@@ -979,7 +1009,8 @@ async function startServer() {
     }
 
     saveDatabase();
-    res.json({ success: true, document: doc });
+    console.log(`[Express Backend] Documento guardado no servidor: "${name}" (${type}) para orgId "${orgId}"`);
+    res.json({ success: true, document: doc, data: doc, message: 'Documento submetido para validação com sucesso.' });
   });
 
   // ----------------- FUNDING READINESS ROUTES -----------------
@@ -1303,7 +1334,7 @@ async function startServer() {
   });
 
   // Approve/Reject documents in KYC queue
-  app.post('/api/admin/document-action', (req, res) => {
+  app.post(['/api/admin/document-action', '/api/v1/admin/document-action'], (req, res) => {
     const { documentId, action, feedback, actionBy } = req.body; // action: 'VERIFIED' or 'REJECTED'
 
     const doc = db.documentRecords.find(d => d.id === documentId);

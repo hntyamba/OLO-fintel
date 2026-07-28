@@ -64,13 +64,27 @@ const BENCHMARK_STATS: SurveyStats = {
     TRANSPORT: 8
   },
   provinces: {
-    'Huíla': 42,
-    'Luanda': 29,
-    'Huambo': 24,
-    'Benguela': 19,
-    'Namibe': 15,
-    'Cabinda': 11,
-    'Uíge': 7
+    'Huíla': 0,
+    'Luanda': 0,
+    'Huambo': 0,
+    'Benguela': 0,
+    'Namibe': 0,
+    'Cabinda': 0,
+    'Uíge': 0,
+    'Cuanza Sul': 0,
+    'Cuanza Norte': 0,
+    'Moxico leste': 0,
+    'Moxico': 0,
+    'Cubango': 0,
+    'Cuando': 0,
+    'Lunda Sul': 0,
+    'Lunda Norte': 0,
+    'Cunene': 0,
+    'Zaire': 0,
+    'Bié': 0,
+    'Malanje': 0,
+    'Bengo': 0,
+    'Icolo e Bengo': 0
   },
   challenges: {
     'Access to Credit & Bank Loans': 59,
@@ -259,7 +273,7 @@ export default function LandingPage({
       solution: 'Usou o OLO Fintel para registar 6 meses de colheitas e vendas. Digitalizou os NIF e atas da cooperativa.',
       score: 'Aumentou de 35 para 78 pontos de Identidade Económica.',
       result: 'Crédito de 15.000.000 Kz aprovado pelo banco parceiro.',
-      image: 'https://images.unsplash.com/photo-1595974482597-4b8da8879bc5?auto=format&fit=crop&q=80&w=600'
+      image: 'https://upload.wikimedia.org/wikipedia/commons/f/f6/Ombala_do_Rei_da_Comuna_da_Hu%C3%ADla.jpg'
     },
     {
       name: 'Pescas Artesanais do Namibe',
@@ -269,7 +283,7 @@ export default function LandingPage({
       solution: 'Ativou o módulo de Pescas no OLO OS, registando consumo por barco e viagens diárias.',
       score: 'Aumentou de 28 para 65 pontos de Identidade Económica.',
       result: 'Bancos aprovaram financiamento para reparação de 3 barcos.',
-      image: 'https://images.unsplash.com/photo-1534313313175-cf70e6ee1bba?auto=format&fit=crop&q=80&w=600'
+      image: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Porto_do_Namibe_%2818832935473%29.jpg'
     },
     {
       name: 'Criadores do Planalto Huambo',
@@ -279,7 +293,7 @@ export default function LandingPage({
       solution: 'Registo e rastreabilidade dos brincos e vacinas no app Fintel.',
       score: 'Aumentou de 42 para 89 pontos de Identidade Económica.',
       result: 'Parceria com distribuidor nacional que exige rastreabilidade garantida.',
-      image: 'https://images.unsplash.com/photo-1570042225831-d98fa7577f1e?auto=format&fit=crop&q=80&w=600'
+      image: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/Oxen_in_Angola.jpg'
     }
   ];
 
@@ -547,7 +561,7 @@ export default function LandingPage({
               {stats !== null ? `${Object.keys(stats.provinces).length} Províncias` : '...'}
             </span>
             <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Cobertura Nacional</span>
-            <span className="text-[10px] text-gray-400 block font-mono">Do Luanda ao Cunene</span>
+            <span className="text-[10px] text-gray-400 block font-mono">De Luanda ao Cunene</span>
           </div>
 
           <div className="space-y-1 text-left">

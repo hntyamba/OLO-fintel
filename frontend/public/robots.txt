@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+# Se criar um sitemap no futuro, adicione a linha abaixo:
+# Sitemap: https://vercel.app

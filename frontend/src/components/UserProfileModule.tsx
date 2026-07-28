@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext.js';
-import { getApiUrl } from '../lib/api';
+import { getApiUrl, apiCall, safeStorage } from '../lib/api';
 import { 
   User, 
   Building, 
@@ -92,7 +92,8 @@ export default function UserProfileModule({ onBack }: UserProfileModuleProps) {
     setErrorMsg('');
 
     try {
-      const res = await fetch(getApiUrl('/api/auth/profile/update'), {
+      safeStorage.setItem('olo_fintel_last_selected_sector', industry);
+      const res = await apiCall('/api/auth/profile/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -102,7 +103,9 @@ export default function UserProfileModule({ onBack }: UserProfileModuleProps) {
           password: password || undefined,
           province,
           organizationName,
+          companyName: organizationName,
           industry,
+          sector: industry
         })
       });
 
