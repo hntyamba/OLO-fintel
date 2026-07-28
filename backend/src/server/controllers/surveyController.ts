@@ -236,7 +236,7 @@ export async function submitResponse(req: Request, res: Response) {
         const fingerprint = hashFingerprint(ip, userAgent);
 
         const activeSurvey = await db.survey.findFirst({ where: { status: "Open" } });
-        const surveyId = activeSurvey ? activeSurvey.id : "default-survey-id";
+        const surveyId = activeSurvey ? activeSurvey.id : "d112b0c7-9776-44a4-a562-b1ff7d695c64";
 
         if (activeSurvey) {
           const responseRecord = await db.surveyResponse.create({
