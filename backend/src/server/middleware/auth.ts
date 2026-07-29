@@ -52,7 +52,14 @@ export function requireRoles(allowedRoles: string[]) {
       return res.status(401).json({ success: false, message: "Não autenticado." });
     }
 
-    if (!allowedRoles.includes(req.user.role)) {
+    const userRoleUpper = (req.user.role || "").toUpperCase();
+    const allowedUpper = allowedRoles.map(r => r.toUpperCase());
+
+    // SUPER_ADMIN and ADMIN have global override access to all role-restricted endpoints
+    const isSuperOrAdmin = userRoleUpper === "SUPER_ADMIN" || userRoleUpper === "ADMIN";
+    const isExplicitlyAllowed = allowedUpper.includes("ALL") || allowedUpper.includes(userRoleUpper);
+
+    if (!isSuperOrAdmin && !isExplicitlyAllowed) {
       return res.status(403).json({ 
         success: false, 
         message: `Acesso proibido. Esta ação requer uma das seguintes funções: ${allowedRoles.join(", ")}` 
