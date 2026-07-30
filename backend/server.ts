@@ -13,7 +13,13 @@ import { requireAuth, requireRoles, injectTenant } from "./src/server/middleware
 // Controllers
 import { register, login, refresh, logout, me, updateProfile } from "./src/server/controllers/authController.ts";
 import { getActiveSurvey, submitResponse, getSurveyStatistics, getJuryDashboard } from "./src/server/controllers/surveyController.ts";
-import { getPublicPlatformMetrics, getExecutiveDashboard } from "./src/server/controllers/dashboardController.ts";
+import { 
+  getPublicPlatformMetrics, 
+  getPublicCooperatives, 
+  getPublicValidationStats, 
+  getPublicLandingOverview, 
+  getExecutiveDashboard 
+} from "./src/server/controllers/dashboardController.ts";
 import {
   createFarm,
   getFarms,
@@ -85,9 +91,22 @@ async function startServer() {
   app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
   // ==========================================
-  // PUBLIC & LANDING PAGE ENDPOINTS
+  // PUBLIC & LANDING PAGE ENDPOINTS (NO TOKEN REQUIRED)
   // ==========================================
   app.get("/api/v1/public/platform-metrics", getPublicPlatformMetrics);
+  app.get("/api/public/platform-metrics", getPublicPlatformMetrics);
+  
+  app.get("/api/v1/public/cooperatives", getPublicCooperatives);
+  app.get("/api/public/cooperatives", getPublicCooperatives);
+  app.get("/api/v1/public/organizations", getPublicCooperatives);
+  app.get("/api/public/organizations", getPublicCooperatives);
+
+  app.get("/api/v1/public/validation-stats", getPublicValidationStats);
+  app.get("/api/public/validation-stats", getPublicValidationStats);
+
+  app.get("/api/v1/public/landing", getPublicLandingOverview);
+  app.get("/api/public/landing", getPublicLandingOverview);
+
   app.get("/api/v1/surveys/active", getActiveSurvey);
   app.post("/api/v1/surveys/responses", submitResponse);
   app.get("/api/v1/surveys/statistics", getSurveyStatistics);
