@@ -14,10 +14,23 @@ export async function getPublicPlatformMetrics(req: any, res: Response) {
     const catchCount = await db.catch.count().catch(() => 0);
     const totalOperations = harvestCount + catchCount + animalCount + farmCount;
 
-    // Provinces & Municipalities count
+    // Provinces & Municipalities count aggregated from Organizations, Survey Responses, and Survey Answers
     const orgs = await db.organization.findMany({ select: { province: true, municipality: true } });
-    const provincesSet = new Set(orgs.map(o => o.province).filter(Boolean));
-    const municipalitiesSet = new Set(orgs.map(o => o.municipality).filter(Boolean));
+    const surveyProvinces = await db.surveyResponse.findMany({ select: { provinceHint: true } }).catch(() => []);
+    const surveyAnswersProvinces = await db.surveyAnswer.findMany({
+      where: {
+        questionId: { in: ["E4_province", "E4_provinceOther", "province", "q-province"] }
+      },
+      select: { value: true }
+    }).catch(() => []);
+
+    const provincesSet = new Set<string>();
+    orgs.forEach(o => o.province && o.province.trim() && provincesSet.add(o.province.trim()));
+    surveyProvinces.forEach(s => s.provinceHint && s.provinceHint.trim() && provincesSet.add(s.provinceHint.trim()));
+    surveyAnswersProvinces.forEach(a => a.value && a.value.trim() && !["false", "true", "undefined", "null"].includes(a.value.trim()) && provincesSet.add(a.value.trim()));
+
+    const municipalitiesSet = new Set<string>();
+    orgs.forEach(o => o.municipality && municipalitiesSet.add(o.municipality));
 
     // Sum all revenues
     const revenues = await db.revenue.findMany({ select: { amount: true } });
@@ -146,8 +159,21 @@ export async function getPublicLandingOverview(req: any, res: Response) {
       take: 10
     });
 
-    const provincesSet = new Set(orgs.map(o => o.province).filter(Boolean));
-    const municipalitiesSet = new Set(orgs.map(o => o.municipality).filter(Boolean));
+    const surveyProvinces = await db.surveyResponse.findMany({ select: { provinceHint: true } }).catch(() => []);
+    const surveyAnswersProvinces = await db.surveyAnswer.findMany({
+      where: {
+        questionId: { in: ["E4_province", "E4_provinceOther", "province", "q-province"] }
+      },
+      select: { value: true }
+    }).catch(() => []);
+
+    const provincesSet = new Set<string>();
+    orgs.forEach(o => o.province && o.province.trim() && provincesSet.add(o.province.trim()));
+    surveyProvinces.forEach(s => s.provinceHint && s.provinceHint.trim() && provincesSet.add(s.provinceHint.trim()));
+    surveyAnswersProvinces.forEach(a => a.value && a.value.trim() && !["false", "true", "undefined", "null"].includes(a.value.trim()) && provincesSet.add(a.value.trim()));
+
+    const municipalitiesSet = new Set<string>();
+    orgs.forEach(o => o.municipality && municipalitiesSet.add(o.municipality));
 
     const revenues = await db.revenue.findMany({ select: { amount: true } });
     const totalRevenues = revenues.reduce((sum, r) => sum + r.amount, 0);
