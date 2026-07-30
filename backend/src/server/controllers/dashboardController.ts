@@ -14,11 +14,10 @@ export async function getPublicPlatformMetrics(req: any, res: Response) {
     const catchCount = await db.catch.count().catch(() => 0);
     const totalOperations = harvestCount + catchCount + animalCount + farmCount;
 
-    // Provinces count
+    // Provinces & Municipalities count
     const orgs = await db.organization.findMany({ select: { province: true, municipality: true } });
     const provincesSet = new Set(orgs.map(o => o.province).filter(Boolean));
     const municipalitiesSet = new Set(orgs.map(o => o.municipality).filter(Boolean));
-    const provincesRepresented = Math.max(provincesSet.size, 4);
 
     // Sum all revenues
     const revenues = await db.revenue.findMany({ select: { amount: true } });
@@ -26,22 +25,27 @@ export async function getPublicPlatformMetrics(req: any, res: Response) {
 
     const transactionCount = await db.transaction.count();
 
+    // Calculate real idea validation score if surveys exist
+    const responses = await db.surveyResponse.findMany({ select: { adoptionScore: true } });
+    const totalAdoption = responses.reduce((acc, curr) => acc + (curr.adoptionScore || 0), 0);
+    const ideaValidationScore = responses.length > 0 ? Math.round((totalAdoption / responses.length) * 10) / 10 : 0;
+
     return res.json({
       success: true,
       data: {
-        inquiriesValidated: surveyCount + 48,
-        fieldDiagnostics: totalOperations + surveyCount + 150,
-        cooperativesRegistered: orgCount + 12,
-        operationsHomologated: totalOperations + 85,
-        provincesIntegrated: provincesRepresented,
-        activeCommunities: Math.max(municipalitiesSet.size, 18),
-        totalRevenuesRegisteredAOA: totalRevenues + 4500000,
-        totalTransactionsProcessed: transactionCount + 120,
-        organizationsRegistered: orgCount + 12,
-        surveyResponsesCount: surveyCount + 48,
-        provincesRepresented,
-        totalRevenuesRegistered: totalRevenues + 4500000,
-        ideaValidationScore: 88.5
+        inquiriesValidated: surveyCount,
+        fieldDiagnostics: totalOperations + surveyCount,
+        cooperativesRegistered: orgCount,
+        operationsHomologated: totalOperations,
+        provincesIntegrated: provincesSet.size,
+        activeCommunities: municipalitiesSet.size,
+        totalRevenuesRegisteredAOA: totalRevenues,
+        totalTransactionsProcessed: transactionCount,
+        organizationsRegistered: orgCount,
+        surveyResponsesCount: surveyCount,
+        provincesRepresented: provincesSet.size,
+        totalRevenuesRegistered: totalRevenues,
+        ideaValidationScore
       }
     });
 
@@ -67,17 +71,10 @@ export async function getPublicCooperatives(req: any, res: Response) {
       take: 50
     });
 
-    const sampleCooperatives = [
-      { id: "coop-1", name: "Cooperativa Agrícola do Huambo", sector: "Agricultura", province: "Huambo", municipality: "Caála", status: "Active", maturityLevel: "Nível 3 - Consolidada", createdAt: new Date() },
-      { id: "coop-2", name: "Associação de Pesqueiros de Benguela", sector: "Pesca", province: "Benguela", municipality: "Baía Farta", status: "Active", maturityLevel: "Nível 2 - Em Crescimento", createdAt: new Date() },
-      { id: "coop-3", name: "União dos Criadores do Cuanza Sul", sector: "Pecuária", province: "Cuanza Sul", municipality: "Sumbe", status: "Active", maturityLevel: "Nível 4 - Alta Prontidão", createdAt: new Date() },
-      { id: "coop-4", name: "Cooperativa Transforma Malanje", sector: "Comércio", province: "Malanje", municipality: "Cacuso", status: "Active", maturityLevel: "Nível 2 - Em Crescimento", createdAt: new Date() }
-    ];
-
-    const formattedOrgs = orgs.length > 0 ? orgs.map(o => ({
+    const formattedOrgs = orgs.map(o => ({
       ...o,
       maturityLevel: o.sector === "Agricultura" || o.sector === "Agriculture" ? "Nível 3 - Consolidada" : "Nível 2 - Em Crescimento"
-    })) : sampleCooperatives;
+    }));
 
     return res.json({
       success: true,
@@ -100,22 +97,24 @@ export async function getPublicValidationStats(req: any, res: Response) {
 
     responses.forEach((r: any) => {
       const metrics = r.metrics || {};
-      if (metrics.isHighIntent || r.adoptionScore >= 70) highIntentCount++;
-      totalAdoption += (r.adoptionScore || metrics.adoptionScore || 75);
+      if (metrics.isHighIntent || (r.adoptionScore && r.adoptionScore >= 70)) highIntentCount++;
+      if (r.adoptionScore || metrics.adoptionScore) {
+        totalAdoption += (r.adoptionScore || metrics.adoptionScore || 0);
+      }
     });
 
-    const averageAdoptionScore = totalCount > 0 ? Math.round(totalAdoption / totalCount) : 84;
-    const highIntentPercentage = totalCount > 0 ? Math.round((highIntentCount / totalCount) * 100) : 79;
+    const averageAdoptionScore = totalCount > 0 ? Math.round(totalAdoption / totalCount) : 0;
+    const highIntentPercentage = totalCount > 0 ? Math.round((highIntentCount / totalCount) * 100) : 0;
 
     return res.json({
       success: true,
       data: {
-        totalSurveysCompleted: totalCount + 48,
-        validationStatus: "Validação Positiva de Mercado",
+        totalSurveysCompleted: totalCount,
+        validationStatus: totalCount > 0 ? "Validação Positiva de Mercado" : "Aguardando Registos",
         averageAdoptionScore,
         highIntentPercentage: `${highIntentPercentage}%`,
         juryHighlights: {
-          marketDemand: "Elevada necessidade de formalização e crédito",
+          marketDemand: totalCount > 0 ? "Elevada necessidade de formalização e crédito" : "Ainda sem dados suficientes",
           topPainPoints: ["Falta de histórico de crédito", "Acesso a financiamento", "Gestão documental"],
           sectorBreakdown: {
             agricultura: "45%",
@@ -147,35 +146,37 @@ export async function getPublicLandingOverview(req: any, res: Response) {
       take: 10
     });
 
-    const sampleCooperatives = [
-      { id: "coop-1", name: "Cooperativa Agrícola do Huambo", sector: "Agricultura", province: "Huambo", municipality: "Caála", maturityLevel: "Nível 3 - Consolidada" },
-      { id: "coop-2", name: "Associação de Pesqueiros de Benguela", sector: "Pesca", province: "Benguela", municipality: "Baía Farta", maturityLevel: "Nível 2 - Em Crescimento" },
-      { id: "coop-3", name: "União dos Criadores do Cuanza Sul", sector: "Pecuária", province: "Cuanza Sul", municipality: "Sumbe", maturityLevel: "Nível 4 - Alta Prontidão" },
-      { id: "coop-4", name: "Cooperativa Transforma Malanje", sector: "Comércio", province: "Malanje", municipality: "Cacuso", maturityLevel: "Nível 2 - Em Crescimento" }
-    ];
+    const provincesSet = new Set(orgs.map(o => o.province).filter(Boolean));
+    const municipalitiesSet = new Set(orgs.map(o => o.municipality).filter(Boolean));
 
-    const cooperativesList = orgs.length > 0 ? orgs.map(o => ({
+    const revenues = await db.revenue.findMany({ select: { amount: true } });
+    const totalRevenues = revenues.reduce((sum, r) => sum + r.amount, 0);
+
+    const responses = await db.surveyResponse.findMany({ select: { adoptionScore: true } });
+    const totalAdoption = responses.reduce((acc, curr) => acc + (curr.adoptionScore || 0), 0);
+    const averageAdoptionScore = responses.length > 0 ? Math.round(totalAdoption / responses.length) : 0;
+
+    const cooperativesList = orgs.map(o => ({
       ...o,
       maturityLevel: "Nível 2 - Em Crescimento"
-    })) : sampleCooperatives;
+    }));
 
     return res.json({
       success: true,
       data: {
         platformMetrics: {
-          inquiriesValidated: surveyCount + 48,
-          fieldDiagnostics: totalOperations + surveyCount + 150,
-          cooperativesRegistered: orgCount + 12,
-          operationsHomologated: totalOperations + 85,
-          provincesIntegrated: 4,
-          activeCommunities: 18,
-          totalRevenuesRegisteredAOA: 4500000
+          inquiriesValidated: surveyCount,
+          fieldDiagnostics: totalOperations + surveyCount,
+          cooperativesRegistered: orgCount,
+          operationsHomologated: totalOperations,
+          provincesIntegrated: provincesSet.size,
+          activeCommunities: municipalitiesSet.size,
+          totalRevenuesRegisteredAOA: totalRevenues
         },
         validationOverview: {
-          marketDemand: "Elevada necessidade de formalização e crédito",
-          averageAdoptionScore: 84,
-          highIntentPercentage: "79%",
-          surveysCompleted: surveyCount + 48
+          marketDemand: surveyCount > 0 ? "Elevada necessidade de formalização e crédito" : "Sem dados",
+          averageAdoptionScore,
+          surveysCompleted: surveyCount
         },
         recentCooperatives: cooperativesList
       }
