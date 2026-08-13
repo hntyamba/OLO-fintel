@@ -58,7 +58,7 @@ const CATEGORIES = [
 
 export default function SecureDocumentUpload({
   organizationId: propOrgId,
-  organizationName = 'Cooperativa OLO Fintel',
+  organizationName = 'Cooperativa MiraWelch',
   userRole = 'OWNER',
   onUploadSuccess,
 }: SecureDocumentUploadProps) {

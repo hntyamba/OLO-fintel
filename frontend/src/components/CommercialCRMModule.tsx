@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
   Briefcase, 
@@ -26,22 +26,44 @@ import {
   CheckCircle, 
   Layers,
   ArrowRight,
-  Sparkles
+  Sparkles,
+  GripVertical,
+  Eye,
+  Edit3,
+  X,
+  ExternalLink,
+  Building2,
+  Tag
 } from 'lucide-react';
 
 interface CommercialCRMModuleProps {
   userId: string;
   userRole: string;
+  initialSubTab?: 'pipeline' | 'clientes' | 'fornecedores' | 'contratos';
+  onSubTabChange?: (tab: 'pipeline' | 'clientes' | 'fornecedores' | 'contratos') => void;
   key?: string;
 }
 
-export default function CommercialCRMModule({ userId, userRole }: CommercialCRMModuleProps) {
+export default function CommercialCRMModule({ userId, userRole, initialSubTab, onSubTabChange }: CommercialCRMModuleProps) {
   // --- SUB-SECTIONS NAVIGATION ---
-  const [activeTab, setActiveTab] = useState<'pipeline' | 'clientes' | 'fornecedores' | 'contratos'>('pipeline');
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'clientes' | 'fornecedores' | 'contratos'>(initialSubTab || 'pipeline');
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  const handleTabSelect = (tab: 'pipeline' | 'clientes' | 'fornecedores' | 'contratos') => {
+    setActiveTab(tab);
+    if (onSubTabChange) {
+      onSubTabChange(tab);
+    }
+  };
 
   // --- 1. PIPELINE & OPORTUNIDADES STATE ---
   const [oportunidades, setOportunidades] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-crm-oportunidades-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-crm-oportunidades-${userId}`) || localStorage.getItem(`olo-fintel-crm-oportunidades-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'op-1', titulo: 'Fornecimento Anual de Milho', cliente: 'Fábrica de Rações do Cuanza Sul', valor: 4500000, estagio: 'Negociação', probabilidade: 70, fechoPrevisto: '2026-08-15', notas: 'Negociação do preço por tonelada em curso.' },
@@ -53,7 +75,7 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
 
   // --- 2. GESTÃO DE CLIENTES STATE ---
   const [clientes, setClientes] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-crm-clientes-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-crm-clientes-${userId}`) || localStorage.getItem(`olo-fintel-crm-clientes-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'cli-1', nome: 'Hotel Império S.A.', contacto: 'Mateus Gaspar', telefone: '+244 923 456 789', email: 'compras@hotelimperio.ao', provincia: 'Luanda', status: 'Ativo', historico: 'Cliente recorrente desde 2024. Pagamentos em dia.', valorGasto: 3400000 },
@@ -64,7 +86,7 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
 
   // --- 3. GESTÃO DE FORNECEDORES STATE ---
   const [fornecedores, setFornecedores] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-crm-fornecedores-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-crm-fornecedores-${userId}`) || localStorage.getItem(`olo-fintel-crm-fornecedores-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'for-1', nome: 'AngoAlimentos Lda', contacto: 'Dr. Álvaro Pires', telefone: '+244 921 554 112', email: 'comercial@angoalimentos.ao', categoria: 'Fertilizantes e Sementes', avaliacaoQualidade: 5, avaliacaoPrazo: 4, avaliacaoComunicacao: 5, notas: 'Fornecedor principal de adubos. Boa flexibilidade de crédito.' },
@@ -75,7 +97,7 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
 
   // --- 4. CONTRATOS STATE ---
   const [contratos, setContratos] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-crm-contratos-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-crm-contratos-${userId}`) || localStorage.getItem(`olo-fintel-crm-contratos-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'con-1', numero: 'CON-2026-001', titulo: 'Acordo Fornecimento de Hortaliças frescas', parceiro: 'Hotel Império S.A.', tipo: 'Venda', valorTotal: 3600000, dataInicio: '2026-01-01', dataFim: '2026-12-31', estado: 'Ativo', compromissos: 'Entrega semanal de 500kg de produtos selecionados às terças-feiras.' },
@@ -85,10 +107,10 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
   });
 
   // --- PERSISTENCE EFFECT ---
-  useEffect(() => { localStorage.setItem(`olo-fintel-crm-oportunidades-${userId}`, JSON.stringify(oportunidades)); }, [oportunidades, userId]);
-  useEffect(() => { localStorage.setItem(`olo-fintel-crm-clientes-${userId}`, JSON.stringify(clientes)); }, [clientes, userId]);
-  useEffect(() => { localStorage.setItem(`olo-fintel-crm-fornecedores-${userId}`, JSON.stringify(fornecedores)); }, [fornecedores, userId]);
-  useEffect(() => { localStorage.setItem(`olo-fintel-crm-contratos-${userId}`, JSON.stringify(contratos)); }, [contratos, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-crm-oportunidades-${userId}`, JSON.stringify(oportunidades)); }, [oportunidades, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-crm-clientes-${userId}`, JSON.stringify(clientes)); }, [clientes, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-crm-fornecedores-${userId}`, JSON.stringify(fornecedores)); }, [fornecedores, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-crm-contratos-${userId}`, JSON.stringify(contratos)); }, [contratos, userId]);
 
   // --- TEMPORARY FORM STATES ---
   const [opForm, setOpForm] = useState({ titulo: '', cliente: '', valor: '', estagio: 'Lead', probabilidade: '20', fechoPrevisto: new Date().toISOString().split('T')[0], notas: '' });
@@ -105,6 +127,19 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
 
   // Search filter
   const [searchQuery, setSearchQuery] = useState('');
+
+  // --- DRAG AND DROP & MODAL POPUP STATES ---
+  const [draggedOpId, setDraggedOpId] = useState<string | null>(null);
+  const [dragOverStage, setDragOverStage] = useState<string | null>(null);
+
+  // Detail Popups
+  const [selectedOpportunity, setSelectedOpportunity] = useState<any | null>(null);
+  const [isEditingOp, setIsEditingOp] = useState(false);
+  const [opModalForm, setOpModalForm] = useState<any>(null);
+
+  const [selectedClient, setSelectedClient] = useState<any | null>(null);
+  const [selectedSupplier, setSelectedSupplier] = useState<any | null>(null);
+  const [selectedContract, setSelectedContract] = useState<any | null>(null);
 
   // Kanban Board Columns / Stages
   const pipelineStages = ['Lead', 'Contactado', 'Negociação', 'Contrato', 'Cliente'];
@@ -187,7 +222,70 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
     triggerAlert('Contrato registado no sistema de monitorização!');
   };
 
-  // Move stage inside Pipeline
+  // Direct Stage movement for Drag and Drop or Dropdown Selection
+  const moveOportunidadeToStage = (id: string, targetStage: string) => {
+    const probsMap: Record<string, number> = { Lead: 20, Contactado: 40, Negociação: 60, Contrato: 80, Cliente: 100 };
+    setOportunidades(prev => prev.map(op => {
+      if (op.id !== id) return op;
+      return {
+        ...op,
+        estagio: targetStage,
+        probabilidade: probsMap[targetStage] ?? op.probabilidade
+      };
+    }));
+    triggerAlert(`Oportunidade movida para a fase: ${targetStage}`);
+  };
+
+  const handleConvertToClient = (op: any) => {
+    const newCli = {
+      id: `cli-${Date.now()}`,
+      nome: op.cliente || op.titulo,
+      contacto: 'Contacto Comercial Focal',
+      telefone: '+244 923 000 000',
+      email: '',
+      provincia: 'Luanda',
+      status: 'Ativo',
+      historico: `Convertido a partir da Oportunidade do CRM "${op.titulo}" com valor de ${op.valor.toLocaleString()} Kz.`,
+      valorGasto: op.valor || 0
+    };
+    setClientes(prev => [newCli, ...prev]);
+    moveOportunidadeToStage(op.id, 'Cliente');
+    if (selectedOpportunity && selectedOpportunity.id === op.id) {
+      setSelectedOpportunity({ ...selectedOpportunity, estagio: 'Cliente', probabilidade: 100 });
+    }
+    triggerAlert(`"${op.cliente || op.titulo}" foi adicionado com sucesso aos Clientes Ativos!`);
+  };
+
+  const handleConvertToContract = (op: any) => {
+    const newCon = {
+      id: `con-${Date.now()}`,
+      numero: `CON-${new Date().getFullYear()}-${Math.floor(100 + Math.random() * 900)}`,
+      titulo: `Contrato de ${op.titulo}`,
+      parceiro: op.cliente || op.titulo,
+      tipo: 'Venda',
+      valorTotal: op.valor,
+      dataInicio: new Date().toISOString().split('T')[0],
+      dataFim: new Date(Date.now() + 365 * 86400000).toISOString().split('T')[0],
+      estado: 'Ativo',
+      compromissos: op.notas || 'Contrato comercial gerado a partir do funil de vendas.'
+    };
+    setContratos(prev => [newCon, ...prev]);
+    moveOportunidadeToStage(op.id, 'Contrato');
+    if (selectedOpportunity && selectedOpportunity.id === op.id) {
+      setSelectedOpportunity({ ...selectedOpportunity, estagio: 'Contrato', probabilidade: 80 });
+    }
+    triggerAlert(`Contrato "${newCon.numero}" gerado a partir desta oportunidade!`);
+  };
+
+  const handleSaveOpModal = () => {
+    if (!opModalForm) return;
+    setOportunidades(prev => prev.map(op => op.id === opModalForm.id ? { ...opModalForm } : op));
+    setSelectedOpportunity({ ...opModalForm });
+    setIsEditingOp(false);
+    triggerAlert('Detalhes da oportunidade atualizados com sucesso!');
+  };
+
+  // Move stage inside Pipeline (Step buttons)
   const moveOportunidadeStage = (id: string, direction: 'PREV' | 'NEXT') => {
     setOportunidades(prev => prev.map(op => {
       if (op.id !== id) return op;
@@ -196,7 +294,6 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
       if (direction === 'PREV' && currentIndex > 0) nextIndex = currentIndex - 1;
       if (direction === 'NEXT' && currentIndex < pipelineStages.length - 1) nextIndex = currentIndex + 1;
       
-      // Auto probability updates based on pipeline progress
       const probsMap: Record<string, number> = { Lead: 20, Contactado: 40, Negociação: 60, Contrato: 80, Cliente: 100 };
       const nextStage = pipelineStages[nextIndex];
 
@@ -275,6 +372,14 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
             <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-500 text-[9px] font-bold">
               Negociação de Contratos
             </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-extrabold uppercase tracking-wider">
+              • Submódulo: {
+                activeTab === 'pipeline' ? 'Oportunidades & Funil' :
+                activeTab === 'clientes' ? 'Gestão de Clientes' :
+                activeTab === 'fornecedores' ? 'Fornecedores & Parcerias' :
+                'Contratos Comerciais'
+              }
+            </span>
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 dark:text-white mt-2">
             CRM & Planeamento Comercial de Angola
@@ -297,17 +402,21 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
         </div>
       </div>
 
-      {/* FLOATING ACTION ALERT */}
-      {crmAlert && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }} 
-          animate={{ opacity: 1, y: 0 }} 
-          className="p-3 bg-indigo-600 text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-md"
-        >
-          <Sparkles size={14} />
-          <span>{crmAlert}</span>
-        </motion.div>
-      )}
+      {/* FLOATING ACTION TOAST (Fixed position so it never shifts page layout) */}
+      <AnimatePresence>
+        {crmAlert && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20, scale: 0.95 }} 
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2 }}
+            className="fixed bottom-6 right-6 z-50 p-3.5 px-4 bg-indigo-600 text-white rounded-2xl text-xs font-bold flex items-center gap-2.5 shadow-xl border border-indigo-400/30 backdrop-blur-md"
+          >
+            <Sparkles size={15} className="text-amber-300 shrink-0" />
+            <span>{crmAlert}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* CORE KPI CARDS */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -344,56 +453,7 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
         </div>
       </div>
 
-      {/* MODULE TAB NAVIGATION */}
-      <div className="flex flex-wrap border-b border-gray-100 dark:border-gray-800 pb-2 gap-1.5">
-        <button
-          onClick={() => setActiveTab('pipeline')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'pipeline' 
-              ? 'bg-indigo-600 text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <Briefcase size={14} />
-          <span>Pipeline (Kanban) & Previsão</span>
-        </button>
 
-        <button
-          onClick={() => setActiveTab('clientes')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'clientes' 
-              ? 'bg-indigo-600 text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <Users size={14} />
-          <span>Gestão de Clientes</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('fornecedores')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'fornecedores' 
-              ? 'bg-indigo-600 text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <Truck size={14} />
-          <span>Gestão de Fornecedores</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('contratos')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'contratos' 
-              ? 'bg-indigo-600 text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <FileCheck size={14} />
-          <span>Contratos & Compromissos</span>
-        </button>
-      </div>
 
       {/* --- RENDER CONTENT AREA --- */}
       <div className="space-y-6">
@@ -403,89 +463,167 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
           <div className="space-y-6">
             
             {/* Sales Forecasting Info */}
-            <div className="p-4 rounded-2xl bg-indigo-50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-950 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-              <div className="space-y-1">
-                <h4 className="text-xs font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5 uppercase">
-                  <TrendingUp size={14} />
-                  Planeamento de Vendas & Probabilidade de Fecho
+            <div className="p-4 rounded-2xl bg-indigo-50/70 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-950 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+              <div className="space-y-0.5">
+                <h4 className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                  <TrendingUp size={14} className="text-indigo-600 dark:text-indigo-400" />
+                  Funil de Vendas Comercial
                 </h4>
                 <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                  Utilize os controlos rápidos para mover as suas oportunidades pelas fases do funil comercial angolano. O valor ponderado é recalculado automaticamente de acordo com a probabilidade atual de fecho de cada negócio.
+                  Arraste os negócios entre as colunas para atualizar a fase ou clique no cartão para ver todos os detalhes e emitir contratos.
                 </p>
               </div>
             </div>
 
-            {/* Pipeline Stage Swimlanes (Kanban Simulation) */}
+            {/* Pipeline Stage Swimlanes (Kanban with Drag and Drop) */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
               {pipelineStages.map(stage => {
                 const stageOps = oportunidades.filter(op => op.estagio === stage);
                 const stageTotal = stageOps.reduce((sum, op) => sum + op.valor, 0);
+                const isOver = dragOverStage === stage;
 
                 return (
-                  <div key={stage} className="bg-gray-50 dark:bg-[#1E1E26] p-4 rounded-2xl border border-gray-100 dark:border-gray-800 flex flex-col min-h-[380px]">
-                    <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-2 mb-3">
+                  <div 
+                    key={stage} 
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                      if (dragOverStage !== stage) setDragOverStage(stage);
+                    }}
+                    onDragLeave={(e) => {
+                      if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+                      if (dragOverStage === stage) setDragOverStage(null);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const opId = e.dataTransfer.getData('text/plain') || draggedOpId;
+                      setDragOverStage(null);
+                      setDraggedOpId(null);
+                      if (opId) {
+                        moveOportunidadeToStage(opId, stage);
+                      }
+                    }}
+                    className={`bg-gray-50/80 dark:bg-[#1A1A22] p-3.5 rounded-2xl border transition-colors duration-150 flex flex-col h-[460px] ${
+                      isOver 
+                        ? 'border-2 border-dashed border-indigo-500 bg-indigo-500/10' 
+                        : 'border-gray-200/60 dark:border-gray-800/80'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-2 mb-3 shrink-0">
                       <div>
-                        <h4 className="text-xs font-extrabold text-gray-800 dark:text-gray-200">{stage}</h4>
-                        <span className="text-[10px] text-gray-400">{stageOps.length} negócios</span>
+                        <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200 flex items-center gap-1">
+                          {stage}
+                        </h4>
+                        <span className="text-[10px] text-gray-400">{stageOps.length} {stageOps.length === 1 ? 'negócio' : 'negócios'}</span>
                       </div>
-                      <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 dark:bg-indigo-950 px-1.5 py-0.5 rounded-lg">
+                      <span className="text-[10px] font-mono font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/60 px-2 py-0.5 rounded-full">
                         {stageTotal >= 1000000 ? `${(stageTotal/1000000).toFixed(1)}M Kz` : `${stageTotal.toLocaleString()} Kz`}
                       </span>
                     </div>
 
-                    <div className="space-y-3 flex-1 overflow-y-auto max-h-[400px]">
-                      {stageOps.map(op => (
-                        <div key={op.id} className="p-3 bg-white dark:bg-[#13131A] rounded-xl border border-gray-100 dark:border-gray-800 space-y-2 hover:shadow-md transition-shadow">
-                          <div className="flex justify-between items-start gap-1">
-                            <h5 className="text-[11px] font-bold text-gray-900 dark:text-white leading-snug">{op.titulo}</h5>
-                            <button 
-                              onClick={() => handleDeleteItem('oportunidades', op.id)}
-                              className="text-gray-300 hover:text-red-500 transition-colors cursor-pointer"
-                              title="Excluir negócio"
-                            >
-                              <Trash2 size={11} />
-                            </button>
-                          </div>
-                          
-                          <p className="text-[10px] text-gray-400 font-mono">Cliente: {op.cliente}</p>
-                          
-                          <div className="flex justify-between items-center text-[10px] pt-1">
-                            <span className="font-extrabold text-gray-900 dark:text-white">{op.valor.toLocaleString()} Kz</span>
-                            <span className="text-emerald-500 font-bold bg-emerald-50 dark:bg-emerald-950/40 px-1 py-0.2 rounded font-mono">{op.probabilidade}% prob.</span>
-                          </div>
+                    <div className="space-y-2.5 flex-1 overflow-y-auto h-full pr-1 scrollbar-thin">
+                      <AnimatePresence>
+                        {stageOps.map(op => (
+                          <motion.div 
+                            key={op.id} 
+                            initial={{ opacity: 0, scale: 0.98 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
+                            transition={{ duration: 0.15 }}
+                            whileHover={{ y: -2 }}
+                            draggable
+                            onDragStart={(e) => {
+                              e.dataTransfer.setData('text/plain', op.id);
+                              e.dataTransfer.effectAllowed = 'move';
+                              setDraggedOpId(op.id);
+                            }}
+                            onDragEnd={() => {
+                              setDraggedOpId(null);
+                              setDragOverStage(null);
+                            }}
+                            onClick={() => setSelectedOpportunity(op)}
+                            className={`p-3.5 bg-white dark:bg-[#121218] rounded-2xl border space-y-2.5 transition-all cursor-grab active:cursor-grabbing group relative ${
+                              draggedOpId === op.id 
+                                ? 'opacity-30 border-dashed border-indigo-500 shadow-none' 
+                                : 'border-gray-100 dark:border-gray-800/80 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-800'
+                            }`}
+                          >
+                            {/* Card Header: Client Badge & Action */}
+                            <div className="flex justify-between items-center gap-1">
+                              <span className="px-2 py-0.5 text-[9px] font-semibold rounded-md bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 truncate max-w-[130px]">
+                                {op.cliente}
+                              </span>
 
-                          <div className="text-[9px] text-gray-400 flex items-center gap-1">
-                            <Calendar size={10} />
-                            <span>Fecho: {op.fechoPrevisto}</span>
-                          </div>
+                              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
+                                <button 
+                                  onClick={() => handleDeleteItem('oportunidades', op.id)}
+                                  className="p-1 text-gray-300 hover:text-red-500 transition-colors cursor-pointer rounded"
+                                  title="Eliminar"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </div>
 
-                          {op.notas && <p className="text-[9px] text-gray-400 italic border-t border-gray-100 dark:border-gray-800 pt-1 mt-1">{op.notas}</p>}
+                            {/* Card Title */}
+                            <h5 className="text-[12px] font-bold text-gray-900 dark:text-white leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
+                              {op.titulo}
+                            </h5>
 
-                          {/* Stage controls */}
-                          <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-800 pt-2 mt-1 gap-1">
-                            <button 
-                              disabled={stage === 'Lead'}
-                              onClick={() => moveOportunidadeStage(op.id, 'PREV')}
-                              className="p-1 rounded bg-gray-50 dark:bg-[#20202A] hover:bg-gray-100 text-gray-500 cursor-pointer disabled:opacity-30 text-[9px] font-bold flex items-center"
-                              title="Recuar fase"
-                            >
-                              <ChevronLeft size={10} /> Recuar
-                            </button>
-                            <button 
-                              disabled={stage === 'Cliente'}
-                              onClick={() => moveOportunidadeStage(op.id, 'NEXT')}
-                              className="p-1 rounded bg-indigo-50 dark:bg-indigo-950 hover:bg-indigo-100 text-indigo-600 cursor-pointer disabled:opacity-30 text-[9px] font-bold flex items-center"
-                              title="Avançar fase"
-                            >
-                              Avançar <ChevronRight size={10} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                            {/* Amount & Progress */}
+                            <div className="space-y-1 pt-0.5">
+                              <div className="flex justify-between items-baseline text-xs">
+                                <span className="font-extrabold text-gray-900 dark:text-white">
+                                  {op.valor.toLocaleString()} <span className="text-[10px] text-gray-400 font-normal">Kz</span>
+                                </span>
+                                <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
+                                  {op.probabilidade}% prob.
+                                </span>
+                              </div>
+
+                              {/* Minimal probability bar */}
+                              <div className="w-full h-1 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                                  style={{ width: `${op.probabilidade}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Card Footer: Date & Stage controls */}
+                            <div className="flex justify-between items-center border-t border-gray-100 dark:border-gray-800/60 pt-2 text-[10px] text-gray-400">
+                              <div className="flex items-center gap-1">
+                                <Calendar size={11} className="text-gray-300 dark:text-gray-600" />
+                                <span>{op.fechoPrevisto}</span>
+                              </div>
+
+                              {/* Quick Stage Controls */}
+                              <div className="flex items-center gap-0.5" onClick={e => e.stopPropagation()}>
+                                <button 
+                                  disabled={stage === 'Lead'}
+                                  onClick={() => moveOportunidadeStage(op.id, 'PREV')}
+                                  className="p-1 rounded-md text-gray-400 hover:text-gray-700 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-20 cursor-pointer transition-colors"
+                                  title="Recuar fase"
+                                >
+                                  <ChevronLeft size={12} />
+                                </button>
+                                <button 
+                                  disabled={stage === 'Cliente'}
+                                  onClick={() => moveOportunidadeStage(op.id, 'NEXT')}
+                                  className="p-1 rounded-md text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 disabled:opacity-20 cursor-pointer transition-colors"
+                                  title="Avançar fase"
+                                >
+                                  <ChevronRight size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </AnimatePresence>
 
                       {stageOps.length === 0 && (
-                        <div className="flex flex-col items-center justify-center py-8 text-gray-300">
-                          <span className="text-[10px]">Sem negócios</span>
+                        <div className="flex flex-col items-center justify-center py-14 border border-dashed border-gray-200 dark:border-gray-800 rounded-2xl text-gray-400">
+                          <span className="text-[11px] font-medium text-gray-400">Arraste negócios para aqui</span>
                         </div>
                       )}
                     </div>
@@ -1133,6 +1271,284 @@ export default function CommercialCRMModule({ userId, userRole }: CommercialCRMM
         )}
 
       </div>
+
+      {/* --- 1. OPPORTUNITY DETAIL POPUP MODAL --- */}
+      <AnimatePresence>
+        {selectedOpportunity && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-[#1A1A22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 w-full max-w-2xl shadow-2xl space-y-5 max-h-[90vh] overflow-y-auto"
+            >
+              {/* Header */}
+              <div className="flex justify-between items-start border-b border-gray-100 dark:border-gray-800 pb-4">
+                <div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase tracking-wider">
+                    Oportunidade Comercial
+                  </span>
+                  <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mt-1">
+                    {selectedOpportunity.titulo}
+                  </h3>
+                  <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                    <Building2 size={12} className="text-gray-400" /> Cliente: <strong className="text-gray-700 dark:text-gray-300">{selectedOpportunity.cliente}</strong>
+                  </p>
+                </div>
+                <button 
+                  onClick={() => { setSelectedOpportunity(null); setIsEditingOp(false); }}
+                  className="p-2 text-gray-400 hover:text-gray-700 dark:hover:text-white rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Stage Stepper Buttons */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-bold uppercase text-gray-400 tracking-wider">Fase do Negócio</label>
+                <div className="grid grid-cols-5 gap-1 bg-gray-50 dark:bg-black/20 p-1.5 rounded-2xl border border-gray-100 dark:border-gray-800">
+                  {pipelineStages.map(st => (
+                    <button
+                      key={st}
+                      onClick={() => {
+                        moveOportunidadeToStage(selectedOpportunity.id, st);
+                        const probsMap: Record<string, number> = { Lead: 20, Contactado: 40, Negociação: 60, Contrato: 80, Cliente: 100 };
+                        setSelectedOpportunity(prev => prev ? { ...prev, estagio: st, probabilidade: probsMap[st] ?? prev.probabilidade } : null);
+                      }}
+                      className={`py-2 px-1 text-[10px] font-bold rounded-xl transition-all cursor-pointer text-center ${
+                        selectedOpportunity.estagio === st
+                          ? 'bg-indigo-600 text-white shadow-md font-black'
+                          : 'text-gray-500 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-800/50'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Content Form or View */}
+              {!isEditingOp ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <div className="p-3 bg-gray-50 dark:bg-[#12121A] rounded-2xl border border-gray-100 dark:border-gray-800">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Valor Estimado</span>
+                      <p className="text-base font-black text-gray-900 dark:text-white mt-1">
+                        {selectedOpportunity.valor.toLocaleString()} Kz
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-indigo-50/50 dark:bg-indigo-950/20 rounded-2xl border border-indigo-100 dark:border-indigo-950">
+                      <span className="text-[9px] font-bold text-indigo-600 dark:text-indigo-400 uppercase">Probabilidade</span>
+                      <p className="text-base font-black text-indigo-600 dark:text-indigo-400 mt-1">
+                        {selectedOpportunity.probabilidade}%
+                      </p>
+                    </div>
+
+                    <div className="p-3 bg-emerald-50/50 dark:bg-emerald-950/20 rounded-2xl border border-emerald-100 dark:border-emerald-950 col-span-2 sm:col-span-1">
+                      <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase">Valor Ponderado</span>
+                      <p className="text-base font-black text-emerald-600 dark:text-emerald-400 mt-1">
+                        {((selectedOpportunity.valor * selectedOpportunity.probabilidade) / 100).toLocaleString(undefined, {maximumFractionDigits: 0})} Kz
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-gray-50 dark:bg-[#12121A] rounded-2xl border border-gray-100 dark:border-gray-800 space-y-1">
+                    <span className="text-[9px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                      <Calendar size={11} /> Previsão de Fecho Do Negócio
+                    </span>
+                    <p className="text-xs font-mono font-bold text-gray-800 dark:text-gray-200">
+                      {selectedOpportunity.fechoPrevisto}
+                    </p>
+                  </div>
+
+                  {selectedOpportunity.notas && (
+                    <div className="p-4 bg-gray-50 dark:bg-[#12121A] rounded-2xl border border-gray-100 dark:border-gray-800 space-y-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase">Notas & Observações Comerciais</span>
+                      <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed italic">
+                        "{selectedOpportunity.notas}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Actions Bar */}
+                  <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex flex-wrap gap-2 justify-between items-center">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setOpModalForm({ ...selectedOpportunity }); setIsEditingOp(true); }}
+                        className="px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Edit3 size={13} /> Editar Oportunidade
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleDeleteItem('oportunidades', selectedOpportunity.id);
+                          setSelectedOpportunity(null);
+                        }}
+                        className="px-3 py-2 bg-red-50 dark:bg-red-950/40 text-red-600 hover:bg-red-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1 cursor-pointer"
+                      >
+                        <Trash2 size={13} /> Eliminar
+                      </button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleConvertToContract(selectedOpportunity)}
+                        className="px-3.5 py-2 bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800 hover:bg-indigo-100 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <FileCheck size={13} /> Gerar Contrato
+                      </button>
+                      <button
+                        onClick={() => handleConvertToClient(selectedOpportunity)}
+                        className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold transition-all shadow-md flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Users size={13} /> Converter em Cliente
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Edit Form inside Modal */
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase">Título da Oportunidade</label>
+                      <input 
+                        type="text" 
+                        value={opModalForm.titulo}
+                        onChange={e => setOpModalForm({ ...opModalForm, titulo: e.target.value })}
+                        className="w-full h-9 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#12121A] rounded-xl outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase">Cliente Potencial</label>
+                      <input 
+                        type="text" 
+                        value={opModalForm.cliente}
+                        onChange={e => setOpModalForm({ ...opModalForm, cliente: e.target.value })}
+                        className="w-full h-9 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#12121A] rounded-xl outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase">Valor Estimado (Kz)</label>
+                      <input 
+                        type="number" 
+                        value={opModalForm.valor}
+                        onChange={e => setOpModalForm({ ...opModalForm, valor: parseFloat(e.target.value || '0') })}
+                        className="w-full h-9 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#12121A] rounded-xl outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase">Probabilidade ({opModalForm.probabilidade}%)</label>
+                      <input 
+                        type="range" 
+                        min="0" 
+                        max="100" 
+                        step="5"
+                        value={opModalForm.probabilidade}
+                        onChange={e => setOpModalForm({ ...opModalForm, probabilidade: parseInt(e.target.value) })}
+                        className="w-full mt-3 accent-indigo-600 cursor-pointer"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[9px] font-bold text-gray-400 uppercase">Data de Fecho</label>
+                      <input 
+                        type="date" 
+                        value={opModalForm.fechoPrevisto}
+                        onChange={e => setOpModalForm({ ...opModalForm, fechoPrevisto: e.target.value })}
+                        className="w-full h-9 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#12121A] rounded-xl outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[9px] font-bold text-gray-400 uppercase">Observações</label>
+                    <textarea 
+                      value={opModalForm.notas}
+                      onChange={e => setOpModalForm({ ...opModalForm, notas: e.target.value })}
+                      className="w-full h-20 p-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#12121A] rounded-xl outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="pt-3 border-t border-gray-100 dark:border-gray-800 flex justify-end gap-2">
+                    <button
+                      onClick={() => setIsEditingOp(false)}
+                      className="px-4 py-2 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-xl text-xs font-bold transition-all cursor-pointer"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={handleSaveOpModal}
+                      className="px-5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-extrabold transition-all cursor-pointer shadow-md"
+                    >
+                      Guardar Alterações
+                    </button>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- 2. CLIENT DETAIL POPUP MODAL --- */}
+      <AnimatePresence>
+        {selectedClient && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 15 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="bg-white dark:bg-[#1A1A22] border border-gray-200 dark:border-gray-800 rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-4"
+            >
+              <div className="flex justify-between items-start border-b border-gray-100 dark:border-gray-800 pb-3">
+                <div>
+                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 text-[10px] font-black uppercase tracking-wider">
+                    Perfil de Cliente CRM
+                  </span>
+                  <h3 className="text-lg font-extrabold text-gray-900 dark:text-white mt-1">{selectedClient.nome}</h3>
+                </div>
+                <button onClick={() => setSelectedClient(null)} className="p-1.5 text-gray-400 hover:text-gray-700 dark:hover:text-white cursor-pointer">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-gray-50 dark:bg-[#12121A] rounded-xl border border-gray-100 dark:border-gray-800">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase">Estado</span>
+                  <p className="font-bold text-emerald-600 mt-0.5">{selectedClient.status}</p>
+                </div>
+                <div className="p-3 bg-gray-50 dark:bg-[#12121A] rounded-xl border border-gray-100 dark:border-gray-800">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase">Província</span>
+                  <p className="font-bold text-gray-800 dark:text-gray-200 mt-0.5">{selectedClient.provincia}</p>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-gray-50 dark:bg-[#12121A] rounded-2xl border border-gray-100 dark:border-gray-800 space-y-2 text-xs">
+                <div className="flex items-center gap-2"><Phone size={13} className="text-indigo-500" /> <strong>Telefone:</strong> {selectedClient.telefone || 'N/D'}</div>
+                <div className="flex items-center gap-2"><Mail size={13} className="text-indigo-500" /> <strong>E-mail:</strong> {selectedClient.email || 'N/D'}</div>
+                <div className="flex items-center gap-2"><Users size={13} className="text-indigo-500" /> <strong>Contacto Focal:</strong> {selectedClient.contacto || 'N/D'}</div>
+              </div>
+
+              {selectedClient.historico && (
+                <div className="p-3.5 bg-gray-50 dark:bg-[#12121A] rounded-2xl border border-gray-100 dark:border-gray-800 space-y-1">
+                  <span className="text-[9px] font-bold text-gray-400 uppercase">Histórico do Cliente</span>
+                  <p className="text-xs text-gray-600 dark:text-gray-300 italic">"{selectedClient.historico}"</p>
+                </div>
+              )}
+
+              <div className="flex justify-end pt-2">
+                <button onClick={() => setSelectedClient(null)} className="px-5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold cursor-pointer">
+                  Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

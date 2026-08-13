@@ -46,7 +46,7 @@ export default function UserProfileModule({ onBack }: UserProfileModuleProps) {
 
   // Form states
   const [name, setName] = useState(getFallbackName(user));
-  const [email, setEmail] = useState(user?.email || 'owner@olofintel.ao');
+  const [email, setEmail] = useState(user?.email || 'owner@mirawelch.ao');
   const [password, setPassword] = useState('');
   const [province, setProvince] = useState(user?.province || 'Huíla');
   
@@ -62,7 +62,7 @@ export default function UserProfileModule({ onBack }: UserProfileModuleProps) {
   useEffect(() => {
     if (user) {
       setName(getFallbackName(user));
-      setEmail(user.email || 'owner@olofintel.ao');
+      setEmail(user.email || 'owner@mirawelch.ao');
       setProvince(user.province || 'Huíla');
       setOrganizationName(user.organizationName || 'Cooperativa Agrícola Humpata');
       setIndustry(user.industry || 'AGRICULTURE');
@@ -278,7 +278,7 @@ export default function UserProfileModule({ onBack }: UserProfileModuleProps) {
                 required
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="Ex: owner@olofintel.ao"
+                placeholder="Ex: owner@mirawelch.ao"
                 className="w-full pl-3 pr-3 py-2 text-xs font-semibold rounded-lg border border-gray-250 dark:border-gray-750 bg-transparent text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-brand-iris placeholder-gray-400 dark:placeholder-gray-600"
               />
             </div>

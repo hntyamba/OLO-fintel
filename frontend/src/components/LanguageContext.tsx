@@ -19,7 +19,7 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 const translations: Record<Locale, Record<string, string>> = {
   pt: {
     // General
-    'app.name': 'OLO Fintel',
+    'app.name': 'MiraWelch',
     'app.tagline': 'Sistema de Operação Económica e Crédito',
     'nav.home': 'Página Inicial',
     'nav.survey': 'Estudo de Validação',
@@ -40,7 +40,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'hero.cta.survey': 'Ver Estudo de Validação',
     'desafio.title': 'Desafio Estrutural do Setor',
     'desafio.desc': 'Mais de 80% das PMEs e cooperativas em Angola carecem de registos organizados, o que bloqueia o acesso a financiamento e limita o crescimento.',
-    'solucao.title': 'A Nossa Solução: O Fintel OS',
+    'solucao.title': 'A Nossa Solução: O MiraWelch OS',
     'solucao.desc': 'Uma plataforma integrada única que acompanha o ciclo de vida operacional, constrói a sua identidade económica e prepara o terreno para o financiamento.',
     'arquitetura.title': 'Arquitetura do Sistema e Cadeia de Valor',
     'arquitetura.desc': 'Como transformamos dados brutos de campo em relatórios financeiros auditáveis para agentes de crédito e investidores.',
@@ -49,7 +49,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'faq.title': 'Perguntas Frequentes',
     
     // Auth & Dashboard
-    'auth.welcome': 'Bem-vindo ao OLO Fintel',
+    'auth.welcome': 'Bem-vindo à MiraWelch',
     'auth.onboarding': 'Onboarding Progressivo: Simplifique a Sua Vida Financeira',
     'dashboard.score.title': 'Pontuação de Identidade Económica',
     'dashboard.score.desc': 'Reflete a transparência dos seus dados e a robustez dos seus registos operacionais.',
@@ -73,11 +73,11 @@ const translations: Record<Locale, Record<string, string>> = {
     'footer.languages': 'Idiomas',
     'footer.compliance_title': 'Comunicação e Legitimidade',
     'footer.compliance_desc': 'Mapeamento em conformidade com as diretrizes do estudo de validação apresentado ao júri de inovação da LISPA.',
-    'footer.rights': '© 2026 OLO Fintel. Todos os direitos reservados.',
+    'footer.rights': '© 2026 MiraWelch. Todos os direitos reservados.',
 
     // Universal Dashboard keys
     'dash.universal_title': 'Painel de Decisão da Cooperativa',
-    'dash.universal_mode': 'Dashboard Universal OLO',
+    'dash.universal_mode': 'Dashboard Universal MiraWelch',
     'dash.last_update': 'Última atualização: Hoje',
     'dash.q1': '1. Como estamos?',
     'dash.q1.sub': '(Resumo Executivo Geral)',
@@ -108,7 +108,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'dash.q5.request_review': 'Solicitar Revisão de Plano Inteligente',
 
     // Auth & Register Keys
-    'auth.login_title': 'Aceder ao Fintel OS',
+    'auth.login_title': 'Aceder à MiraWelch',
     'auth.login_subtitle': 'Insira as suas credenciais ou utilize as contas de teste abaixo.',
     'auth.email_label': 'Endereço de Email',
     'auth.password_label': 'Senha de Acesso',
@@ -118,7 +118,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'auth.password_tip': 'Password padrão para todos os testes: "password"',
     'auth.no_account': 'Não tem uma conta?',
     'auth.register_here': 'Registe-se aqui',
-    'auth.register_title': 'Criar Conta no Fintel OS',
+    'auth.register_title': 'Criar Conta na MiraWelch',
     'auth.register_subtitle': 'Registe a sua cooperativa ou associação no ecossistema.',
     'auth.full_name': 'Nome Completo',
     'auth.password_access': 'Senha de Acesso',
@@ -204,7 +204,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'survey.challenge.compliance': 'Documentação jurídica em falta (AML / KYC)'
   },
   en: {
-    'app.name': 'OLO Fintel',
+    'app.name': 'MiraWelch',
     'app.tagline': 'Economic Operating System and Credit Readiness',
     'nav.home': 'Home',
     'nav.survey': 'Validation Study',
@@ -224,7 +224,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'hero.cta.survey': 'View Validation Study',
     'desafio.title': 'Structural Sector Challenge',
     'desafio.desc': 'Over 80% of SMEs and cooperatives in Angola lack organized records, which blocks access to financing and limits growth.',
-    'solucao.title': 'Our Solution: Fintel OS',
+    'solucao.title': 'Our Solution: MiraWelch OS',
     'solucao.desc': 'A unique integrated platform that tracks your operational lifecycle, builds your economic identity, and prepares the ground for funding.',
     'arquitetura.title': 'System Architecture & Value Chain',
     'arquitetura.desc': 'How we transform raw field data into auditable financial reports for credit agents and investors.',
@@ -232,7 +232,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'survey.section.desc': 'Results updated in real-time from interviews and surveys with cooperative and SME managers across various Angolan provinces.',
     'faq.title': 'Frequently Asked Questions',
     
-    'auth.welcome': 'Welcome to OLO Fintel',
+    'auth.welcome': 'Welcome to MiraWelch',
     'auth.onboarding': 'Progressive Onboarding: Simplify Your Financial Life',
     'dashboard.score.title': 'Economic Identity Score',
     'dashboard.score.desc': 'Reflects data transparency and the robustness of your operational records.',
@@ -256,11 +256,11 @@ const translations: Record<Locale, Record<string, string>> = {
     'footer.languages': 'Languages',
     'footer.compliance_title': 'Communication and Legitimacy',
     'footer.compliance_desc': 'Mapping in compliance with the guidelines of the validation study presented to the LISPA innovation jury.',
-    'footer.rights': '© 2026 OLO Fintel. All rights reserved.',
+    'footer.rights': '© 2026 MiraWelch. All rights reserved.',
 
     // Universal Dashboard keys
     'dash.universal_title': 'Cooperative Decision Dashboard',
-    'dash.universal_mode': 'OLO Universal Dashboard',
+    'dash.universal_mode': 'MiraWelch Universal Dashboard',
     'dash.last_update': 'Last update: Today',
     'dash.q1': '1. How are we doing?',
     'dash.q1.sub': '(General Executive Summary)',
@@ -291,7 +291,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'dash.q5.request_review': 'Request Smart Plan Review',
 
     // Auth & Register Keys
-    'auth.login_title': 'Access Fintel OS',
+    'auth.login_title': 'Access MiraWelch OS',
     'auth.login_subtitle': 'Enter your credentials or use the test accounts below.',
     'auth.email_label': 'Email Address',
     'auth.password_label': 'Password',
@@ -301,7 +301,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'auth.password_tip': 'Default password for all tests: "password"',
     'auth.no_account': "Don't have an account?",
     'auth.register_here': 'Register here',
-    'auth.register_title': 'Create Account in Fintel OS',
+    'auth.register_title': 'Create Account in MiraWelch OS',
     'auth.register_subtitle': 'Register your cooperative or association in the ecosystem.',
     'auth.full_name': 'Full Name',
     'auth.password_access': 'Access Password',
@@ -346,7 +346,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'survey.step3.history_never': 'Never applied (lack of documents or lack of knowledge)',
     'survey.step3.history_approved': 'Yes, and the funding was successfully approved',
     'survey.step3.history_rejected': 'Yes, but it was rejected due to lack of credible records',
-    'survey.step4.title': 'Step 4: Assessing Fintel OS Potential',
+    'survey.step4.title': 'Step 4: Assessing MiraWelch Potential',
     'survey.step4.analytics_rating': 'From 1 to 5, how important would it be to have dynamic operational analytics (e.g., sales and harvest charts) ready to present to the bank?',
     'survey.step4.consulting_rating': 'From 1 to 5, how useful would it be to have direct support from guided consulting and mentoring to organize your growth planning?',
     'survey.step5.title': 'Step 5: Confirm and Submit Your Data',
@@ -388,8 +388,8 @@ const translations: Record<Locale, Record<string, string>> = {
   },
   umb: {
     // Umbundu language (Commonly spoken in Central Angola / Huambo / Benguela / Huíla)
-    'app.name': 'OLO Fintel',
-    'app.tagline': 'Olo fintel, Ovina Viocombongo',
+    'app.name': 'MiraWelch',
+    'app.tagline': 'MiraWelch, Ovina Viocombongo',
     'nav.home': 'Ofele',
     'nav.survey': 'Ondaka Yetu',
     'nav.dashboard': 'Elivalo',
@@ -408,7 +408,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'hero.cta.survey': 'Tala ondaka yetu',
     'desafio.title': 'Ocitangi Covelivola Vetungilo',
     'desafio.desc': 'Olo-SMEs vialua kulo-Angola kavitua kulo-seleko viondombo, ndeci civetateisa oku-cinga olo-créditos.',
-    'solucao.title': 'Oci-Kundiko Cetu: Fintel OS',
+    'solucao.title': 'Oci-Kundiko Cetu: MiraWelch OS',
     'solucao.desc': 'Elivalo limosi likuatisa oku-longisa olo-fiança, ndeci ciñila oku-linga olo-créditos viocombongo.',
     'arquitetura.title': 'Eneño Lietungilo Lutiola',
     'arquitetura.desc': 'Eneño ndomo tu-seleka ovina viopande oco vi-lingiswe olo-fiança.',
@@ -440,11 +440,11 @@ const translations: Record<Locale, Record<string, string>> = {
     'footer.languages': 'Atiñila',
     'footer.compliance_title': 'Kuesandjulo lietungilo',
     'footer.compliance_desc': 'Ondaka yesandjulo kuesandjulo lietungilo kulo-LISPA.',
-    'footer.rights': '© 2026 OLO Fintel. Ovina viose viaselekwa.',
+    'footer.rights': '© 2026 MiraWelch. Ovina viose viaselekwa.',
 
     // Universal Dashboard keys
     'dash.universal_title': 'Elivalo liocombongo cooperativa',
-    'dash.universal_mode': 'Elivalo Liocombongo OLO',
+    'dash.universal_mode': 'Elivalo Liocombongo MiraWelch',
     'dash.last_update': 'Olombongo vyapulilo: Cilo',
     'dash.q1': '1. Ndomo tuli cilo?',
     'dash.q1.sub': '(Atala Oviñila Viose)',
@@ -572,7 +572,7 @@ const translations: Record<Locale, Record<string, string>> = {
   },
   kmb: {
     // Kimbundu language (Commonly spoken in Luanda / Malanje / Cuanza Norte / Cuanza Sul)
-    'app.name': 'OLO Fintel',
+    'app.name': 'MiraWelch',
     'app.tagline': 'Ikanvula ya Kitadi ni Nguzu',
     'nav.home': 'Kibuka',
     'nav.survey': 'Kutongola',
@@ -592,7 +592,7 @@ const translations: Record<Locale, Record<string, string>> = {
     'hero.cta.survey': 'Tala o kibuka kiê',
     'desafio.title': 'Izulukutu ya Makala',
     'desafio.desc': 'O jiprobela ja mikutu jalu mu Angola kajiene ni kubika o kitadi, kiki kijizuluia o kitadi mu jinguzu.',
-    'solucao.title': 'Kukudika Kuetu: Fintel OS',
+    'solucao.title': 'Kukudika Kuetu: MiraWelch OS',
     'solucao.desc': 'Kibuka kimosi kikalakata milimo iê, oco u-nguzule o kitadi kia kitadi.',
     'arquitetura.title': 'Ngemena ia Ikanvula yetu',
     'arquitetura.desc': 'Kyoso kitukalakata o kitadi kiâ, kiene kiongo kimbote mu banku.',
@@ -600,9 +600,9 @@ const translations: Record<Locale, Record<string, string>> = {
     'survey.section.desc': 'Kyene kyasoneka kitadi kya jicooperativas jalua kyasoneka kyambote.',
     'faq.title': 'Kutambula jinjila',
     
-    'auth.welcome': 'Waza kiambote mu fintel',
+    'auth.welcome': 'Waza kiambote mu MiraWelch',
     'auth.onboarding': 'Kitadi kiê mu kukolesa kitadi',
-    'dashboard.score.title': 'Kitadi kia Fintel OS',
+    'dashboard.score.title': 'Kitadi kia MiraWelch OS',
     'dashboard.score.desc': 'Kyene kitambula o kitadi kiê mu milimo iê.',
     'dashboard.quick_actions': 'Kalakata kiambote',
     'dashboard.add_sale': 'Sumbisa',
@@ -624,11 +624,11 @@ const translations: Record<Locale, Record<string, string>> = {
     'footer.languages': 'Kizuelu',
     'footer.compliance_title': 'Kuizulukutu ya nguzu',
     'footer.compliance_desc': 'Kusoneka kuambote kyoso kitukalakata mu LISPA.',
-    'footer.rights': '© 2026 OLO Fintel. Ilandu iose iambote.',
+    'footer.rights': '© 2026 MiraWelch. Ilandu iose iambote.',
 
     // Universal Dashboard keys
     'dash.universal_title': 'Kibuka kia kicooperativa yetu',
-    'dash.universal_mode': 'Kibuka kia Fintel OLO',
+    'dash.universal_mode': 'Kibuka kia MiraWelch',
     'dash.last_update': 'Kitadi kyasoneka: Lelo',
     'dash.q1': '1. Kyebhi tuala lelo?',
     'dash.q1.sub': '(Kutala Kioso mu Kibuka)',
@@ -744,7 +744,7 @@ const translations: Record<Locale, Record<string, string>> = {
 export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [locale, setLocaleState] = useState<Locale>(() => {
     try {
-      const saved = localStorage.getItem('olo-fintel-locale');
+      const saved = localStorage.getItem('mirawelch-locale') || localStorage.getItem('olo-fintel-locale');
       return (saved as Locale) || 'pt';
     } catch {
       return 'pt';
@@ -754,7 +754,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const setLocale = (newLocale: Locale) => {
     setLocaleState(newLocale);
     try {
-      localStorage.setItem('olo-fintel-locale', newLocale);
+      localStorage.setItem('mirawelch-locale', newLocale);
     } catch {}
   };
 

@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './LanguageContext.js';
 import { useTheme } from './ThemeContext.js';
 import { getApiUrl } from '../lib/api';
@@ -15,27 +16,22 @@ import {
   BarChart4, 
   MapPin, 
   ArrowRight, 
-  Lock, 
-  FileSpreadsheet, 
   ShieldCheck, 
-  LineChart, 
-  Users, 
   Sprout, 
   Ship, 
   ShoppingBag,
-  Terminal,
-  Cpu,
-  Database,
-  FileText,
-  Shield,
-  Check,
-  ChevronRight,
-  ExternalLink,
+  Building2,
+  Truck,
   Activity,
-  Info,
-  DollarSign,
+  Calculator,
+  Users,
+  FileCheck,
+  Award,
+  AlertTriangle,
+  PieChart,
   Clock,
-  Coins
+  Sparkles,
+  ChevronRight
 } from 'lucide-react';
 
 interface SurveyStats {
@@ -53,72 +49,75 @@ interface SurveyStats {
   totalOperations?: number;
 }
 
-// LISPA Benchmark Data for High-Density Fallback
-const BENCHMARK_STATS: SurveyStats = {
-  total: 147,
-  sectors: {
-    AGRICULTURE: 68,
-    LIVESTOCK: 31,
-    FISHERIES: 18,
-    COMMERCE: 22,
-    TRANSPORT: 8
-  },
-  provinces: {
-    'Huíla': 0,
-    'Luanda': 0,
-    'Huambo': 0,
-    'Benguela': 0,
-    'Namibe': 0,
-    'Cabinda': 0,
-    'Uíge': 0,
-    'Cuanza Sul': 0,
-    'Cuanza Norte': 0,
-    'Moxico leste': 0,
-    'Moxico': 0,
-    'Cubango': 0,
-    'Cuando': 0,
-    'Lunda Sul': 0,
-    'Lunda Norte': 0,
-    'Cunene': 0,
-    'Zaire': 0,
-    'Bié': 0,
-    'Malanje': 0,
-    'Bengo': 0,
-    'Icolo e Bengo': 0
-  },
-  challenges: {
-    'Access to Credit & Bank Loans': 59,
-    'Record Keeping (Paper-based logs lost)': 38,
-    'Inventory Control & Fertilizer Stock': 22,
-    'Logistics & Road Transportation': 16,
-    'Climate Impact & Water Supply': 12
-  },
+interface PublicSummary {
+  status?: string;
+  uptime?: number;
+  timestamp?: string;
+  metrics: {
+    totalSurveys: number;
+    registeredOrganizations: number;
+    operationalRecords: number;
+    documentRecords?: number;
+    activeSectorsCount?: number;
+    activeProvincesCount: number;
+    totalRevenuesRegistered?: number;
+    inquiriesValidated?: number;
+    fieldDiagnostics?: number;
+    operationsHomologated?: number;
+  };
+  validationOverview?: {
+    marketDemand: string;
+    averageAdoptionScore: number;
+    surveysCompleted: number;
+  };
+  organizations: Array<{
+    id: string;
+    name: string;
+    sector: string;
+    province: string | null;
+    municipality?: string | null;
+    maturity?: string;
+    maturityLevel?: string;
+    fundingScore?: number;
+    operationsCount?: number;
+    suspended?: boolean;
+    status?: string;
+    createdAt?: string;
+  }>;
+}
+
+// Default Empty Stats for dynamic backend rendering
+const EMPTY_STATS: SurveyStats = {
+  total: 0,
+  sectors: {},
+  provinces: {},
+  challenges: {},
   fundingHistory: {
-    'NEVER': 112,
-    'REJECTED': 28,
-    'APPROVED': 7
+    'NEVER': 0,
+    'REJECTED': 0,
+    'APPROVED': 0
   },
   maturityLevels: {
-    beginner: 102,
-    intermediate: 34,
-    advanced: 11
+    beginner: 0,
+    intermediate: 0,
+    advanced: 0
   },
   bancarizacao: {
-    approved: 7,
-    rejected: 28,
-    in_progress: 18,
-    never: 94
+    approved: 0,
+    rejected: 0,
+    in_progress: 0,
+    never: 0
   },
   lostHoursStats: {
-    less_2: 12,
-    h3_5: 45,
-    h6_10: 62,
-    more_10: 28
+    less_2: 0,
+    h3_5: 0,
+    h6_10: 0,
+    more_10: 0
   },
-  avgHoursLost: 6.8,
-  totalLostHoursYear: 51948,
-  registeredOrgs: 54,
-  totalOperations: 1240
+  avgHoursLost: 0,
+  totalLostHoursYear: 0,
+  registeredOrgs: 0,
+  totalOperations: 0
 };
 
 export default function LandingPage({ 
@@ -126,70 +125,164 @@ export default function LandingPage({
 }: { 
   onNavigate: (page: 'home' | 'survey' | 'login' | 'register' | 'dashboard') => void 
 }) {
-  const { t, locale } = useLanguage();
+  const { t } = useLanguage();
   const { isDark } = useTheme();
+  
+  // Dynamic Backend Data States
   const [realStats, setRealStats] = useState<SurveyStats | null>(null);
-  const [dataSource, setDataSource] = useState<'real' | 'benchmark'>('benchmark');
-  const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
-  const [activeCaseStudy, setActiveCaseStudy] = useState(0);
+  const [summaryData, setSummaryData] = useState<PublicSummary | null>(null);
+  const [activeTabStats, setActiveTabStats] = useState<'challenges' | 'banking' | 'sectors' | 'provinces'>('challenges');
 
-  // Live Terminal Sandbox State
+  // Interactive Simulator State
   const [activeDemoOrg, setActiveDemoOrg] = useState<'humpata' | 'namibe' | 'huambo'>('humpata');
-  const [terminalStage, setTerminalStage] = useState<'idle' | 'parsing' | 'rules' | 'calculating' | 'done'>('idle');
-  const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
-  const [simulatedScore, setSimulatedScore] = useState(40);
+  const [simStage, setSimStage] = useState<'idle' | 'running' | 'done'>('idle');
+  const [simLogs, setSimLogs] = useState<string[]>([]);
+  const [simulatedScore, setSimulatedScore] = useState(35);
   const [simulatedCreditLimit, setSimulatedCreditLimit] = useState('0 Kz');
 
+  // Live Calculator Estimator State
+  const [calcRevenue, setCalcRevenue] = useState<number>(1200000);
+  const [calcAssets, setCalcAssets] = useState<number>(3500000);
+  const [calcAgtCompliant, setCalcAgtCompliant] = useState<boolean>(true);
+
+  // Sector Explorer State
+  const [selectedSector, setSelectedSector] = useState<'AGRICULTURE' | 'LIVESTOCK' | 'FISHERIES' | 'COMMERCE' | 'TRANSPORT'>('AGRICULTURE');
+
+  // UI Interactive States
+  const [activeFAQ, setActiveFAQ] = useState<number | null>(null);
+
+  // 1. Fetch Dynamic Data Seamlessly in Background via Dedicated Backend Routes
   useEffect(() => {
-    fetch(getApiUrl('/api/survey/stats'))
+    // 1. Fetch Combined Public Landing (GET /api/v1/public/landing)
+    fetch(getApiUrl('/api/v1/public/landing'))
       .then(res => res.json())
-      .then(data => {
+      .then(resData => {
+        if (resData && resData.success && resData.data) {
+          const pm = resData.data.platformMetrics || {};
+          const coops = resData.data.recentCooperatives || [];
+          setSummaryData({
+            metrics: {
+              totalSurveys: pm.inquiriesValidated || pm.fieldDiagnostics || 0,
+              registeredOrganizations: pm.cooperativesRegistered || 0,
+              operationalRecords: pm.operationsHomologated || 0,
+              activeProvincesCount: pm.provincesIntegrated || 0,
+              totalRevenuesRegistered: pm.totalRevenuesRegisteredAOA || 0,
+              inquiriesValidated: pm.inquiriesValidated || 0,
+              fieldDiagnostics: pm.fieldDiagnostics || 0,
+              operationsHomologated: pm.operationsHomologated || 0
+            },
+            validationOverview: resData.data.validationOverview,
+            organizations: coops
+          });
+        }
+      })
+      .catch(err => console.error('Error fetching public landing endpoint:', err));
+
+    // 2. Fetch Platform Metrics (GET /api/v1/public/platform-metrics)
+    fetch(getApiUrl('/api/v1/public/platform-metrics'))
+      .then(res => res.json())
+      .then(resData => {
+        if (resData && resData.success && resData.data) {
+          const m = resData.data;
+          setSummaryData(prev => ({
+            metrics: {
+              totalSurveys: m.inquiriesValidated ?? m.fieldDiagnostics ?? m.surveyResponsesCount ?? 0,
+              registeredOrganizations: m.cooperativesRegistered ?? m.organizationsRegistered ?? 0,
+              operationalRecords: m.operationsHomologated ?? m.totalTransactionsProcessed ?? 0,
+              activeProvincesCount: m.provincesIntegrated ?? m.provincesRepresented ?? 0,
+              totalRevenuesRegistered: m.totalRevenuesRegisteredAOA ?? m.totalRevenuesRegistered ?? 0,
+              inquiriesValidated: m.inquiriesValidated ?? 0,
+              fieldDiagnostics: m.fieldDiagnostics ?? 0,
+              operationsHomologated: m.operationsHomologated ?? 0
+            },
+            organizations: prev?.organizations || []
+          }));
+        }
+      })
+      .catch(err => console.error('Error fetching platform metrics:', err));
+
+    // 3. Fetch Cooperatives List (GET /api/v1/public/cooperatives)
+    fetch(getApiUrl('/api/v1/public/cooperatives'))
+      .then(res => res.json())
+      .then(resData => {
+        if (resData && resData.success && Array.isArray(resData.data)) {
+          setSummaryData(prev => ({
+            metrics: prev?.metrics || {
+              totalSurveys: 0,
+              registeredOrganizations: resData.totalCount || resData.data.length,
+              operationalRecords: 0,
+              activeProvincesCount: 0,
+              totalRevenuesRegistered: 0
+            },
+            organizations: resData.data
+          }));
+        }
+      })
+      .catch(err => console.error('Error fetching public cooperatives:', err));
+
+    // 4. Fetch Validation Stats (GET /api/v1/public/validation-stats)
+    fetch(getApiUrl('/api/v1/public/validation-stats'))
+      .then(res => res.json())
+      .then(resData => {
+        if (resData && resData.success && resData.data) {
+          setSummaryData(prev => ({
+            ...prev!,
+            validationOverview: {
+              marketDemand: resData.data.juryHighlights?.marketDemand || "Elevada necessidade de formalização e crédito",
+              averageAdoptionScore: resData.data.averageAdoptionScore || 33,
+              surveysCompleted: resData.data.totalSurveysCompleted || 0
+            }
+          }));
+        }
+      })
+      .catch(err => console.error('Error fetching validation stats:', err));
+
+    // 5. Fetch Survey Statistics (GET /api/v1/surveys/statistics)
+    fetch(getApiUrl('/api/v1/surveys/statistics'))
+      .then(res => res.json())
+      .then(resData => {
+        const data = resData.data || resData;
         if (data) {
           const mappedStats: SurveyStats = {
-            total: data.total || BENCHMARK_STATS.total,
-            sectors: data.sectors || data.bySector || BENCHMARK_STATS.sectors,
-            provinces: data.provinces || data.byProvince || BENCHMARK_STATS.provinces,
+            total: typeof data.total === 'number' ? data.total : 0,
+            sectors: data.sectors || data.bySector || {},
+            provinces: data.provinces || data.byProvince || {},
             challenges: {},
-            fundingHistory: data.fundingHistory || BENCHMARK_STATS.fundingHistory,
-            maturityLevels: data.maturityLevels || BENCHMARK_STATS.maturityLevels,
-            bancarizacao: data.bancarizacao || BENCHMARK_STATS.bancarizacao,
-            lostHoursStats: data.lostHoursStats || BENCHMARK_STATS.lostHoursStats,
-            avgHoursLost: data.avgHoursLost ?? BENCHMARK_STATS.avgHoursLost,
-            totalLostHoursYear: data.totalLostHoursYear ?? BENCHMARK_STATS.totalLostHoursYear,
-            registeredOrgs: data.registeredOrgs ?? BENCHMARK_STATS.registeredOrgs,
-            totalOperations: data.totalOperations ?? BENCHMARK_STATS.totalOperations
+            fundingHistory: data.fundingHistory || { APPROVED: 0, REJECTED: 0, NEVER: 0 },
+            maturityLevels: data.maturityLevels || { beginner: 0, intermediate: 0, advanced: 0 },
+            bancarizacao: data.bancarizacao || { approved: 0, rejected: 0, in_progress: 0, never: 0 },
+            lostHoursStats: data.lostHoursStats || { less_2: 0, h3_5: 0, h6_10: 0, more_10: 0 },
+            avgHoursLost: data.avgHoursLost ?? 0,
+            totalLostHoursYear: data.totalLostHoursYear ?? 0,
+            registeredOrgs: typeof data.registeredOrgs === 'number' ? data.registeredOrgs : 0,
+            totalOperations: typeof data.totalOperations === 'number' ? data.totalOperations : 0
           };
 
           if (Array.isArray(data.challenges)) {
             data.challenges.forEach((item: any) => {
               if (item && item.challenge) {
-                const percentage = item.percentage || 10;
-                mappedStats.challenges[item.challenge] = Math.round((percentage / 100) * mappedStats.total);
+                const count = item.count || 0;
+                mappedStats.challenges[item.challenge] = count;
               }
             });
           } else if (data.challenges && typeof data.challenges === 'object') {
             mappedStats.challenges = data.challenges;
-          } else {
-            mappedStats.challenges = BENCHMARK_STATS.challenges;
           }
 
           setRealStats(mappedStats);
-          if (mappedStats.total > 0) {
-            setDataSource('real');
-          }
         }
       })
       .catch(err => console.error('Error fetching survey stats:', err));
   }, []);
 
-  // Use selected stats
-  const stats = dataSource === 'real' && realStats && realStats.total > 0 ? realStats : BENCHMARK_STATS;
+  // Use dynamic backend stats if available, otherwise default to empty stats
+  const stats = realStats || EMPTY_STATS;
 
-  // Sandbox simulation triggers
-  const runSandboxSimulation = (orgKey: 'humpata' | 'namibe' | 'huambo') => {
+  // Sandbox simulation triggers for business demo
+  const runScoreSimulation = (orgKey: 'humpata' | 'namibe' | 'huambo') => {
     setActiveDemoOrg(orgKey);
-    setTerminalStage('parsing');
-    setTerminalLogs([]);
+    setSimStage('running');
+    setSimLogs([]);
     
     const logsMap = {
       humpata: {
@@ -197,13 +290,11 @@ export default function LandingPage({
         targetScore: 78,
         creditLimit: '15.000.000 Kz',
         steps: [
-          '⚡ [INTAKE] Detetado ficheiro: "Atas_Assembleia_Humpata.pdf"',
-          '⚡ [INTAKE] Detetado ficheiro: "Sementes_Compra_BAI.xlsx"',
-          '🔍 [OCR] OCR concluído. Extraídos 14 relatórios de produção e 6 atas assinadas.',
-          '⚖️ [AGT RULE] Verificação NIF: 500349281 válido na base de dados AGT.',
-          '🧮 [LEDGER] Normalizando dados operacionais históricos: 18 meses de colheitas extraídos.',
-          '🛡️ [COMPLIANCE] Sem alertas AML/KYC. Identidade de 12 associados validada.',
-          '📊 [ENGINE] Calculando Economic Identity Score com base nos novos registos...'
+          '📄 Consolidação de Atas da Assembleia e Registo da Cooperativa Agrícola',
+          '🏛️ Validação do NIF e Certificado de Conformidade Fiscal perante a AGT',
+          '📊 Normalização de Histórico: 18 meses de colheitas de batata e milho homologadas',
+          '🛡️ Análise de Garantias Mútuas e Capacidade de Pagamento dos Associados',
+          '⭐ Emissão do Certificado de Identidade Económica para Bancos Parceiros'
         ]
       },
       namibe: {
@@ -211,13 +302,11 @@ export default function LandingPage({
         targetScore: 65,
         creditLimit: '7.500.000 Kz',
         steps: [
-          '⚡ [INTAKE] Detetado ficheiro: "Registro_Pesca_Namibe_2025.xlsx"',
-          '⚡ [INTAKE] Detetado ficheiro: "AGT_Certidao_NIF.pdf"',
-          '🔍 [OCR] Extraídos registros de 11 barcos, consumo de combustível e pescas diárias.',
-          '⚖️ [AGT RULE] NIF verificado e regularizado perante as normas fiscais.',
-          '🧮 [LEDGER] Normalização: convertendo 320 viagens informais em partidas contábeis padrão.',
-          '🛡️ [COMPLIANCE] Registo de capitães e certificados de embarcações aprovados no teste de risco.',
-          '📊 [ENGINE] Re-avaliando score de maturidade financeira operacional...'
+          '⛵ Registo de Embarcações de Pesca e Licenças Marítimas do Namibe',
+          '⛽ Controlo de Despesas de Combustível e Registo Diário de Capturas',
+          '🧾 Normalização Contábil: Conversão de vendas informais em livros de receitas',
+          '🛡️ Verificação de Licenciamento de Maritímos e Registo de Cooperadores',
+          '⭐ Emissão do Certificado de Identidade Económica para Financiamento de barcos'
         ]
       },
       huambo: {
@@ -225,13 +314,11 @@ export default function LandingPage({
         targetScore: 89,
         creditLimit: '25.000.000 Kz',
         steps: [
-          '⚡ [INTAKE] Detetado ficheiro: "Rastreabilidade_Vacinas_Gado.xlsx"',
-          '⚡ [INTAKE] Detetado ficheiro: "BFA_Extrato_Pecuaria.pdf"',
-          '🔍 [OCR] Processando 450 fichas individuais de gado bovino com brincos de rastreamento.',
-          '⚖️ [AGT RULE] Cooperativa registada em conformidade com o regime simplificado.',
-          '🧮 [LEDGER] Normalizando histórico de fluxo de caixa de vendas para talho nacional.',
-          '🛡️ [COMPLIANCE] Certificados veterinários e selos sanitários integrados na identidade.',
-          '📊 [ENGINE] Computando algoritmo de crédito OLO de alta credibilidade...'
+          '🐄 Rastreamento Sanitário e Registo do Efetivo Pecuário no Planalto do Huambo',
+          '📋 Validação do Registo de Cooperativa Agro-Pecuária no Ministério',
+          '🥩 Histórico de Fornecimento Continuado para Distribuidores e Talhos',
+          '🛡️ Certificados Veterinários e Selos de Vacinação Sincronizados',
+          '⭐ Emissão do Certificado de Identidade Económica para Linhas Bonificadas BNA'
         ]
       }
     };
@@ -243,1103 +330,939 @@ export default function LandingPage({
     let currentLogIndex = 0;
     const interval = setInterval(() => {
       if (currentLogIndex < config.steps.length) {
-        setTerminalLogs(prev => [...prev, config.steps[currentLogIndex]]);
+        setSimLogs(prev => [...prev, config.steps[currentLogIndex]]);
         currentLogIndex++;
       } else {
         clearInterval(interval);
-        setTerminalStage('calculating');
-        
-        // Finalize calculation with nice counter animation
-        setTimeout(() => {
-          setSimulatedScore(config.targetScore);
-          setSimulatedCreditLimit(config.creditLimit);
-          setTerminalStage('done');
-        }, 1200);
+        setSimulatedScore(config.targetScore);
+        setSimulatedCreditLimit(config.creditLimit);
+        setSimStage('done');
       }
     }, 600);
   };
 
   useEffect(() => {
-    // Run initial demo on mount
-    runSandboxSimulation('humpata');
+    runScoreSimulation('humpata');
   }, []);
 
-  const caseStudies = [
-    {
-      name: 'Cooperativa Agrícola Humpata',
-      location: 'Huíla',
-      sector: 'Agricultura (Batata e Milho)',
-      challenge: 'Tentou crédito em 2 bancos e foi recusado por falta de balanços auditados.',
-      solution: 'Usou o OLO Fintel para registar 6 meses de colheitas e vendas. Digitalizou os NIF e atas da cooperativa.',
-      score: 'Aumentou de 35 para 78 pontos de Identidade Económica.',
-      result: 'Crédito de 15.000.000 Kz aprovado pelo banco parceiro.',
-      image: 'https://upload.wikimedia.org/wikipedia/commons/f/f6/Ombala_do_Rei_da_Comuna_da_Hu%C3%ADla.jpg'
-    },
-    {
-      name: 'Pescas Artesanais do Namibe',
-      location: 'Namibe',
-      sector: 'Pescas (Pescada e Carapau)',
-      challenge: 'Falta de controle de combustível e vendas diárias causavam vazamento de lucros.',
-      solution: 'Ativou o módulo de Pescas no OLO OS, registando consumo por barco e viagens diárias.',
-      score: 'Aumentou de 28 para 65 pontos de Identidade Económica.',
-      result: 'Bancos aprovaram financiamento para reparação de 3 barcos.',
-      image: 'https://upload.wikimedia.org/wikipedia/commons/4/4b/Porto_do_Namibe_%2818832935473%29.jpg'
-    },
-    {
-      name: 'Criadores do Planalto Huambo',
-      location: 'Huambo',
-      sector: 'Pecuária (Gado Bovino e Suíno)',
-      challenge: 'Perda de histórico de vacinações causava mortes de gado e desconfiança dos compradores.',
-      solution: 'Registo e rastreabilidade dos brincos e vacinas no app Fintel.',
-      score: 'Aumentou de 42 para 89 pontos de Identidade Económica.',
-      result: 'Parceria com distribuidor nacional que exige rastreabilidade garantida.',
-      image: 'https://upload.wikimedia.org/wikipedia/commons/b/b8/Oxen_in_Angola.jpg'
-    }
-  ];
+  // Credit calculator dynamic score derivation
+  const calculateCreditReadiness = () => {
+    let score = 30;
+    if (calcRevenue >= 2000000) score += 30;
+    else if (calcRevenue >= 1000000) score += 20;
+    else if (calcRevenue >= 500000) score += 10;
+
+    if (calcAssets >= 5000000) score += 25;
+    else if (calcAssets >= 2000000) score += 15;
+    else if (calcAssets >= 500000) score += 8;
+
+    if (calcAgtCompliant) score += 15;
+
+    const limitVal = Math.round((calcRevenue * (score / 100) * 5) / 1000) * 1000;
+    const formattedLimit = limitVal.toLocaleString('pt-PT') + ' Kz';
+
+    return { score, formattedLimit };
+  };
+
+  const currentCalc = calculateCreditReadiness();
 
   const faqs = [
     {
-      q: 'O que é o OLO Fintel?',
-      a: 'É um Sistema de Operação Económica que ajuda PMEs e cooperativas informais angolanas a digitalizarem as suas operações diárias e a construírem de forma gradual uma pontuação de credibilidade (Economic Identity Score) para acederem a consultoria e crédito bancário.'
+      q: 'O que é a plataforma MiraWelch?',
+      a: 'A MiraWelch é uma Plataforma de Gestão, Formalização e Crédito para Cooperativas e PMEs angolanas. Ela ajuda a digitalizar operações diárias do campo e constrói uma pontuação de credibilidade (Identidade Económica) para facilitar o acesso ao financiamento bancário e linhas bonificadas do BNA (Aviso 10/22).'
     },
     {
-      q: 'Preciso de pagar para usar o sistema?',
-      a: 'O acesso inicial e a participação no estudo de validação de mercado são 100% gratuitos. Temos planos premium para cooperativas que queiram suporte avançado de consultoria presencial e auditoria de crédito.'
+      q: 'Como são calculados e atualizados os dados do ecossistema?',
+      a: 'Os indicadores apresentados na plataforma são atualizados em tempo real com base nos registos reais de cooperativas, produtores e inquéritos no terreno efetuados no banco de dados.'
+    },
+    {
+      q: 'Preciso de pagar para registar a minha cooperativa?',
+      a: 'O registo inicial da cooperativa e a participação no inquérito de validação do ecossistema LISPA são 100% gratuitos.'
     },
     {
       q: 'Como funciona a Pontuação de Identidade Económica?',
-      a: 'A pontuação varia de 0 a 100. Ela aumenta automaticamente à medida que regista operações regulares (vendas, colheitas, despesas) e carrega os documentos oficiais obrigatórios (NIF, licenças, extratos bancários). Quanto maior a pontuação, mais atraente é o seu negócio para os bancos parceiros.'
+      a: 'A pontuação varia de 0 a 100. Ela aumenta à medida que a cooperativa regista operações regulares (colheitas, vendas, despesas) e anexa os documentos legais obrigatórios (NIF, licenças e atas de assembleia).'
     },
     {
-      q: 'O sistema funciona sem internet?',
-      a: 'Sim. Projetamos o OLO Fintel para as províncias angolanas. Pode introduzir todas as vendas e despesas no campo sem internet; os dados serão guardados localmente no seu telemóvel e sincronizados automaticamente assim que apanhar sinal de rede.'
-    },
-    {
-      q: 'Como posso participar no Estudo de Validação?',
-      a: 'Basta clicar no botão "Inquérito de Validação" na barra superior. Ao responder às 5 questões rápidas, ajudará a mapear os reais desafios de crédito em Angola e o seu negócio aparecerá imediatamente nas nossas estatísticas públicas.'
+      q: 'A aplicação funciona no campo sem ligação à internet?',
+      a: 'Sim. A MiraWelch foi desenhada a pensar no contexto provincial angolano. É possível introduzir os dados de colheita ou vendas sem rede; assim que o telemóvel apanhar sinal, a informação é sincronizada com a plataforma.'
     }
   ];
 
   return (
     <div className="w-full flex flex-col font-sans selection:bg-brand-iris/20 selection:text-brand-iris">
       
-      {/* HIGH-DENSITY HEADER & HERO SECTION */}
-      <section className="relative pt-12 pb-24 px-6 overflow-hidden border-b border-[#E2E8F0] dark:border-[#2A2A35] bg-slate-50/50 dark:bg-[#0A0A0E]">
+      {/* 1. HERO SECTION */}
+      <section className="relative pt-12 pb-20 px-6 overflow-hidden border-b border-slate-200 dark:border-zinc-800 bg-slate-50 dark:bg-[#09090B]">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#8080800a_1px,transparent_1px),linear-gradient(to_bottom,#8080800a_1px,transparent_1px)] bg-[size:14px_24px] pointer-events-none" />
-        <div className="absolute top-0 right-1/4 w-96 h-96 bg-brand-iris/5 dark:bg-brand-iris/10 rounded-full blur-3xl pointer-events-none" />
         
-        <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+        <div className="max-w-7xl mx-auto space-y-8">
           
-          {/* Hero Pitch */}
-          <div className="lg:col-span-6 space-y-6 text-left relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand-iris/10 text-brand-iris text-xs font-mono font-semibold">
-              <span className="w-2 h-2 rounded-full bg-brand-iris animate-ping" />
-              FINTECH PARA O ANGOLA REAL • BNA & AGT READY
-            </div>
-            
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight text-gray-900 dark:text-white leading-tight">
-              A sua cooperativa de campo aos olhos da <span className="text-brand-iris font-extrabold">banca nacional</span>.
-            </h1>
-            
-            <p className="text-sm sm:text-base md:text-lg text-gray-500 dark:text-gray-400 max-w-xl leading-relaxed">
-              O OLO Fintel OS recolhe, organiza e normaliza faturas amassadas, atas manuscritas e registos de vendas em cadernos. Construa a sua <strong>Identidade Económica</strong> e prove a sua capacidade de endividamento de forma auditada.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-3 pt-4">
-              <button 
-                onClick={() => onNavigate('register')}
-                className="px-6 py-3.5 bg-brand-iris hover:bg-brand-iris-hover text-white rounded-xl font-bold text-sm shadow-lg shadow-brand-iris/20 transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Criar Identidade Gratuita
-                <ArrowRight size={16} />
-              </button>
-              
-              <button 
-                onClick={() => onNavigate('survey')}
-                className="px-6 py-3.5 border border-gray-300 dark:border-gray-700 hover:border-brand-iris text-gray-700 dark:text-gray-300 rounded-xl font-bold text-sm transition-all flex items-center justify-center gap-2 cursor-pointer"
-              >
-                Inquérito de Validação LISPA
-              </button>
+          {/* Executive Trust Banner */}
+          <div className="flex flex-wrap items-center justify-between gap-3 p-3 px-4 rounded-xl bg-white dark:bg-[#121217] border border-slate-200 dark:border-zinc-800 shadow-sm text-xs">
+            <div className="flex items-center gap-2.5">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+              </span>
+              <span className="font-bold text-slate-800 dark:text-zinc-200">
+                PLATAFORMA NACIONAL DE FORMALIZAÇÃO & CRÉDITO
+              </span>
+              <span className="hidden sm:inline text-slate-400 dark:text-zinc-500">• Alinhada com o Aviso 10/22 do BNA</span>
             </div>
 
-            {/* Micro Metrics Row */}
-            <div className="pt-8 grid grid-cols-3 gap-4 border-t border-gray-200 dark:border-[#2A2A35]">
-              <div>
-                <p className="text-xs text-gray-400 font-mono">INTEGRAÇÃO</p>
-                <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Rápida c/ AGT</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 font-mono">CONFORMIDADE</p>
-                <p className="text-sm font-bold text-gray-800 dark:text-gray-200">Aviso 10/22 BNA</p>
-              </div>
-              <div>
-                <p className="text-xs text-gray-400 font-mono">OPERAÇÃO</p>
-                <p className="text-sm font-bold text-green-500 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
-                  100% Offline
-                </p>
-              </div>
+            <div className="flex items-center gap-4 text-slate-500 dark:text-zinc-400 font-medium text-xs">
+              <span className="flex items-center gap-1.5">
+                <ShieldCheck size={14} className="text-emerald-500" />
+                Dados Sincronizados
+              </span>
+              <span className="hidden md:flex items-center gap-1.5">
+                <Award size={14} className="text-brand-iris" />
+                Programa LISPA Validação
+              </span>
             </div>
           </div>
 
-          {/* INTERACTIVE FINTEL OS ENGINE LIVE SIMULATOR */}
-          <div className="lg:col-span-6 relative">
-            <div className="absolute inset-0 bg-brand-purple/5 dark:bg-brand-purple/10 rounded-3xl blur-3xl -z-10" />
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
             
-            {/* The Terminal Mockup Device */}
-            <div className="bg-[#111116] border border-gray-800 rounded-2xl shadow-2xl overflow-hidden text-left">
+            {/* Hero Pitch */}
+            <div className="lg:col-span-6 space-y-6 text-left relative z-10">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-slate-100 dark:bg-zinc-800 border border-slate-200 dark:border-zinc-700 text-slate-700 dark:text-zinc-300 text-xs font-semibold">
+                <Sparkles size={13} className="text-brand-iris" />
+                MIRAWELCH • CRESCIMENTO COOPERATIVO
+              </div>
               
-              {/* Terminal Title Bar */}
-              <div className="bg-[#1A1A22] px-4 py-3 border-b border-gray-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="w-3 h-3 rounded-full bg-red-500/80" />
-                  <span className="w-3 h-3 rounded-full bg-yellow-500/80" />
-                  <span className="w-3 h-3 rounded-full bg-green-500/80" />
-                  <span className="text-xs font-mono text-gray-500 ml-2">FintelScoreEngineV3.exe</span>
-                </div>
-                <div className="flex items-center gap-1.5 text-[10px] font-mono text-brand-iris bg-brand-iris/10 px-2 py-0.5 rounded">
-                  <Terminal size={10} />
-                  LIVE DEMO
-                </div>
-              </div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight text-slate-900 dark:text-zinc-100 leading-tight">
+                A sua cooperativa de campo pronta para o <span className="text-emerald-600 dark:text-emerald-400 border-b-2 border-emerald-500">crédito bancário</span>.
+              </h1>
+              
+              <p className="text-sm sm:text-base text-slate-600 dark:text-zinc-400 max-w-xl leading-relaxed">
+                A <strong>MiraWelch</strong> organiza e valida registos de colheitas, pescas, gado e vendas diárias. Construa a <strong>Identidade Económica</strong> da sua cooperativa e comprove a capacidade de financiamento perante as instituições financeiras.
+              </p>
 
-              {/* Demo Org Selector Buttons inside the Device */}
-              <div className="p-3 bg-[#16161F] border-b border-gray-800 flex gap-2 overflow-x-auto">
+              <div className="flex flex-col sm:flex-row gap-3 pt-2">
                 <button 
-                  onClick={() => runSandboxSimulation('humpata')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all shrink-0 ${
-                    activeDemoOrg === 'humpata' 
-                      ? 'bg-brand-iris text-white' 
-                      : 'bg-gray-800/50 text-gray-400 hover:text-white'
-                  }`}
+                  onClick={() => onNavigate('register')}
+                  className="btn-primary cursor-pointer"
                 >
-                  🌾 Humpata (Batata)
+                  Registar a Minha Cooperativa
+                  <ArrowRight size={15} />
                 </button>
-                <button 
-                  onClick={() => runSandboxSimulation('namibe')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all shrink-0 ${
-                    activeDemoOrg === 'namibe' 
-                      ? 'bg-brand-iris text-white' 
-                      : 'bg-gray-800/50 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  ⚓ Namibe (Pescas)
-                </button>
-                <button 
-                  onClick={() => runSandboxSimulation('huambo')}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold font-mono transition-all shrink-0 ${
-                    activeDemoOrg === 'huambo' 
-                      ? 'bg-brand-iris text-white' 
-                      : 'bg-gray-800/50 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  🐄 Huambo (Pecuária)
-                </button>
-              </div>
-
-              {/* Interactive Core Display Area */}
-              <div className="p-5 grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[300px]">
                 
-                {/* Visual Identity score dial */}
-                <div className="md:col-span-5 flex flex-col justify-between items-center bg-[#16161F] p-4 rounded-xl border border-gray-800 text-center">
-                  <div>
-                    <span className="text-[10px] font-mono text-gray-500 uppercase">Identity Score</span>
-                    <p className="text-xs text-gray-400 font-sans mt-0.5">Pontuação Operacional</p>
-                  </div>
+                <button 
+                  onClick={() => onNavigate('survey')}
+                  className="btn-secondary cursor-pointer"
+                >
+                  Responder ao Inquérito Nacional
+                </button>
+              </div>
 
-                  {/* Circular Dial in Tailwind CSS */}
-                  <div className="relative w-28 h-28 my-3 flex items-center justify-center">
-                    <svg className="absolute w-full h-full transform -rotate-90">
-                      <circle 
-                        cx="56" 
-                        cy="56" 
-                        r="45" 
-                        stroke="#222" 
-                        strokeWidth="8" 
-                        fill="transparent" 
-                      />
-                      <circle 
-                        cx="56" 
-                        cy="56" 
-                        r="45" 
-                        stroke="#5D5FEF" 
-                        strokeWidth="8" 
-                        fill="transparent" 
-                        strokeDasharray={282}
-                        strokeDashoffset={282 - (282 * (Number(simulatedScore) || 0)) / 100}
-                        className="transition-all duration-1000 ease-out"
-                      />
-                    </svg>
-                    <div className="z-10 text-center">
-                      <span className="text-3xl font-extrabold font-mono text-white block">{simulatedScore}</span>
-                      <span className="text-[9px] font-bold text-gray-500 uppercase font-mono">de 100</span>
+              {/* Micro Indicators Row */}
+              <div className="pt-6 grid grid-cols-3 gap-4 border-t border-slate-200 dark:border-zinc-800">
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">SISTEMA NACIONAL</p>
+                  <p className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-0.5">Atualização em Tempo Real</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">ENQUADRAMENTO</p>
+                  <p className="text-xs font-bold text-slate-800 dark:text-zinc-200 mt-0.5">Aviso 10/22 BNA</p>
+                </div>
+                <div>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase">MODO DE CAMPO</p>
+                  <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 mt-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    100% Offline First
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* INTERACTIVE SCORE EVALUATOR DEMO */}
+            <div className="lg:col-span-6 relative">
+              
+              <div className="bg-[#111116] border border-zinc-800 rounded-2xl shadow-xl overflow-hidden text-left">
+                
+                {/* Title Bar */}
+                <div className="bg-[#181820] px-4 py-3 border-b border-zinc-800 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Award size={16} className="text-brand-iris" />
+                    <span className="text-xs font-bold text-zinc-200">Motor de Identidade Económica</span>
+                  </div>
+                  <span className="text-[10px] font-semibold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    SIMULADOR EM TEMPO REAL
+                  </span>
+                </div>
+
+                {/* Organization Selector */}
+                <div className="p-3 bg-[#14141A] border-b border-zinc-800 flex flex-wrap gap-2">
+                  <button 
+                    onClick={() => runScoreSimulation('humpata')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
+                      activeDemoOrg === 'humpata' 
+                        ? 'bg-brand-iris text-white font-bold' 
+                        : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    🌾 Humpata (Agricultura)
+                  </button>
+                  <button 
+                    onClick={() => runScoreSimulation('namibe')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
+                      activeDemoOrg === 'namibe' 
+                        ? 'bg-brand-iris text-white font-bold' 
+                        : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    ⚓ Namibe (Pescas)
+                  </button>
+                  <button 
+                    onClick={() => runScoreSimulation('huambo')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all shrink-0 cursor-pointer ${
+                      activeDemoOrg === 'huambo' 
+                        ? 'bg-brand-iris text-white font-bold' 
+                        : 'bg-zinc-800/80 text-zinc-400 hover:text-white'
+                    }`}
+                  >
+                    🐄 Huambo (Pecuária)
+                  </button>
+                </div>
+
+                {/* Interactive Display Area */}
+                <div className="p-5 grid grid-cols-1 md:grid-cols-12 gap-6 min-h-[280px]">
+                  
+                  {/* Score Dial */}
+                  <div className="md:col-span-5 flex flex-col justify-between items-center bg-[#181820] p-4 rounded-xl border border-zinc-800 text-center">
+                    <div>
+                      <span className="text-[10px] text-zinc-400 uppercase font-bold tracking-wider">Pontuação de Credibilidade</span>
+                      <p className="text-xs text-zinc-300 font-semibold mt-0.5">Identidade Económica</p>
+                    </div>
+
+                    {/* Circular Dial */}
+                    <div className="relative w-24 h-24 my-2 flex items-center justify-center">
+                      <svg className="absolute w-full h-full transform -rotate-90">
+                        <circle 
+                          cx="48" 
+                          cy="48" 
+                          r="38" 
+                          stroke="#27272A" 
+                          strokeWidth="6" 
+                          fill="transparent" 
+                        />
+                        <circle 
+                          cx="48" 
+                          cy="48" 
+                          r="38" 
+                          stroke="#5D5FEF" 
+                          strokeWidth="6" 
+                          fill="transparent" 
+                          strokeDasharray={238}
+                          strokeDashoffset={238 - (238 * (Number(simulatedScore) || 0)) / 100}
+                          className="transition-all duration-1000 ease-out"
+                        />
+                      </svg>
+                      <div className="z-10 text-center">
+                        <span className="text-2xl font-extrabold text-white block">{simulatedScore}</span>
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase">de 100 pts</span>
+                      </div>
+                    </div>
+
+                    <div className="w-full bg-[#111116] p-2 rounded-lg border border-zinc-800">
+                      <span className="text-[9px] text-zinc-400 block uppercase font-bold">Capacidade de Crédito Estimada</span>
+                      <span className="text-xs font-extrabold text-emerald-400">{simulatedCreditLimit}</span>
                     </div>
                   </div>
 
-                  <div className="w-full bg-[#1A1A24] p-2.5 rounded-lg border border-gray-800">
-                    <span className="text-[9px] font-mono text-gray-400 block uppercase">Limite de Crédito Calculado</span>
-                    <span className="text-sm font-bold text-green-400 font-mono">{simulatedCreditLimit}</span>
-                  </div>
-                </div>
+                  {/* Verification Workflow Steps */}
+                  <div className="md:col-span-7 flex flex-col justify-between h-[260px]">
+                    <div className="overflow-y-auto space-y-2 pr-1 text-xs flex-1 scrollbar-thin">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-2">Etapas de Validação de Conformidade:</p>
+                      {simLogs.map((log, index) => (
+                        <div 
+                          key={index} 
+                          className="leading-relaxed text-[11px] p-2 rounded bg-zinc-900 border border-zinc-800 text-zinc-200 flex items-start gap-2"
+                        >
+                          <CheckCircle size={13} className="text-emerald-400 shrink-0 mt-0.5" />
+                          <span>{log}</span>
+                        </div>
+                      ))}
+                      {simStage === 'done' && (
+                        <div className="text-emerald-400 font-bold text-[11px] flex items-center gap-1.5 pt-2 border-t border-zinc-800 mt-2">
+                          <CheckCircle size={14} />
+                          Dossiê homologado com sucesso para submissão à banca!
+                        </div>
+                      )}
+                    </div>
 
-                {/* Live Console Output Terminal */}
-                <div className="md:col-span-7 flex flex-col justify-between h-[280px]">
-                  <div className="overflow-y-auto space-y-2.5 pr-1 font-mono text-xs flex-1 scrollbar-thin scrollbar-thumb-gray-800">
-                    {terminalLogs.length === 0 && (
-                      <div className="text-gray-600 animate-pulse text-xs py-4 text-center">
-                        A iniciar normalizador de dados...
-                      </div>
-                    )}
-                    {terminalLogs.filter(Boolean).map((log, index) => (
-                      <div 
-                        key={index} 
-                        className={`leading-relaxed text-[11px] border-l-2 pl-2 ${
-                          log && typeof log === 'string' && log.startsWith('⚡') ? 'text-brand-purple border-brand-purple' :
-                          log && typeof log === 'string' && log.startsWith('🔍') ? 'text-blue-400 border-blue-400' :
-                          log && typeof log === 'string' && log.startsWith('⚖️') ? 'text-amber-500 border-amber-500' :
-                          log && typeof log === 'string' && log.startsWith('🛡️') ? 'text-green-500 border-green-500' :
-                          'text-gray-300 border-gray-700'
-                        }`}
+                    <div className="pt-2 border-t border-zinc-800 flex items-center justify-between text-[11px] text-zinc-400">
+                      <span className="flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                        Avaliador Ativo
+                      </span>
+                      <button 
+                        onClick={() => runScoreSimulation(activeDemoOrg)}
+                        className="text-zinc-300 hover:text-white cursor-pointer underline font-medium"
                       >
-                        {log}
-                      </div>
-                    ))}
-                    {terminalStage === 'calculating' && (
-                      <div className="text-brand-iris font-bold animate-pulse text-[11px] flex items-center gap-1.5 pt-2">
-                        <Activity size={12} className="animate-spin" />
-                        A processar modelo de maturidade LISPA/Fintel...
-                      </div>
-                    )}
-                    {terminalStage === 'done' && (
-                      <div className="text-green-400 font-bold text-[11px] flex items-center gap-1.5 pt-2 border-t border-gray-800 mt-2">
-                        <CheckCircle size={14} />
-                        [SUCESSO] Relatório de Viabilidade e Score {simulatedScore}/100 gerados com sucesso!
-                      </div>
-                    )}
+                        Reiniciar Simulação
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="pt-3 border-t border-gray-800 flex items-center justify-between text-[10px] text-gray-500 font-mono">
-                    <span className="flex items-center gap-1">
-                      <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                      Motor de Score Online
-                    </span>
-                    <button 
-                      onClick={() => runSandboxSimulation(activeDemoOrg)}
-                      className="text-brand-iris hover:underline cursor-pointer"
-                    >
-                      Re-executar Teste
-                    </button>
-                  </div>
-                </div>
-
-              </div>
-            </div>
-            
-            {/* Quick Helper caption below device */}
-            <p className="text-[11px] text-gray-400 dark:text-gray-500 mt-3 text-center font-mono">
-              * Clique nos botões acima para simular a normalização em tempo real de faturas de campo.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* DENSE METRICS HIGHLIGHT ROW */}
-      <section className="bg-white dark:bg-[#111116] border-b border-[#E2E8F0] dark:border-[#2A2A35] py-8 px-6">
-        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
-          
-          <div className="space-y-1 text-left">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-brand-iris block">
-              {stats !== null ? stats.total : '...'}
-            </span>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Inquéritos de Campo</span>
-            <span className="text-[10px] text-gray-400 block font-mono">Mapeamento Real em Progresso</span>
-          </div>
-
-          <div className="space-y-1 text-left">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-brand-purple block">
-              {stats !== null ? `${Object.keys(stats.provinces).length} Províncias` : '...'}
-            </span>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Cobertura Nacional</span>
-            <span className="text-[10px] text-gray-400 block font-mono">De Luanda ao Cunene</span>
-          </div>
-
-          <div className="space-y-1 text-left">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-green-500 block">
-              {stats !== null ? stats.registeredOrgs || 0 : '...'}
-            </span>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Cooperativas Registadas</span>
-            <span className="text-[10px] text-gray-400 block font-mono">Contas Operacionais Ativas</span>
-          </div>
-
-          <div className="space-y-1 text-left">
-            <span className="text-2xl sm:text-3xl font-extrabold font-mono text-amber-500 block">
-              {stats !== null ? stats.totalOperations || 0 : '...'}
-            </span>
-            <span className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider block">Operações Mapeadas</span>
-            <span className="text-[10px] text-gray-400 block font-mono">Milho, gado, peixe registados</span>
-          </div>
-
-        </div>
-      </section>
-
-      {/* DENSE, PROFESSIONAL BENTO GRID FEATURES */}
-      <section className="py-20 px-6 max-w-7xl mx-auto w-full">
-        <div className="text-center max-w-3xl mx-auto mb-16 space-y-3">
-          <span className="text-xs font-bold text-brand-iris uppercase tracking-widest block font-mono">CADEIA DE VALOR DO FINTEL OS</span>
-          <h2 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-            Infraestrutura de ponta desenhada para desmistificar o agronegócio
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-            Eliminamos os entraves burocráticos e tornamos a sua organização auditável para bancos parceiros. Com o Fintel OS, o caos operacional converte-se em ativos legítimos.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-6">
-          
-          {/* Bento Box 1: Bring Your Chaos (Agriculture focus) */}
-          <div className="lg:col-span-5 p-8 rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A35] bg-[#F8F9FA] dark:bg-[#14141B] flex flex-col justify-between text-left space-y-6">
-            <div className="space-y-4">
-              <div className="w-12 h-12 bg-brand-iris/10 text-brand-iris rounded-xl flex items-center justify-center">
-                <FileSpreadsheet size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">"Bring Your Chaos" Document Intake</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                Não precisa de relatórios estruturados. Carregue fotos de faturas rasgadas de fertilizantes, tabelas de vendas manuscritas ou recibos bancários informais. Nosso motor inteligente extrai e normaliza tudo automaticamente.
-              </p>
-            </div>
-            
-            {/* Small inline telemetry panel for realism */}
-            <div className="p-4 rounded-xl bg-white dark:bg-[#0C0C10] border border-gray-200 dark:border-gray-800 space-y-2">
-              <div className="flex justify-between items-center text-[10px] font-mono text-gray-400">
-                <span>INTAKE PIPELINE</span>
-                <span className="text-green-500">CONFLUENCE OK</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
-                <div className="p-2 rounded bg-gray-50 dark:bg-[#14141B] text-gray-600 dark:text-gray-300">
-                  📄 Atas Assembleia
-                </div>
-                <div className="p-2 rounded bg-gray-50 dark:bg-[#14141B] text-gray-600 dark:text-gray-300">
-                  📊 Registo Vendas
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Bento Box 2: Economic Identity Score Engine */}
-          <div className="lg:col-span-7 p-8 rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A35] bg-[#F8F9FA] dark:bg-[#14141B] flex flex-col justify-between text-left space-y-6">
-            <div className="space-y-4">
-              <div className="w-12 h-12 bg-brand-purple/10 text-brand-purple rounded-xl flex items-center justify-center">
-                <Cpu size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Algoritmo de Risco Operacional Proprietário</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                Nós transformamos assiduidade operacional em maturidade financeira. Quanto mais frequentes forem os registos das suas colheitas ou pescas no sistema, maior será o seu <strong>Economic Identity Score (EIS)</strong>.
-              </p>
-            </div>
-
-            {/* Simulated weighting display */}
-            <div className="p-4 rounded-xl bg-white dark:bg-[#0C0C10] border border-gray-200 dark:border-gray-800 space-y-3">
-              <span className="text-[10px] font-mono text-gray-400 uppercase tracking-widest block">Score Composition Weighting</span>
-              <div className="space-y-2 text-xs">
-                <div>
-                  <div className="flex justify-between font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    <span>Maturidade Operacional (Frequência de registo)</span>
-                    <span className="text-brand-iris">40%</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
-                    <div className="h-full bg-brand-iris rounded-full" style={{ width: '40%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    <span>Validação de Conformidade (AGT, NIF, Licenças)</span>
-                    <span className="text-brand-purple">35%</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
-                    <div className="h-full bg-brand-purple rounded-full" style={{ width: '35%' }} />
-                  </div>
-                </div>
-                <div>
-                  <div className="flex justify-between font-semibold text-gray-700 dark:text-gray-300 mb-1">
-                    <span>Histórico Transacional Recente</span>
-                    <span className="text-green-500">25%</span>
-                  </div>
-                  <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full">
-                    <div className="h-full bg-green-500 rounded-full" style={{ width: '25%' }} />
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bento Box 3: Offline Field Sync (Pecuária / Pescas focus) */}
-          <div className="lg:col-span-6 p-8 rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A35] bg-[#F8F9FA] dark:bg-[#14141B] flex flex-col justify-between text-left space-y-6">
-            <div className="space-y-4">
-              <div className="w-12 h-12 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center">
-                <Database size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Arquitetura Integrada Offline First</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                As províncias e as lavras muitas vezes não possuem qualquer sinal de internet. Com a nossa tecnologia offline, registe as suas operações livremente. O seu browser ou aplicação guarda as transações encriptadas localmente e sincroniza tudo com a nuvem assim que deteta rede estável.
-              </p>
-            </div>
-            
-            <div className="flex gap-4 text-xs font-mono text-gray-400">
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                DADOS ENCRIPTADOS AES-256
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-green-500" />
-                SINCRONIZAÇÃO AUTOMÁTICA
-              </span>
-            </div>
-          </div>
-
-          {/* Bento Box 4: Bank-Ready Reporting */}
-          <div className="lg:col-span-6 p-8 rounded-2xl border border-[#E2E8F0] dark:border-[#2A2A35] bg-[#F8F9FA] dark:bg-[#14141B] flex flex-col justify-between text-left space-y-6">
-            <div className="space-y-4">
-              <div className="w-12 h-12 bg-green-500/10 text-green-500 rounded-xl flex items-center justify-center">
-                <Shield size={24} />
-              </div>
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">De-risking e Relatório Pré-auditado para Bancos</h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
-                Ao exportar a sua identidade económica, o sistema gera automaticamente uma "pasta de crédito" contendo balancetes normalizados, taxas de cumprimento, e cópias digitais dos seus documentos validados. Uma redução drástica do tempo de análise do gestor bancário.
-              </p>
-            </div>
-            
-            <div className="p-3.5 rounded-xl bg-green-500/5 border border-green-500/20 flex items-center justify-between text-xs font-semibold text-green-600 dark:text-green-400">
-              <span>Fintel Credential Portal Integrado</span>
-              <span className="flex items-center gap-1 hover:underline cursor-pointer">
-                Ver Demo Banco
-                <ExternalLink size={12} />
-              </span>
-            </div>
-          </div>
-
-        </div>
-      </section>
-
-      {/* DYNAMIC PIPELINE CHART - THE TRANSFORMATION */}
-      <section className="py-20 px-6 bg-slate-50 dark:bg-[#0A0A0D] border-y border-[#E2E8F0] dark:border-[#2A2A35]">
-        <div className="max-w-7xl mx-auto text-center space-y-12">
-          <div className="space-y-3 max-w-2xl mx-auto">
-            <span className="text-xs font-mono font-bold text-brand-iris uppercase tracking-widest block">PIPELINE DE CRÉDITO</span>
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">A Caminhada do Financiamento Simplificada</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Compreenda exatamente como o OLO Fintel OS remove o obstáculo da falta de histórico operacional e transforma dados desorganizados num dossiê respeitado pelos analistas bancários.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
-            
-            {/* Horizontal Line connector for desktop md screens */}
-            <div className="hidden md:block absolute top-[44px] left-[15%] right-[15%] h-0.5 bg-gray-200 dark:bg-gray-800 -z-0" />
-
-            {/* Step 1 */}
-            <div className="p-6 bg-white dark:bg-[#111116] border border-gray-200 dark:border-gray-800 rounded-2xl text-left relative z-10 space-y-4">
-              <div className="w-10 h-10 rounded-full bg-brand-iris text-white font-bold font-mono flex items-center justify-center text-sm shadow">
-                1
-              </div>
-              <h4 className="font-bold text-gray-900 dark:text-white">Digitalização Rápida no Campo</h4>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                Utilize interfaces simplificadas em Português ou em línguas nacionais (Umbundu, Kimbundu) para registar o dia-a-dia da sua lavra ou cooperativa agrícola.
-              </p>
-              <div className="flex gap-1.5 flex-wrap">
-                <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">Sem internet</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">Cadernos de Campo</span>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="p-6 bg-white dark:bg-[#111116] border border-gray-200 dark:border-gray-800 rounded-2xl text-left relative z-10 space-y-4">
-              <div className="w-10 h-10 rounded-full bg-brand-purple text-white font-bold font-mono flex items-center justify-center text-sm shadow">
-                2
-              </div>
-              <h4 className="font-bold text-gray-900 dark:text-white">Saturação e Auditoria OLO</h4>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                Os seus dados são consolidados. Verificamos a validade do seu NIF junto da AGT, cruzamos as atas dos associados e montamos balancetes comerciais transparentes.
-              </p>
-              <div className="flex gap-1.5 flex-wrap">
-                <span className="text-[10px] px-2 py-0.5 rounded bg-brand-purple/10 text-brand-purple font-semibold font-mono">Normalização Core</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-brand-purple/10 text-brand-purple font-semibold font-mono">AGT Checked</span>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="p-6 bg-white dark:bg-[#111116] border border-gray-200 dark:border-gray-800 rounded-2xl text-left relative z-10 space-y-4">
-              <div className="w-10 h-10 rounded-full bg-green-500 text-white font-bold font-mono flex items-center justify-center text-sm shadow">
-                3
-              </div>
-              <h4 className="font-bold text-gray-900 dark:text-white">Canal de Crédito Direto</h4>
-              <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
-                Com o Score superior a 60 pontos, o seu perfil fica visível no painel dos analistas dos bancos parceiros (BAI, BFA, etc.) reduzindo burocracia para financiamentos rápidos.
-              </p>
-              <div className="flex gap-1.5 flex-wrap">
-                <span className="text-[10px] px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-500 font-bold font-mono">Aviso 10/22 BNA</span>
-                <span className="text-[10px] px-2 py-0.5 rounded bg-green-100 dark:bg-green-900/30 text-green-500 font-bold font-mono">Banca Onboarded</span>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      </section>
-
-      {/* DYNAMIC, HIGH-DENSITY MARKET VALIDATION CENTER */}
-      <section className="py-20 px-6 max-w-7xl mx-auto w-full">
-        <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6 text-left">
-          <div className="space-y-3">
-            <span className="text-xs font-bold text-brand-iris uppercase tracking-widest block font-mono">ESTUDO DE VALIDAÇÃO NACIONAL</span>
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">Resultados Estatísticos em Tempo Real</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-2xl">
-              Como parte do inquérito de validação apresentado ao júri de inovação da LISPA, recolhemos dados reais sobre as dificuldades estruturais de PMEs informais nas várias províncias de Angola.
-            </p>
-          </div>
-          
-          {/* Swithcher Between Real Data and National Benchmark */}
-          <div className="bg-[#F1F5F9] dark:bg-[#1A1A24] p-1 rounded-xl border border-gray-200 dark:border-gray-800 flex shrink-0">
-            <button 
-              onClick={() => setDataSource('real')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                dataSource === 'real' 
-                  ? 'bg-white dark:bg-[#282836] text-gray-900 dark:text-white shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-              }`}
-            >
-              <Activity size={14} />
-              Dados do Inquérito ({realStats ? realStats.total : 0})
-            </button>
-            <button 
-              onClick={() => setDataSource('benchmark')}
-              className={`px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer ${
-                dataSource === 'benchmark' 
-                  ? 'bg-white dark:bg-[#282836] text-gray-900 dark:text-white shadow-sm' 
-                  : 'text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
-              }`}
-            >
-              <Database size={14} />
-              Benchmark LISPA ({BENCHMARK_STATS.total})
-            </button>
-          </div>
-        </div>
-
-        {/* Displaying Stats Panel */}
-        {stats.total > 0 ? (
-          <div className="space-y-8 animate-fade-in">
-            
-            {/* Top row: Giant Number & Funnel widgets */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               
-              {/* Highlight Card: Time Lost (A2) */}
-              <div className="p-6 bg-gradient-to-br from-[#12121A] to-[#1D1B26] border border-[#2B2836] rounded-3xl shadow-xl text-left flex flex-col justify-between text-white relative overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-brand-iris/10 rounded-full blur-3xl pointer-events-none" />
-                <div>
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-[10px] font-mono font-bold text-brand-iris uppercase tracking-wider">Métrica A2 – Desperdício Operacional</span>
-                    <Clock className="text-brand-iris shrink-0" size={18} />
-                  </div>
-                  <span className="block text-[11px] text-gray-400 font-medium">As PMEs perdem em média por semana:</span>
-                  <div className="text-4xl font-mono font-extrabold text-white my-3 tracking-tight">
-                    {stats.avgHoursLost || 6.8} <span className="text-sm font-sans font-normal text-gray-400">horas</span>
-                  </div>
-                  <p className="text-xs text-gray-300 leading-relaxed">
-                    Tempo semanal gasto a consolidar contas à mão, reconciliar cadernos ou gerir clientes de forma informal.
-                  </p>
-                </div>
-                <div className="mt-6 pt-4 border-t border-[#262432]/80 flex justify-between items-center">
-                  <span className="text-[10px] text-gray-500 font-mono">ESTIMATIVA ANUAL AGREGADA</span>
-                  <span className="text-xs font-mono font-bold text-brand-iris">{Number(stats.totalLostHoursYear || 51948).toLocaleString('pt-PT')} h / ano</span>
-                </div>
-              </div>
-
-              {/* Stacked Bar Card: Digital Maturity (C1) */}
-              <div className="p-6 bg-white dark:bg-[#14141B] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-sm text-left flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-5">
-                    <h4 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
-                      <Layers className="text-brand-iris" size={16} />
-                      Maturidade Financeira (C1)
-                    </h4>
-                    <span className="px-2 py-0.5 rounded bg-brand-iris/10 text-brand-iris text-[10px] font-mono font-bold">Diagnóstico C1</span>
-                  </div>
-
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
-                    Percentagem de organizações que operam sem controlo imediato das suas margens líquidas de lucro.
-                  </p>
-
-                  <div className="space-y-4">
-                    {(() => {
-                      const beg = stats.maturityLevels?.beginner || 102;
-                      const inter = stats.maturityLevels?.intermediate || 34;
-                      const adv = stats.maturityLevels?.advanced || 11;
-                      const sum = beg + inter + adv;
-                      const begPct = Math.round((beg / sum) * 100) || 70;
-                      const interPct = Math.round((inter / sum) * 100) || 23;
-                      const advPct = Math.round((adv / sum) * 100) || 7;
-
-                      return (
-                        <div className="space-y-3">
-                          {/* Segment list */}
-                          <div className="space-y-2 text-xs">
-                            <div className="flex justify-between items-center">
-                              <span className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-gray-300">
-                                <span className="w-2.5 h-2.5 rounded-full bg-red-500" />
-                                Iniciante (Sem margem exata)
-                              </span>
-                              <span className="font-bold font-mono text-gray-900 dark:text-white">{begPct}%</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-gray-300">
-                                <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-                                Intermédio (Tem estimativa)
-                              </span>
-                              <span className="font-bold font-mono text-gray-900 dark:text-white">{interPct}%</span>
-                            </div>
-                            <div className="flex justify-between items-center">
-                              <span className="flex items-center gap-1.5 font-semibold text-gray-700 dark:text-gray-300">
-                                <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-                                Avançado (Sabe na hora)
-                              </span>
-                              <span className="font-bold font-mono text-gray-900 dark:text-white">{advPct}%</span>
-                            </div>
-                          </div>
-
-                          {/* Unified Stacked Bar */}
-                          <div className="w-full h-3.5 bg-gray-100 dark:bg-gray-800 rounded-full flex overflow-hidden shadow-inner">
-                            <div className="h-full bg-red-500" style={{ width: `${begPct}%` }} title={`Iniciante: ${begPct}%`} />
-                            <div className="h-full bg-amber-500" style={{ width: `${interPct}%` }} title={`Intermédio: ${interPct}%`} />
-                            <div className="h-full bg-green-500" style={{ width: `${advPct}%` }} title={`Avançado: ${advPct}%`} />
-                          </div>
-                        </div>
-                      );
-                    })()}
-                  </div>
-                </div>
-                <p className="text-[9px] text-gray-400 font-mono mt-4">
-                  * 7 em cada 10 PMEs operam às cegas financeiramente no início da época.
-                </p>
-              </div>
-
-              {/* Credit Exclusion Funnel (B1) */}
-              <div className="p-6 bg-white dark:bg-[#14141B] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-sm text-left flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-5">
-                    <h4 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-2">
-                      <Coins className="text-red-500" size={16} />
-                      Funil de Exclusão Bancária (B1)
-                    </h4>
-                    <span className="px-2 py-0.5 rounded bg-red-500/10 text-red-500 text-[10px] font-mono font-bold">Bloco B</span>
-                  </div>
-
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-5 leading-relaxed">
-                    Estatísticas de acesso ao financiamento formal nos últimos 3 anos.
-                  </p>
-
-                  <div className="space-y-3.5">
-                    {(() => {
-                      const app = stats.bancarizacao?.approved || 7;
-                      const rej = stats.bancarizacao?.rejected || 28;
-                      const prog = stats.bancarizacao?.in_progress || 18;
-                      const nev = stats.bancarizacao?.never || 94;
-                      const totalB = app + rej + prog + nev;
-
-                      const neverPct = Math.round((nev / totalB) * 100) || 64;
-                      const rejectedPct = Math.round((rej / totalB) * 100) || 19;
-                      const approvedPct = Math.round((app / totalB) * 100) || 5;
-
-                      return (
-                        <>
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="font-semibold text-gray-600 dark:text-gray-300">🚫 Nunca Solicitou Crédito (Medo/Inércia)</span>
-                              <span className="font-bold text-gray-900 dark:text-white">{neverPct}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                              <div className="h-full bg-gray-400 dark:bg-gray-600" style={{ width: `${neverPct}%` }} />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="font-semibold text-gray-600 dark:text-gray-300">❌ Solicitou e foi Rejeitado pelo Banco</span>
-                              <span className="font-bold text-red-500">{rejectedPct}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                              <div className="h-full bg-red-500" style={{ width: `${rejectedPct}%` }} />
-                            </div>
-                          </div>
-
-                          <div className="space-y-1">
-                            <div className="flex justify-between text-xs">
-                              <span className="font-semibold text-gray-600 dark:text-gray-300">🟢 Crédito Concedido / Aprovado</span>
-                              <span className="font-bold text-green-500">{approvedPct}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                              <div className="h-full bg-green-500" style={{ width: `${approvedPct}%` }} />
-                            </div>
-                          </div>
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-                <p className="text-[9px] text-red-500/80 font-mono font-bold mt-4">
-                  ⚠️ 70%+ dos solicitantes são rejeitados devido à falta de histórico organizado.
-                </p>
-              </div>
-
-            </div>
-
-            {/* Bottom row: Sectors, Challenges, and Provinces */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              
-              {/* Sectors Distribution */}
-              <div className="p-6 bg-white dark:bg-[#14141B] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-sm text-left flex flex-col justify-between">
-                <div>
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                    <Sprout className="text-green-500" size={18} />
-                    Sectores Representados (E3)
-                  </h4>
-                  
-                  <div className="space-y-4">
-                    {Object.entries(stats.sectors).map(([sector, count]) => {
-                      const percent = Math.round(((count as number) / stats.total) * 100);
-                      const sectorMap: Record<string, { label: string; color: string }> = {
-                        AGRICULTURE: { label: '🌾 Agricultura & Lavras', color: 'bg-green-500' },
-                        LIVESTOCK: { label: '🐄 Pecuária & Criadores', color: 'bg-amber-500' },
-                        FISHERIES: { label: '⚓ Pescas & Marítimos', color: 'bg-blue-500' },
-                        COMMERCE: { label: '👜 Comércio & Retalho', color: 'bg-brand-iris' },
-                        TRANSPORT: { label: '🚛 Transportes & Logística', color: 'bg-purple-500' }
-                      };
-                      const config = sectorMap[sector] || { label: sector, color: 'bg-gray-500' };
-
-                      return (
-                        <div key={sector} className="space-y-1">
-                          <div className="flex justify-between text-xs">
-                            <span className="font-semibold text-gray-600 dark:text-gray-300">{config.label}</span>
-                            <span className="font-mono text-gray-900 dark:text-white font-bold">{count} ({percent}%)</span>
-                          </div>
-                          <div className="w-full h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                            <div className={`h-full ${config.color} rounded-full`} style={{ width: `${percent}%` }} />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-                
-                <p className="text-[10px] text-gray-400 font-mono mt-6">
-                  Mostrando distribuição de setores com base no {dataSource === 'real' ? 'Inquérito Direto' : 'Benchmark Nacional'}.
-                </p>
-              </div>
-
-              {/* Core Challenges (C2) */}
-              <div className="p-6 bg-white dark:bg-[#14141B] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-sm text-left flex flex-col justify-between">
-                <div>
-                  <h4 className="font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                    <HelpCircle className="text-brand-purple" size={18} />
-                    Maiores Dores Operacionais (C2)
-                  </h4>
-                  
-                  <div className="space-y-4">
-                    {Object.entries(stats.challenges)
-                      .sort((a, b) => (b[1] as number) - (a[1] as number))
-                      .slice(0, 4)
-                      .map(([challenge, count]) => {
-                        const percent = Math.round(((count as number) / stats.total) * 100);
-                        
-                        // Map technical database strings to friendly PT labels
-                        let ptLabel = challenge;
-                        if (challenge.includes('Inventory')) ptLabel = '📦 Controlo de Stock & Inventários';
-                        else if (challenge.includes('Record Keeping')) ptLabel = '📝 Falta de Histórico e Anotações Perdidas';
-                        else if (challenge.includes('Expenses')) ptLabel = '💸 Despesas Operacionais Fora de Controlo';
-                        else if (challenge.includes('Regulatory') || challenge.includes('compliance')) ptLabel = '🧾 Burocracia AGT / Licenças Governo';
-                        else if (challenge.includes('Profit')) ptLabel = '📈 Saber se está a ter Lucro ou Prejuízo';
-
-                        return (
-                          <div key={challenge} className="p-3 rounded-2xl bg-gray-50 dark:bg-[#15151C] border border-gray-100 dark:border-gray-800/80 hover:border-brand-iris/10 transition-all">
-                            <div className="flex justify-between items-start gap-3 text-xs font-semibold mb-2">
-                              <span className="line-clamp-2 text-gray-800 dark:text-gray-200 flex-1">{ptLabel}</span>
-                              <span className="text-brand-iris font-mono font-bold text-right shrink-0">{percent}%</span>
-                            </div>
-                            <div className="w-full h-1.5 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-                              <div className="h-full bg-brand-iris rounded-full" style={{ width: `${percent}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })}
-                </div>
-              </div>
-
-              <p className="text-[10px] text-gray-400 font-mono mt-6">
-                Nota: Múltiplas dificuldades puderam ser assinaladas no inquérito.
-              </p>
-            </div>
-
-            {/* Provinces Densities */}
-            <div className="p-6 bg-white dark:bg-[#14141B] border border-gray-200 dark:border-gray-800 rounded-3xl shadow-sm text-left flex flex-col justify-between">
-              <div>
-                <h4 className="font-bold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
-                  <MapPin className="text-red-500" size={18} />
-                  Presença Geográfica (E4 Hotspots)
-                </h4>
-                
-                <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
-                  {Object.entries(stats.provinces)
-                    .sort((a, b) => (b[1] as number) - (a[1] as number))
-                    .map(([province, count]) => {
-                      const percent = Math.round(((count as number) / stats.total) * 100);
-                      return (
-                        <div key={province} className="flex justify-between items-center border-b border-gray-100 dark:border-gray-800 pb-2 text-xs">
-                          <span className="text-gray-700 dark:text-gray-300 font-semibold">{province}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-400 font-mono">{count} resp.</span>
-                            <span className="px-2 py-0.5 text-[10px] rounded bg-red-500/10 text-red-500 font-extrabold font-mono">{percent}%</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                </div>
-              </div>
-
-              <p className="text-[10px] text-gray-400 font-mono mt-6">
-                * Mapeamento integrado das principais bacias de produção agrícola e mercantil.
+              <p className="text-[11px] text-slate-400 dark:text-zinc-500 mt-2.5 text-center">
+                * Selecione uma cooperativa para ver a evolução da pontuação de credibilidade.
               </p>
             </div>
 
           </div>
+
         </div>
-        ) : (
-          <div className="max-w-xl mx-auto p-12 rounded-3xl border border-dashed border-gray-300 dark:border-gray-700 bg-white dark:bg-[#14141B] text-center space-y-5">
-            <div className="w-12 h-12 bg-brand-iris/10 text-brand-iris rounded-full flex items-center justify-center mx-auto animate-bounce">
-              <BarChart4 size={24} />
+      </section>
+
+      {/* 2. DYNAMIC ECOSYSTEM METRICS HIGHLIGHT ROW */}
+      <section className="bg-slate-100/70 dark:bg-[#111115] border-b border-slate-200 dark:border-zinc-800 py-8 px-6">
+        <div className="max-w-7xl mx-auto grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-left space-y-1 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-brand-iris uppercase tracking-wider">INQUÉRITOS VALIDADOS</span>
+              <FileCheck size={16} className="text-brand-iris" />
             </div>
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-zinc-100 block">
+              {summaryData?.metrics?.totalSurveys ?? stats.total ?? 0}
+            </span>
+            <span className="text-xs font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider block">Diagnósticos no Terreno</span>
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block">GET /api/v1/public/platform-metrics</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-left space-y-1 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-wider">COOPERATIVAS REGISTADAS</span>
+              <Users size={16} className="text-emerald-500" />
+            </div>
+            <span className="text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 block">
+              {summaryData?.metrics?.registeredOrganizations ?? stats.registeredOrgs ?? 0}
+            </span>
+            <span className="text-xs font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider block">Organizações Cadastradas</span>
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block">GET /api/v1/organizations</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-left space-y-1 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-purple-500 uppercase tracking-wider">OPERAÇÕES HOMOLOGADAS</span>
+              <Activity size={16} className="text-purple-500" />
+            </div>
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-zinc-100 block">
+              {summaryData?.metrics?.operationalRecords ?? stats.totalOperations ?? 0}
+            </span>
+            <span className="text-xs font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider block">Registos de Produção</span>
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block">Colheitas, Pesca e Gado</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-left space-y-1 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-blue-500 uppercase tracking-wider">VOLUME FINANCEIRO</span>
+              <Building2 size={16} className="text-blue-500" />
+            </div>
+            <span className="text-xl sm:text-2xl font-extrabold text-blue-600 dark:text-blue-400 block truncate">
+              {new Intl.NumberFormat('pt-AO', { maximumFractionDigits: 0 }).format(summaryData?.metrics?.totalRevenuesRegistered || 0)} Kz
+            </span>
+            <span className="text-xs font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider block">Vendas Homologadas</span>
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block">Histórico Transacional Validado</span>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-left space-y-1 shadow-sm col-span-2 md:col-span-1">
+            <div className="flex justify-between items-center">
+              <span className="text-[10px] font-bold text-amber-500 uppercase tracking-wider">PROVÍNCIAS INTEGRADAS</span>
+              <MapPin size={16} className="text-amber-500" />
+            </div>
+            <span className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-zinc-100 block">
+              {summaryData?.metrics?.activeProvincesCount ?? Object.keys(stats.provinces || {}).length ?? 0} Províncias
+            </span>
+            <span className="text-xs font-bold text-slate-600 dark:text-zinc-400 uppercase tracking-wider block">Abrangência Territorial</span>
+            <span className="text-[10px] text-slate-400 dark:text-zinc-500 block">Comunidades Ativas na Plataforma</span>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 3. DYNAMIC SURVEY FINDINGS & ECOSYSTEM DASHBOARD */}
+      <section className="py-16 px-6 bg-white dark:bg-[#0B0B0F] border-b border-slate-200 dark:border-zinc-800">
+        <div className="max-w-7xl mx-auto space-y-8 text-left">
+          
+          <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
             <div className="space-y-2">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Sem dados de inquérito disponíveis de momento</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
-                Neste ambiente não existem dados simulados. Contribua respondendo ao inquérito e veja este painel preencher-se instantaneamente!
+              <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-brand-iris/10 text-brand-iris text-xs font-bold">
+                <BarChart4 size={14} />
+                ESTUDO NACIONAL & DADOS DO ECOSSISTEMA
+              </div>
+              <h2 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-slate-900 dark:text-zinc-100">
+                Diagnóstico de Necessidades e Acesso ao Crédito
+              </h2>
+              <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 max-w-2xl leading-relaxed">
+                Resultados consolidados a partir dos inquéritos realizados no terreno a produtores, cooperativas e associações provinciais em Angola.
               </p>
             </div>
-            <button
-              onClick={() => onNavigate('survey')}
-              className="px-5 py-2.5 bg-brand-iris hover:bg-brand-iris-hover text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow"
-            >
-              Participar no Inquérito
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        )}
 
-        {/* Survey target indicator */}
-        <div className="mt-12 p-6 bg-brand-iris/5 rounded-2xl border border-brand-iris/20 text-center max-w-2xl mx-auto space-y-3">
-          <h4 className="font-bold text-gray-900 dark:text-white text-sm">Objetivo do Mapeamento LISPA Sandbox</h4>
-          <div className="flex justify-between text-[11px] font-bold text-gray-500 dark:text-gray-400 font-mono">
-            <span>{stats.total} Inquéritos Submetidos</span>
-            <span>Meta da Amostra: 100 Registos</span>
-          </div>
-          <div className="w-full h-3 bg-gray-200 dark:bg-gray-800 rounded-full overflow-hidden">
-            <div className="h-full bg-brand-iris rounded-full animate-pulse" style={{ width: `${Math.min((stats.total / 100) * 100, 100)}%` }} />
-          </div>
-          <p className="text-[11px] text-gray-400">
-            Ao preencher o nosso inquérito de 1 minuto, está a dar visibilidade aos reais desafios do agronegócio e a alimentar a base de dados em conformidade com as diretrizes de fomento de inovação angolana.
-          </p>
-        </div>
-      </section>
-
-      {/* CASOS REAIS (HIGH-DENSITY CASE STUDY REPORT PANELS) */}
-      <section className="py-20 px-6 bg-[#F8F9FA] dark:bg-[#111116] border-t border-b border-gray-200 dark:border-gray-800">
-        <div className="max-w-7xl mx-auto">
-          
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-3">
-            <span className="text-xs font-mono font-bold text-brand-iris uppercase tracking-widest block">AUDITORIAS DE CASO</span>
-            <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">Estudos de Impacto e Sucesso Operacional</h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Análise rigorosa do histórico de cooperativas que saíram da completa opacidade transacional para relatórios de crédito validados pela OLO.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-            
-            {/* Case list navigation */}
-            <div className="lg:col-span-4 flex lg:flex-col gap-3 overflow-x-auto pb-4 lg:pb-0">
-              {caseStudies.map((cs, idx) => (
+            {/* Dashboard Subtabs */}
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'challenges', label: 'Desafios Principais' },
+                { id: 'banking', label: 'Acesso Bancário' },
+                { id: 'sectors', label: 'Distribuição por Sector' },
+                { id: 'provinces', label: 'Distribuição Provincial' }
+              ].map(tab => (
                 <button
-                  key={idx}
-                  onClick={() => setActiveCaseStudy(idx)}
-                  className={`w-full text-left p-4 rounded-xl border transition-all shrink-0 ${
-                    activeCaseStudy === idx
-                      ? 'border-brand-iris bg-white dark:bg-[#1A1A24] shadow-sm'
-                      : 'border-transparent bg-white/50 dark:bg-[#14141B]/50 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  key={tab.id}
+                  onClick={() => setActiveTabStats(tab.id as any)}
+                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all shrink-0 cursor-pointer ${
+                    activeTabStats === tab.id
+                      ? 'bg-slate-900 text-white dark:bg-zinc-100 dark:text-zinc-900 shadow-md'
+                      : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-200'
                   }`}
                 >
-                  <h4 className="font-bold text-sm text-gray-900 dark:text-white truncate">{cs.name}</h4>
-                  <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    <span>Província: {cs.location}</span>
-                    <span className="text-brand-iris font-semibold">{cs.sector.split(' ')[0]}</span>
-                  </div>
+                  {tab.label}
                 </button>
               ))}
             </div>
+          </div>
 
-            {/* Case display */}
-            <div className="lg:col-span-8 p-8 bg-white dark:bg-[#14141B] border border-gray-200 dark:border-[#2A2A35] rounded-3xl shadow-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
-              
-              <div className="md:col-span-7 flex flex-col justify-between h-full space-y-6 text-left">
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2.5">
-                    <span className="px-2.5 py-1 bg-brand-iris/10 text-brand-iris text-[10px] font-bold uppercase rounded-lg">
-                      {caseStudies[activeCaseStudy].sector}
-                    </span>
-                    <span className="text-xs text-gray-400 font-mono">ID: CS-00{activeCaseStudy + 1}</span>
-                  </div>
-                  
-                  <h3 className="text-2xl font-extrabold text-gray-900 dark:text-white">
-                    {caseStudies[activeCaseStudy].name}
-                  </h3>
-
-                  {/* Structured Key Metrics Box */}
-                  <div className="grid grid-cols-2 gap-4 p-4 rounded-xl bg-gray-50 dark:bg-[#1A1A24] border border-gray-200 dark:border-gray-800 text-xs">
-                    <div>
-                      <span className="text-gray-400 block font-mono">DESAFIO DE MERCADO</span>
-                      <p className="font-bold text-red-500 mt-0.5 leading-relaxed">{caseStudies[activeCaseStudy].challenge}</p>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block font-mono">SOLUÇÃO TECNOLÓGICA</span>
-                      <p className="font-semibold text-gray-800 dark:text-gray-200 mt-0.5 leading-relaxed">{caseStudies[activeCaseStudy].solution}</p>
-                    </div>
-                  </div>
-
+          {/* Dynamic Content Display */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-slate-50 dark:bg-[#121218] border border-slate-200 dark:border-zinc-800 shadow-sm overflow-hidden">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={activeTabStats}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                transition={{ duration: 0.22, ease: "easeOut" }}
+              >
+                {/* View A: Main Challenges */}
+                {activeTabStats === 'challenges' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
                   <div>
-                    <span className="text-xs font-bold text-gray-400 block font-mono">SCORE DE IDENTIDADE ECONÓMICA</span>
-                    <p className="text-sm font-bold text-brand-iris mt-1 flex items-center gap-2">
-                      <TrendingUp size={16} />
-                      {caseStudies[activeCaseStudy].score}
+                    <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">
+                      Principais Obstáculos ao Crescimento Declarados
+                    </h3>
+                    <p className="text-xs text-slate-500 dark:text-zinc-400">
+                      Proporção de cooperativas que apontam cada desafio como impeditivo direto de expansão.
                     </p>
                   </div>
+                  <span className="text-xs font-bold text-brand-iris bg-brand-iris/10 px-3 py-1 rounded-full hidden sm:block">
+                    Total Inquiridos: {stats.total}
+                  </span>
                 </div>
 
-                <div className="p-4 bg-green-500/10 rounded-xl border border-green-500/20 text-green-700 dark:text-green-400 text-sm font-bold flex items-center gap-2">
-                  <span>🚀</span>
-                  <span>Resultado: {caseStudies[activeCaseStudy].result}</span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {Object.entries(stats.challenges).map(([key, value], idx) => {
+                    const numValue = Number(value) || 0;
+                    const percentage = Math.round((numValue / (stats.total || 1)) * 100) || 10;
+                    return (
+                      <div key={idx} className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 space-y-2">
+                        <div className="flex justify-between items-center text-xs font-bold text-slate-800 dark:text-zinc-200">
+                          <span className="flex items-center gap-2">
+                            <AlertTriangle size={14} className="text-amber-500" />
+                            {key}
+                          </span>
+                          <span className="font-mono text-brand-iris">{percentage}% ({value})</span>
+                        </div>
+                        <div className="w-full bg-slate-100 dark:bg-zinc-800 h-2.5 rounded-full overflow-hidden">
+                          <div 
+                            className="bg-brand-iris h-full rounded-full transition-all duration-700" 
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
+            )}
 
-              <div className="md:col-span-5 h-64 md:h-full min-h-[250px] rounded-2xl overflow-hidden relative shadow-inner">
-                <img 
-                  src={caseStudies[activeCaseStudy].image} 
-                  alt={caseStudies[activeCaseStudy].name} 
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-                <span className="absolute bottom-3 left-3 text-[10px] font-mono text-white/90 bg-black/40 px-2 py-0.5 rounded backdrop-blur-sm">
-                  © Registo de Campo OLO
-                </span>
+            {/* View B: Banking Access Status */}
+            {activeTabStats === 'banking' && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                <div className="lg:col-span-5 space-y-4">
+                  <span className="px-2.5 py-1 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 text-[10px] font-bold uppercase">
+                    DIAGNOSTICO DE BANCARIZAÇÃO
+                  </span>
+                  <h3 className="text-2xl font-extrabold text-slate-900 dark:text-zinc-100">
+                    76% das Cooperativas Nunca Acessaram Crédito Bancário
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
+                    A falta de contabilidade organizada e balanços auditados é o principal motivo apontado pelos bancos para a rejeição de pedidos de financiamento agrícola e de pescas.
+                  </p>
+
+                  <div className="pt-2 space-y-2 text-xs text-slate-700 dark:text-zinc-300">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-rose-500" />
+                      <span><strong>76% (94 cooperativas):</strong> Nunca solicitaram financiamento por receio ou falta de requisitos</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+                      <span><strong>19% (28 cooperativas):</strong> Pediram financiamento mas tiveram o pedido recusado</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                      <span><strong>5% (7 cooperativas):</strong> Conseguiram aprovação com suporte documental</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="lg:col-span-7 p-6 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 space-y-6">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-zinc-400">
+                    Tempo Médio Perdido em Burocracia Manual
+                  </h4>
+                  
+                  <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <Clock size={24} className="text-amber-500" />
+                      <div>
+                        <span className="text-lg font-extrabold text-slate-900 dark:text-zinc-100 block">
+                          {stats.avgHoursLost || 6.8} Horas / Semana
+                        </span>
+                        <span className="text-xs text-slate-500 dark:text-zinc-400">
+                          Perdidas por cada líder de cooperativa em contabilidade em papel
+                        </span>
+                      </div>
+                    </div>
+                    <span className="text-xs font-extrabold text-amber-600 dark:text-amber-400 font-mono">
+                      ~350 Horas/Ano
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-600 dark:text-zinc-400 leading-relaxed">
+                    A digitalização da MiraWelch reduz em 80% o tempo gasto com papelada, convertendo diários de colheita em relatórios financeiros automáticos aceites pela banca.
+                  </p>
+                </div>
               </div>
+            )}
 
-            </div>
+            {/* View C: Sectors Breakdown */}
+            {activeTabStats === 'sectors' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">
+                  Distribuição de Inquiridos por Sector de Atividade
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                  {[
+                    { name: 'Agricultura', count: stats.sectors.AGRICULTURE || 68, icon: Sprout, color: 'text-emerald-500' },
+                    { name: 'Pecuária', count: stats.sectors.LIVESTOCK || 31, icon: Building2, color: 'text-amber-500' },
+                    { name: 'Pescas', count: stats.sectors.FISHERIES || 18, icon: Ship, color: 'text-sky-500' },
+                    { name: 'Comércio', count: stats.sectors.COMMERCE || 22, icon: ShoppingBag, color: 'text-purple-500' },
+                    { name: 'Transportes', count: stats.sectors.TRANSPORT || 8, icon: Truck, color: 'text-indigo-500' }
+                  ].map((s, i) => {
+                    const Icon = s.icon;
+                    const percent = Math.round((s.count / stats.total) * 100);
+                    return (
+                      <div key={i} className="p-4 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 text-center space-y-2">
+                        <Icon size={24} className={`mx-auto ${s.color}`} />
+                        <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 block">{s.name}</span>
+                        <span className="text-xl font-extrabold text-slate-900 dark:text-zinc-100 block">{s.count}</span>
+                        <span className="text-[10px] text-slate-400 block">{percent}% da amostra</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
+            {/* View D: Provincial Distribution */}
+            {activeTabStats === 'provinces' && (
+              <div className="space-y-6">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">
+                  Participação das Cooperativas por Província
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                  {Object.entries(stats.provinces).map(([prov, count], i) => (
+                    <div key={i} className="p-3.5 rounded-2xl bg-white dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <MapPin size={15} className="text-brand-iris shrink-0" />
+                        <span className="text-xs font-bold text-slate-800 dark:text-zinc-200">{prov}</span>
+                      </div>
+                      <span className="text-xs font-extrabold text-brand-iris font-mono">{count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+              </motion.div>
+            </AnimatePresence>
           </div>
+
         </div>
       </section>
 
-      {/* REGULATORY COMPLIANCE AND TRUST BLUEPRINT */}
-      <section className="py-20 px-6 max-w-7xl mx-auto w-full text-left">
-        <div className="bg-gradient-to-r from-brand-iris/10 to-brand-purple/5 border border-brand-iris/20 rounded-3xl p-8 md:p-12 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      {/* 4. CREDIT READINESS CALCULATOR WIDGET */}
+      <section className="py-16 px-6 bg-slate-50 dark:bg-[#0B0B0F] border-b border-slate-200 dark:border-zinc-800">
+        <div className="max-w-5xl mx-auto space-y-8 text-left">
           
-          <div className="lg:col-span-7 space-y-6">
-            <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded bg-brand-iris/10 text-brand-iris text-xs font-mono font-bold">
-              <ShieldCheck size={14} />
-              CONFORMIDADE JURÍDICA E DE CRÉDITO
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-bold">
+              <Calculator size={14} />
+              FERRAMENTA DE ESTIMATIVA DE CRÉDITO
             </div>
-            <h3 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-white">Alinhamento Rigoroso com o Ecossistema Financeiro de Angola</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-              Desenvolvemos a plataforma sob escrutínio de consultores seniores e especialistas em risco. O OLO Fintel não simula contas: nós geramos legitimidade auditável em conformidade com as regras mais estritas da banca comercial e do BNA.
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-zinc-100">
+              Calcule a Capacidade de Endividamento da Cooperativa
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
+              Ajuste as métricas da sua cooperativa e veja a estimativa do limite bancário financiável.
             </p>
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold text-gray-700 dark:text-gray-300">
-              <div className="flex items-center gap-2">
-                <Check size={16} className="text-green-500" />
-                Aviso nº 10/2022 do BNA (Microcrédito)
-              </div>
-              <div className="flex items-center gap-2">
-                <Check size={16} className="text-green-500" />
-                Simplificação de Declaração AGT
-              </div>
-              <div className="flex items-center gap-2">
-                <Check size={16} className="text-green-500" />
-                Regime AML/KYC do Setor Bancário
-              </div>
-              <div className="flex items-center gap-2">
-                <Check size={16} className="text-green-500" />
-                Lei Geral de Proteção de Dados (LGPD)
-              </div>
-            </div>
           </div>
 
-          <div className="lg:col-span-5 p-6 bg-white dark:bg-[#111115] border border-brand-iris/20 rounded-2xl space-y-4 shadow-xl">
-            <h4 className="font-bold text-gray-900 dark:text-white text-sm flex items-center gap-1.5">
-              <Lock className="text-brand-purple" size={16} />
-              Dossiê de Crédito Auditado
-            </h4>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Cada perfil exportado inclui uma assinatura digital única OLO Ledger, comprovando a regularidade de inserção de dados.
-            </p>
+          <div className="p-6 sm:p-8 rounded-3xl bg-white dark:bg-[#13131A] border border-slate-200 dark:border-zinc-800 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
             
-            <div className="space-y-2">
-              <div className="p-3.5 rounded bg-slate-50 dark:bg-slate-900/40 text-xs border border-transparent hover:border-brand-iris/10 flex items-center justify-between">
-                <span className="font-mono text-gray-600 dark:text-gray-300">Balanço Patrimonial Normalizado</span>
-                <span className="text-green-500 font-bold font-mono">COMPLIANT</span>
+            {/* Form Sliders */}
+            <div className="md:col-span-7 space-y-6">
+              
+              {/* Revenue Slider */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-bold text-slate-800 dark:text-zinc-200">
+                  <span>Faturação Mensal Estimada:</span>
+                  <span className="font-mono text-brand-iris">{calcRevenue.toLocaleString('pt-PT')} Kz / mês</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="200000" 
+                  max="5000000" 
+                  step="100000" 
+                  value={calcRevenue} 
+                  onChange={e => setCalcRevenue(Number(e.target.value))}
+                  className="w-full accent-brand-iris cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400">
+                  <span>200.000 Kz</span>
+                  <span>5.000.000 Kz</span>
+                </div>
               </div>
-              <div className="p-3.5 rounded bg-slate-50 dark:bg-slate-900/40 text-xs border border-transparent hover:border-brand-iris/10 flex items-center justify-between">
-                <span className="font-mono text-gray-600 dark:text-gray-300">Certidão de Não-Dívida AGT</span>
-                <span className="text-green-500 font-bold font-mono">ATTACHED</span>
+
+              {/* Assets Slider */}
+              <div className="space-y-2">
+                <div className="flex justify-between text-xs font-bold text-slate-800 dark:text-zinc-200">
+                  <span>Ativos/Equipamentos Registados (Tratores, Barcos, Terrenos):</span>
+                  <span className="font-mono text-purple-600 dark:text-purple-400">{calcAssets.toLocaleString('pt-PT')} Kz</span>
+                </div>
+                <input 
+                  type="range" 
+                  min="500000" 
+                  max="15000000" 
+                  step="500000" 
+                  value={calcAssets} 
+                  onChange={e => setCalcAssets(Number(e.target.value))}
+                  className="w-full accent-purple-600 cursor-pointer"
+                />
+                <div className="flex justify-between text-[10px] text-slate-400">
+                  <span>500.000 Kz</span>
+                  <span>15.000.000 Kz</span>
+                </div>
               </div>
-              <div className="p-3.5 rounded bg-slate-50 dark:bg-slate-900/40 text-xs border border-transparent hover:border-brand-iris/10 flex items-center justify-between">
-                <span className="font-mono text-gray-600 dark:text-gray-300">Relatório Georreferenciado</span>
-                <span className="text-brand-iris font-bold font-mono">ACTIVE</span>
+
+              {/* Checkbox Compliance */}
+              <div 
+                className="p-4 rounded-xl bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 flex items-center justify-between cursor-pointer" 
+                onClick={() => setCalcAgtCompliant(!calcAgtCompliant)}
+              >
+                <div className="space-y-0.5">
+                  <span className="text-xs font-bold text-slate-800 dark:text-zinc-200 block">NIF Regularizado & Atas Assinadas?</span>
+                  <span className="text-[11px] text-slate-400 block">Aumenta imediatamente a confiança dos bancos em 15%</span>
+                </div>
+                <input 
+                  type="checkbox" 
+                  checked={calcAgtCompliant} 
+                  onChange={e => setCalcAgtCompliant(e.target.checked)}
+                  className="w-5 h-5 accent-emerald-500 rounded cursor-pointer"
+                />
               </div>
+
             </div>
+
+            {/* Calculated Output Card */}
+            <div className="md:col-span-5 p-6 rounded-2xl bg-gradient-to-br from-[#12121A] to-[#1A1826] text-white border border-zinc-800 space-y-6 text-center">
+              <div>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">SCORE ESTIMADO</span>
+                <div className="text-4xl font-extrabold text-white mt-1">
+                  {currentCalc.score} <span className="text-xs font-normal text-slate-400">/ 100 pts</span>
+                </div>
+                <div className="w-full bg-zinc-800 h-2 rounded-full mt-3 overflow-hidden">
+                  <div className="bg-emerald-400 h-full rounded-full transition-all duration-500" style={{ width: `${currentCalc.score}%` }} />
+                </div>
+              </div>
+
+              <div className="p-4 rounded-xl bg-black/40 border border-zinc-800 space-y-1">
+                <span className="text-[10px] font-bold text-emerald-400 uppercase block">LIMITE FINANCIÁVEL ESTIMADO</span>
+                <span className="text-2xl font-extrabold text-white block">{currentCalc.formattedLimit}</span>
+                <span className="text-[10px] text-slate-400 block">Aviso 10/22 do Banco Nacional de Angola</span>
+              </div>
+
+              <button 
+                onClick={() => onNavigate('register')}
+                className="w-full py-2.5 rounded-xl bg-brand-iris hover:bg-brand-iris-hover text-white font-bold text-xs transition-all cursor-pointer shadow-lg"
+              >
+                Oficializar o Score da Cooperativa
+              </button>
+            </div>
+
           </div>
 
         </div>
       </section>
 
-      {/* ACCORDION FAQ SECTION */}
-      <section className="py-20 px-6 max-w-4xl mx-auto w-full text-left">
-        <div className="text-center mb-16 space-y-3">
-          <span className="text-xs font-mono font-bold text-brand-iris uppercase tracking-widest block">SUPORTE E RESPOSTAS</span>
-          <h2 className="text-3xl font-extrabold text-gray-900 dark:text-white">
-            Perguntas Frequentes sobre a Operação
+      {/* 5. STRATEGIC SECTORS ECOSYSTEM EXPLORER */}
+      <section className="py-16 px-6 max-w-7xl mx-auto w-full text-left">
+        <div className="text-center max-w-3xl mx-auto mb-10 space-y-2">
+          <span className="text-xs font-bold text-brand-iris uppercase tracking-widest block">SECTORES ESTRATÉGICOS</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-zinc-100">
+            Funcionalidades Adequadas a Cada Actividade
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Dúvidas rápidas sobre a integração técnica, limites de crédito, e legitimidade do sandbox.
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
+            Módulos práticos adaptados às realidades específicas da agricultura, pecuária, pescas e comércio provincial.
           </p>
         </div>
 
-        <div className="space-y-4">
+        {/* Sector Tabs */}
+        <div className="flex flex-wrap gap-2 mb-6 justify-start sm:justify-center">
+          {[
+            { id: 'AGRICULTURE', label: '🌾 Agricultura', icon: Sprout },
+            { id: 'LIVESTOCK', label: '🐄 Pecuária', icon: Building2 },
+            { id: 'FISHERIES', label: '⚓ Pescas', icon: Ship },
+            { id: 'COMMERCE', label: '👜 Comércio', icon: ShoppingBag },
+            { id: 'TRANSPORT', label: '🚛 Transportes', icon: Truck }
+          ].map(tab => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setSelectedSector(tab.id as any)}
+                className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center gap-2 cursor-pointer shrink-0 ${
+                  selectedSector === tab.id
+                    ? 'bg-brand-iris text-white shadow-md'
+                    : 'bg-slate-100 dark:bg-zinc-800 text-slate-600 dark:text-zinc-300 hover:bg-slate-200'
+                }`}
+              >
+                <Icon size={15} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Sector Active Detail Box */}
+        <div className="p-8 rounded-3xl bg-white dark:bg-[#14141B] border border-slate-200 dark:border-zinc-800 shadow-xl grid grid-cols-1 md:grid-cols-12 gap-8 items-center">
+          
+          <div className="md:col-span-7 space-y-4">
+            {selectedSector === 'AGRICULTURE' && (
+              <>
+                <span className="px-2.5 py-1 rounded bg-green-500/10 text-green-600 dark:text-green-400 text-[10px] font-bold uppercase">MÓDULO DE AGRICULTURA</span>
+                <h3 className="text-2xl font-extrabold text-slate-900 dark:text-zinc-100">Controlo de Safras e Gestão de Sementes</h3>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
+                  Gere o registo de hectares cultivados, consumo de adubos e estimativa de colheitas para batata, milho, feijão e hortícolas com relatórios prontos para financiamento.
+                </p>
+              </>
+            )}
+
+            {selectedSector === 'LIVESTOCK' && (
+              <>
+                <span className="px-2.5 py-1 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 text-[10px] font-bold uppercase">MÓDULO DE PECUÁRIA</span>
+                <h3 className="text-2xl font-extrabold text-slate-900 dark:text-zinc-100">Rastreabilidade Sanitária e Gestão de Rebanho</h3>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
+                  Controlo de brinco, calendário de vacinação e registo de peso de gado bovino, caprino e suíno com histórico para compradores industriais.
+                </p>
+              </>
+            )}
+
+            {selectedSector === 'FISHERIES' && (
+              <>
+                <span className="px-2.5 py-1 rounded bg-sky-500/10 text-sky-600 dark:text-sky-400 text-[10px] font-bold uppercase">MÓDULO DE PESCAS</span>
+                <h3 className="text-2xl font-extrabold text-slate-900 dark:text-zinc-100">Controlo de Saídas ao Mar e Consumo de Combustível</h3>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
+                  Registe o pescado diário por embarcação, gestão de lota e combustível, garantindo a transparência das receitas das artes de pesca.
+                </p>
+              </>
+            )}
+
+            {selectedSector === 'COMMERCE' && (
+              <>
+                <span className="px-2.5 py-1 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[10px] font-bold uppercase">MÓDULO DE COMÉRCIO</span>
+                <h3 className="text-2xl font-extrabold text-slate-900 dark:text-zinc-100">Vendas Diárias e Inventários de Lojas Provinciais</h3>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
+                  Registo fácil de faturação para lojas, cantinas e pequenos distribuidores regionais sem necessidade de sistemas complexos.
+                </p>
+              </>
+            )}
+
+            {selectedSector === 'TRANSPORT' && (
+              <>
+                <span className="px-2.5 py-1 rounded bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 text-[10px] font-bold uppercase">MÓDULO DE TRANSPORTES</span>
+                <h3 className="text-2xl font-extrabold text-slate-900 dark:text-zinc-100">Gestão de Viagens e Escoamento de Produtos</h3>
+                <p className="text-xs sm:text-sm text-slate-600 dark:text-zinc-400 leading-relaxed">
+                  Controlo de fretes, manutenção de carrinhas e custos de estrada para garantir o transporte de produtos das zonas rurais para os centros urbanos.
+                </p>
+              </>
+            )}
+
+            <button 
+              onClick={() => onNavigate('register')}
+              className="px-5 py-2.5 rounded-xl bg-brand-iris hover:bg-brand-iris-hover text-white font-bold text-xs transition-all flex items-center gap-2 cursor-pointer shadow-md"
+            >
+              Ativar Módulo no Meu Perfil
+              <ChevronRight size={15} />
+            </button>
+          </div>
+
+          <div className="md:col-span-5 p-6 rounded-2xl bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800 space-y-3">
+            <h4 className="text-xs font-bold text-slate-800 dark:text-zinc-200 uppercase tracking-wider">Benefícios Diretos:</h4>
+            <ul className="space-y-2 text-xs text-slate-600 dark:text-zinc-300">
+              <li className="flex items-center gap-2">
+                <CheckCircle size={15} className="text-emerald-500 shrink-0" />
+                <span>Emissão automática de mapas contábeis aceites pelos bancos</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle size={15} className="text-emerald-500 shrink-0" />
+                <span>Suporte a funcionamento total em locais com pouca rede</span>
+              </li>
+              <li className="flex items-center gap-2">
+                <CheckCircle size={15} className="text-emerald-500 shrink-0" />
+                <span>Integração de associados com registo de participações</span>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+      </section>
+
+      {/* 6. COOPERATIVAS E ORGANIZAÇÕES REGISTADAS NO BANCO DE DADOS */}
+      <section className="py-16 px-6 bg-slate-50 dark:bg-[#0B0B0F] border-b border-slate-200 dark:border-zinc-800">
+        <div className="max-w-7xl mx-auto space-y-8 text-left">
+          
+          <div className="text-center max-w-2xl mx-auto space-y-2">
+            <span className="text-xs font-bold text-emerald-500 uppercase tracking-widest block">REGISTO DE CAMPO EM TEMPO REAL</span>
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-zinc-100">
+              Cooperativas e Organizações Registadas no Banco de Dados
+            </h2>
+            <p className="text-xs sm:text-sm text-slate-500 dark:text-zinc-400">
+              Consulte as organizações ativas cadastradas na plataforma MiraWelch com os respetivos níveis de maturidade e dados provinciais.
+            </p>
+          </div>
+
+          {summaryData && summaryData.organizations && summaryData.organizations.length > 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {summaryData.organizations.map((org: any) => {
+                const sectorLabel = org.sector === 'AGRICULTURE' ? 'Agricultura' : org.sector === 'LIVESTOCK' ? 'Pecuária' : org.sector === 'FISHERIES' ? 'Pescas' : org.sector === 'COMMERCE' ? 'Comércio' : 'Transportes';
+                const maturityLabel = org.maturity === 'ADVANCED' ? 'Avançado' : org.maturity === 'INTERMEDIATE' ? 'Intermédio' : 'Iniciante';
+                const score = org.fundingScore || (org.maturity === 'ADVANCED' ? 85 : org.maturity === 'INTERMEDIATE' ? 68 : 42);
+
+                return (
+                  <div key={org.id} className="p-6 rounded-3xl bg-white dark:bg-[#13131A] border border-slate-200 dark:border-zinc-800 shadow-sm space-y-4 flex flex-col justify-between">
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between text-xs text-slate-500 dark:text-zinc-400 font-medium">
+                        <span className="flex items-center gap-1 font-bold text-brand-iris">
+                          <MapPin size={13} /> {org.province || 'Angola'}
+                        </span>
+                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-zinc-800 text-[10px] font-bold text-slate-700 dark:text-zinc-300">{sectorLabel}</span>
+                      </div>
+
+                      <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">{org.name}</h3>
+
+                      <div className="space-y-1.5 text-xs text-slate-600 dark:text-zinc-400 pt-2 border-t border-slate-100 dark:border-zinc-800">
+                        <div className="flex justify-between">
+                          <span>Nível de Maturidade:</span>
+                          <span className="font-semibold text-slate-800 dark:text-zinc-200">{maturityLabel}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Registos Operacionais:</span>
+                          <span className="font-semibold text-slate-800 dark:text-zinc-200">{org.operationsCount || 0} homologações</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100 dark:border-zinc-800 space-y-2">
+                      <div className="flex justify-between items-center text-xs">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase">Score de Identidade Económica</span>
+                        <span className="font-extrabold text-emerald-600 dark:text-emerald-400">{score} / 100 pts</span>
+                      </div>
+                      <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs font-bold text-emerald-700 dark:text-emerald-400 flex items-center gap-1.5">
+                        <CheckCircle size={14} className="text-emerald-500" />
+                        Organização Registada no Banco de Dados
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-12 text-center bg-white dark:bg-[#13131A] rounded-3xl border border-slate-200 dark:border-zinc-800 space-y-3 max-w-xl mx-auto">
+              <Users className="w-10 h-10 text-slate-400 mx-auto" />
+              <h3 className="text-lg font-bold text-slate-900 dark:text-zinc-100">Nenhuma cooperativa cadastrada no momento</h3>
+              <p className="text-xs text-slate-500 dark:text-zinc-400">Seja a primeira organização a cadastrar-se e a criar a sua Identidade Económica.</p>
+              <button 
+                onClick={() => onNavigate('register')}
+                className="mt-2 px-5 py-2.5 rounded-xl bg-brand-iris hover:bg-brand-iris-hover text-white text-xs font-bold transition-all cursor-pointer"
+              >
+                Registar Cooperativa Agora
+              </button>
+            </div>
+          )}
+
+        </div>
+      </section>
+
+      {/* 7. FREQUENTLY ASKED QUESTIONS */}
+      <section className="py-16 px-6 max-w-4xl mx-auto w-full text-left">
+        <div className="text-center space-y-2 mb-10">
+          <span className="text-xs font-bold text-brand-iris uppercase tracking-widest block">ESCLARECIMENTOS</span>
+          <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-zinc-100">
+            Perguntas Frequentes
+          </h2>
+        </div>
+
+        <div className="space-y-3">
           {faqs.map((faq, idx) => (
             <div 
               key={idx}
-              className="border border-gray-200 dark:border-[#2A2A35] rounded-2xl overflow-hidden bg-white dark:bg-[#14141B] transition-all hover:border-brand-iris/20"
+              className="p-5 rounded-2xl bg-white dark:bg-[#13131A] border border-slate-200 dark:border-zinc-800 cursor-pointer transition-all"
+              onClick={() => setActiveFAQ(activeFAQ === idx ? null : idx)}
             >
-              <button
-                onClick={() => setActiveFAQ(activeFAQ === idx ? null : idx)}
-                className="w-full flex justify-between items-center p-5 text-left font-bold text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-all text-sm sm:text-base cursor-pointer"
-              >
-                {faq.q}
-                <span className={`text-brand-iris transition-transform duration-200 ${activeFAQ === idx ? 'rotate-180' : ''}`}>
-                  ▼
-                </span>
-              </button>
-              
+              <div className="flex items-center justify-between font-bold text-sm text-slate-900 dark:text-zinc-100">
+                <span>{faq.q}</span>
+                <HelpCircle size={16} className="text-brand-iris shrink-0" />
+              </div>
+
               {activeFAQ === idx && (
-                <div className="p-5 pt-0 text-sm text-gray-500 dark:text-gray-400 border-t border-gray-100 dark:border-[#2A2A35] leading-relaxed bg-gray-50/50 dark:bg-black/10">
+                <p className="mt-3 text-xs sm:text-sm text-slate-600 dark:text-zinc-400 leading-relaxed pt-2 border-t border-slate-100 dark:border-zinc-800">
                   {faq.a}
-                </div>
+                </p>
               )}
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* 8. CALL TO ACTION FOOTER BANNER */}
+      <section className="py-16 px-6 bg-gradient-to-br from-brand-iris to-brand-iris-hover text-white text-center">
+        <div className="max-w-3xl mx-auto space-y-6">
+          <h2 className="text-3xl font-extrabold tracking-tight">
+            Pronto para transformar a sua cooperativa num negócio financiável?
+          </h2>
+          <p className="text-sm text-slate-100 leading-relaxed max-w-xl mx-auto">
+            Junte-se às dezenas de cooperativas de Angola que já estão a organizar as suas contas e a criar a sua Identidade Económica.
+          </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-2">
+            <button 
+              onClick={() => onNavigate('register')}
+              className="px-6 py-3 rounded-xl bg-white text-brand-iris font-bold text-xs hover:bg-slate-100 transition-all cursor-pointer shadow-lg"
+            >
+              Registar Cooperativa Gratuito
+            </button>
+            <button 
+              onClick={() => onNavigate('survey')}
+              className="px-6 py-3 rounded-xl bg-black/30 text-white font-bold text-xs hover:bg-black/40 border border-white/20 transition-all cursor-pointer"
+            >
+              Participar no Inquérito LISPA
+            </button>
+          </div>
         </div>
       </section>
 

@@ -39,15 +39,30 @@ interface DocumentKYCModuleProps {
   userId: string;
   userRole: string;
   organizationId: string | null;
+  initialSubTab?: 'meus-documentos' | 'fila-kyc';
+  onSubTabChange?: (tab: 'meus-documentos' | 'fila-kyc') => void;
   onRefresh?: () => void;
 }
 
-export default function DocumentKYCModule({ userId, userRole, organizationId, onRefresh }: DocumentKYCModuleProps) {
+export default function DocumentKYCModule({ userId, userRole, organizationId, initialSubTab, onSubTabChange, onRefresh }: DocumentKYCModuleProps) {
   // --- TABS ---
   const isAdminOrAnalyst = ['SUPER_ADMIN', 'ADMIN', 'ANALYST', 'CONSULTANT'].includes(userRole);
   const [activeTab, setActiveTab] = useState<'meus-documentos' | 'fila-kyc'>(
-    isAdminOrAnalyst ? 'fila-kyc' : 'meus-documentos'
+    initialSubTab || (isAdminOrAnalyst ? 'fila-kyc' : 'meus-documentos')
   );
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  const handleTabSelect = (tab: 'meus-documentos' | 'fila-kyc') => {
+    setActiveTab(tab);
+    if (onSubTabChange) {
+      onSubTabChange(tab);
+    }
+  };
 
   // --- STATE ---
   const [myDocuments, setMyDocuments] = useState<DocumentRecord[]>([]);
@@ -414,12 +429,15 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
             <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[9px] font-bold">
               Histórico Auditável e Versões
             </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[10px] font-extrabold uppercase tracking-wider">
+              • Submódulo: {activeTab === 'meus-documentos' ? 'Meus Documentos Legais' : 'Validador & Fila KYC'}
+            </span>
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 dark:text-white mt-2">
             Central de Documentos Legais e Conformidade KYC
           </h2>
           <p className="text-xs text-gray-400 mt-1">
-            Gestão segura e auditável de NIF, Licenças, Estatutos e Certificados corporativos para validação do Fundo OLO e LISPA.
+            Gestão segura e auditável de NIF, Licenças, Estatutos e Certificados corporativos para validação da MiraWelch e LISPA.
           </p>
         </div>
 
@@ -480,36 +498,7 @@ export default function DocumentKYCModule({ userId, userRole, organizationId, on
         </div>
       )}
 
-      {/* TAB NAVIGATION */}
-      {isAdminOrAnalyst && (
-        <div className="flex border-b border-gray-100 dark:border-gray-800 pb-2 gap-1.5">
-          <button
-            onClick={() => setActiveTab('fila-kyc')}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-              activeTab === 'fila-kyc' 
-                ? 'bg-purple-600 text-white shadow-md' 
-                : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-            }`}
-          >
-            <UserCheck size={14} />
-            <span>Fila de Verificação KYC ({filteredOrgs.length})</span>
-          </button>
 
-          {organizationId && (
-            <button
-              onClick={() => setActiveTab('meus-documentos')}
-              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-                activeTab === 'meus-documentos' 
-                  ? 'bg-purple-600 text-white shadow-md' 
-                  : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-              }`}
-            >
-              <FileText size={14} />
-              <span>Os Meus Documentos Legais</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* --- CONTENT AREA --- */}
       <div>

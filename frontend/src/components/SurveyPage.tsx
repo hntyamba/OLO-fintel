@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useLanguage } from './LanguageContext.js';
 import { useTheme } from './ThemeContext.js';
 import { getApiUrl } from '../lib/api';
@@ -304,38 +305,47 @@ export default function SurveyPage({
   ];
 
   return (
-    <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-10 transition-all">
+    <div className="max-w-3xl mx-auto w-full px-4 sm:px-6 py-8 transition-all">
       
       {/* Header */}
-      <div className="text-center mb-10">
-        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-brand-iris/10 text-brand-iris mb-3 uppercase tracking-wider font-mono">
+      <div className="text-center mb-8 space-y-2">
+        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-xs font-mono font-bold bg-slate-100 dark:bg-zinc-800 text-slate-700 dark:text-zinc-300 uppercase tracking-wider">
           <ClipboardCheck size={12} />
           Sandbox LISPA — Validação Operacional
         </span>
-        <h1 className="text-3xl font-sans font-extrabold tracking-tight text-gray-900 dark:text-white flex justify-center items-center gap-2.5">
-          Diagnóstico Estratégico OLO Fintel
+        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-zinc-100 flex justify-center items-center gap-2">
+          Diagnóstico Estratégico MiraWelch
         </h1>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-lg mx-auto">
+        <p className="text-xs text-slate-500 dark:text-zinc-400 max-w-lg mx-auto">
           Mapeamento em tempo real do custo da desorganização e maturidade digital das PMEs e Cooperativas em Angola.
         </p>
       </div>
 
-      {submitted ? (
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={submitted ? 'submitted' : step}
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="w-full"
+        >
+          {submitted ? (
         /* GAMIFIED PROGRESS REPORT PREVIEW (Instead of a standard thank you screen) */
-        <div className="bg-white dark:bg-[#111115] border border-gray-100 dark:border-gray-800 rounded-3xl p-6 sm:p-8 shadow-2xl text-left space-y-8 animate-fade-in">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-gray-100 dark:border-gray-800">
-            <div className="flex items-center gap-4">
-              <div className="w-14 h-14 bg-green-500/10 text-green-500 rounded-2xl flex items-center justify-center shrink-0">
-                <CheckCircle size={32} />
+        <div className="fintel-card text-left space-y-6 animate-fade-in">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-slate-200 dark:border-zinc-800">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 rounded-lg flex items-center justify-center shrink-0">
+                <CheckCircle size={24} />
               </div>
               <div>
-                <span className="text-[10px] font-bold text-green-500 uppercase tracking-wider font-mono">Inquérito Concluído</span>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Seu Relatório de Diagnóstico Prévio</h2>
+                <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider font-mono">Inquérito Concluído</span>
+                <h2 className="text-lg font-bold text-slate-900 dark:text-zinc-100">Seu Relatório de Diagnóstico Prévio</h2>
               </div>
             </div>
-            <div className="px-4 py-2 bg-brand-iris/10 text-brand-iris rounded-xl text-center">
+            <div className="px-3 py-1.5 bg-slate-100 dark:bg-zinc-800 text-slate-800 dark:text-zinc-200 rounded-md text-center border border-slate-200 dark:border-zinc-700">
               <span className="block text-[10px] font-bold uppercase tracking-wider">Score de Adoção</span>
-              <span className="text-xl font-mono font-extrabold">{submittedResponse?.adoptionScore || 45} / 100</span>
+              <span className="text-lg font-mono font-bold">{submittedResponse?.adoptionScore || 45} / 100</span>
             </div>
           </div>
 
@@ -391,7 +401,7 @@ export default function SurveyPage({
                 Lançamento Rápido Disponível — Alta Intenção Detetada
               </h4>
               <p className="text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-                Parabéns! A sua disposição para usar dados de produção reais para gerar um <strong>Relatório de Credibilidade Financeira</strong> qualifica-o para a nossa lista VIP de ativação rápida da OLO Fintel. 
+                Parabéns! A sua disposição para usar dados de produção reais para gerar um <strong>Relatório de Credibilidade Financeira</strong> qualifica-o para a nossa lista VIP de ativação rápida da MiraWelch. 
                 A nossa equipa de onboarding entrará em contacto direto através do contacto <strong>{formData.E7_contact}</strong> para disponibilizar o seu espaço de trabalho personalizado.
               </p>
             </div>
@@ -408,10 +418,10 @@ export default function SurveyPage({
               </p>
               <div>
                 <a 
-                  href={`mailto:onboarding@olofintel.ao?subject=Pedido de Consultoria Gratuita - ${formData.E1_orgName || 'Cooperativa'}`}
+                  href={`mailto:onboarding@mirawelch.ao?subject=Pedido de Consultoria Gratuita - ${formData.E1_orgName || 'Cooperativa'}`}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all inline-flex items-center gap-1.5 shadow"
                 >
-                  Agendar Aconselhamento Grátis OLO
+                  Agendar Aconselhamento Grátis MiraWelch
                   <ArrowRight size={12} />
                 </a>
               </div>
@@ -469,9 +479,9 @@ export default function SurveyPage({
             </button>
             <button 
               onClick={() => onNavigate('register')}
-              className="px-6 py-3 bg-brand-iris hover:bg-brand-iris-hover text-white rounded-xl font-bold transition-all text-xs shadow"
+              className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all text-xs shadow cursor-pointer"
             >
-              Iniciar Onboarding OLO Fintel
+              Iniciar Onboarding MiraWelch
             </button>
           </div>
         </div>
@@ -1056,7 +1066,7 @@ export default function SurveyPage({
                   {/* D1: Probabilidade de usar */}
                   <div className="space-y-3">
                     <label className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider font-mono">
-                      D1. Se a OLO Fintel estivesse disponível HOJE, qual a probabilidade de começar a usar para registar as operações de amanhã?
+                      D1. Se a MiraWelch estivesse disponível HOJE, qual a probabilidade de começar a usar para registar as operações de amanhã?
                     </label>
                     <div className="space-y-2">
                       {[
@@ -1313,6 +1323,8 @@ export default function SurveyPage({
 
         </div>
       )}
+        </motion.div>
+      </AnimatePresence>
 
     </div>
   );

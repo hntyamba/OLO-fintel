@@ -254,14 +254,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
-        if (email.includes('@olofintel.ao')) {
+        if (email.includes('@mirawelch.ao') || email.includes('@olofintel.ao')) {
           const regRes = await register({
-            name: email.startsWith('superadmin') ? 'Super Admin' : (email.startsWith('analyst') ? 'Analista Fintel' : 'Gestor OLO'),
+            name: email.startsWith('superadmin') ? 'Super Admin' : (email.startsWith('analyst') ? 'Analista MiraWelch' : 'Gestor MiraWelch'),
             email,
             password,
             role: email.startsWith('superadmin') ? 'SUPERADMIN' : (email.startsWith('analyst') ? 'ANALYST' : 'OWNER'),
             industry: 'FISHERIES',
-            organizationName: 'Cooperativa OLO'
+            organizationName: 'Cooperativa MiraWelch'
           });
           if (regRes.success) return { success: true };
         }
@@ -323,9 +323,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await apiCall('/api/auth/logout', { method: 'POST' });
+    } catch {
+      // Ignore network failures on logout
+    }
     setUser(null);
     safeStorage.removeItem('olo-fintel-userId');
+    safeStorage.removeItem('olo_fintel_cached_user');
+    safeStorage.removeItem('olo_fintel_token');
+    safeStorage.removeItem('token');
+    safeStorage.removeItem('accessToken');
   };
 
   return (

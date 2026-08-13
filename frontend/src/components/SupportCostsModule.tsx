@@ -27,18 +27,34 @@ import {
   ChevronRight, 
   Flame, 
   MapPin, 
-  Building 
+  Building,
+  Bell
 } from 'lucide-react';
 
 interface SupportCostsModuleProps {
   userId: string;
   userRole: string;
   userIndustry?: string | null;
+  initialSubTab?: 'dashboard' | 'rh' | 'maquinas' | 'utilitarios';
+  onSubTabChange?: (tab: 'dashboard' | 'rh' | 'maquinas' | 'utilitarios') => void;
   key?: string;
 }
 
-export default function SupportCostsModule({ userId, userRole, userIndustry = null }: SupportCostsModuleProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'rh' | 'maquinas' | 'utilitarios'>('dashboard');
+export default function SupportCostsModule({ userId, userRole, userIndustry = null, initialSubTab, onSubTabChange }: SupportCostsModuleProps) {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'rh' | 'maquinas' | 'utilitarios'>(initialSubTab || 'dashboard');
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  const handleTabSelect = (tab: 'dashboard' | 'rh' | 'maquinas' | 'utilitarios') => {
+    setActiveTab(tab);
+    if (onSubTabChange) {
+      onSubTabChange(tab);
+    }
+  };
 
   // --- INITIAL DATA SEEDING & LOCALSTORAGE ---
   // 1. Recursos Humanos (RH) State
@@ -223,6 +239,9 @@ export default function SupportCostsModule({ userId, userRole, userIndustry = nu
 
   // Simulated Camera evidence for receipt photography
   const [receiptPhoto, setReceiptPhoto] = useState<string | null>(null);
+
+  // Toggle state for top Notifications / Alerts menu popover
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Helper calculating total salary cost for employee
   const getEmployeeTotalCost = (emp: any) => {
@@ -502,7 +521,7 @@ export default function SupportCostsModule({ userId, userRole, userIndustry = nu
   };
 
   const handlePhotoUploadSim = () => {
-    setReceiptPhoto("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111'/><text x='10' y='50' fill='%23a855f7' font-size='8'>COMPROVATIVO OLO ERP</text></svg>");
+    setReceiptPhoto("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23111'/><text x='10' y='50' fill='%23a855f7' font-size='8'>COMPROVATIVO MIRAWELCH ERP</text></svg>");
     alert('Fotografia do comprovativo fiscal capturada via câmara do telemóvel e indexada ao registo da fatura!');
   };
 
@@ -522,11 +541,19 @@ export default function SupportCostsModule({ userId, userRole, userIndustry = nu
     <div className="space-y-6">
       
       {/* 1. SECTOR HEADER & NAVIGATION */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl shadow-sm">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl shadow-sm relative">
         <div>
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold uppercase tracking-widest text-brand-purple bg-brand-purple/10 px-2.5 py-1 rounded-full">OLO ERP OPERACIONAL</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-brand-purple bg-brand-purple/10 px-2.5 py-1 rounded-full">MIRAWELCH ERP OPERACIONAL</span>
             <span className="text-xs font-bold uppercase tracking-widest text-emerald-500 bg-emerald-500/10 px-2.5 py-1 rounded-full">Angola</span>
+            <span className="text-xs font-extrabold uppercase tracking-widest text-brand-purple bg-brand-purple/10 px-2.5 py-1 rounded-full">
+              • Submódulo: {
+                activeTab === 'dashboard' ? 'Resumo de Custos' :
+                activeTab === 'rh' ? 'Recursos Humanos & Folha' :
+                activeTab === 'maquinas' ? 'Frota & Máquinas' :
+                'Água, Luz & Apoio'
+              }
+            </span>
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
             <Briefcase className="text-brand-purple shrink-0 animate-pulse" size={22} />
@@ -537,27 +564,124 @@ export default function SupportCostsModule({ userId, userRole, userIndustry = nu
           </p>
         </div>
 
-        {/* Tab triggers */}
-        <div className="grid grid-cols-2 lg:flex lg:flex-row items-center gap-1.5 p-1.5 bg-gray-50 dark:bg-gray-900/60 rounded-2xl border border-gray-150 dark:border-gray-800 shrink-0 w-full lg:w-auto">
-          {[
-            { id: 'dashboard', label: 'Dashboard', icon: Layers },
-            { id: 'rh', label: 'Recursos Humanos', icon: Users },
-            { id: 'maquinas', label: 'Frota & Ativos', icon: Wrench },
-            { id: 'utilitarios', label: 'Overheads & Taxas', icon: Building }
-          ].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setActiveTab(t.id as any)}
-              className={`flex items-center justify-center gap-2 px-3 py-2.5 lg:py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer w-full lg:w-auto ${
-                activeTab === t.id 
-                  ? 'bg-brand-purple text-white shadow-md shadow-brand-purple/20' 
-                  : 'text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white'
-              }`}
-            >
-              <t.icon size={13} className="shrink-0" />
-              <span>{t.label}</span>
-            </button>
-          ))}
+        {/* TOP NOTIFICATIONS BUTTON & DROPDOWN */}
+        <div className="relative shrink-0">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 text-xs font-bold transition-all cursor-pointer shadow-sm relative"
+          >
+            <Bell size={16} className="text-brand-purple" />
+            <span>Alertas de Custos</span>
+            <span className="px-2 py-0.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold">
+              {(overheadPercentage > 40 ? 1 : 0) + 1 + (epiAlerts.length > 0 ? 1 : 0)}
+            </span>
+          </button>
+
+          {/* POPOVER FOR NOTIFICATIONS */}
+          {showNotifications && (
+            <div className="absolute right-0 top-full mt-2 w-80 md:w-96 p-4 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl shadow-2xl z-50 space-y-3">
+              <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2.5">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-brand-purple/10 text-brand-purple rounded-lg">
+                    <Bell size={16} />
+                  </div>
+                  <div>
+                    <h4 className="font-extrabold text-xs text-gray-900 dark:text-white">Central de Alertas Preventivos</h4>
+                    <span className="text-[10px] text-gray-400">Clique para navegar diretamente ao módulo</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowNotifications(false)}
+                  className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors cursor-pointer"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <div className="space-y-2 max-h-80 overflow-y-auto pr-1">
+                {/* 1. Overhead Ratio Alert */}
+                <button
+                  onClick={() => { handleTabSelect('utilitarios'); setShowNotifications(false); }}
+                  className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer group flex flex-col justify-between ${
+                    overheadPercentage > 40
+                      ? 'bg-rose-500/5 hover:bg-rose-500/10 dark:bg-rose-500/10 border-rose-500/20'
+                      : 'bg-emerald-500/5 hover:bg-emerald-500/10 dark:bg-emerald-500/10 border-emerald-500/20'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className={`text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${
+                        overheadPercentage > 40 ? 'bg-rose-500/20 text-rose-500' : 'bg-emerald-500/20 text-emerald-500'
+                      }`}>
+                        {overheadPercentage > 40 ? 'Risco Crítico' : 'Normal'}
+                      </span>
+                      <AlertTriangle size={14} className={overheadPercentage > 40 ? 'text-rose-500' : 'text-emerald-500'} />
+                    </div>
+                    <h5 className="font-extrabold text-xs text-gray-900 dark:text-white group-hover:text-brand-purple transition-colors">
+                      Risco de Fluxo de Caixa ({overheadPercentage.toFixed(1)}%)
+                    </h5>
+                    <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+                      {overheadPercentage > 40 ? 'Overhead fixo excede o limite recomendado de 40%.' : 'Overhead dentro do limite de segurança.'}
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-gray-100 dark:border-gray-800/60 flex items-center justify-between text-[10px] font-bold text-brand-purple">
+                    <span>Ir para Overheads & Taxas</span>
+                    <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+
+                {/* 2. Utility Spike Alert */}
+                <button
+                  onClick={() => { handleTabSelect('utilitarios'); setShowNotifications(false); }}
+                  className="w-full p-3 rounded-xl bg-amber-500/5 hover:bg-amber-500/10 dark:bg-amber-500/10 border border-amber-500/20 text-left transition-all cursor-pointer group flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-500">
+                        Consumo
+                      </span>
+                      <Flame size={14} className="text-amber-500" />
+                    </div>
+                    <h5 className="font-extrabold text-xs text-gray-900 dark:text-white group-hover:text-amber-500 transition-colors">
+                      Conta de Luz & Geradores (+31%)
+                    </h5>
+                    <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+                      Aumento no consumo de combustível e energia na Huíla.
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-gray-100 dark:border-gray-800/60 flex items-center justify-between text-[10px] font-bold text-amber-500">
+                    <span>Ir para Utilitários</span>
+                    <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+
+                {/* 3. EPI Safety Alert */}
+                <button
+                  onClick={() => { handleTabSelect('rh'); setShowNotifications(false); }}
+                  className="w-full p-3 rounded-xl bg-sky-500/5 hover:bg-sky-500/10 dark:bg-sky-500/10 border border-sky-500/20 text-left transition-all cursor-pointer group flex flex-col justify-between"
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-sky-500/20 text-sky-500">
+                        Segurança (EPI)
+                      </span>
+                      <ShieldCheck size={14} className="text-sky-500" />
+                    </div>
+                    <h5 className="font-extrabold text-xs text-gray-900 dark:text-white group-hover:text-sky-500 transition-colors">
+                      EPIs Prestes a Expirar
+                    </h5>
+                    <p className="text-[11px] text-gray-600 dark:text-gray-300 mt-0.5 leading-relaxed">
+                      {epiAlerts.length > 0 ? `${epiAlerts.length} colaboradores necessitam renovação.` : 'Equipamentos 100% atualizados.'}
+                    </p>
+                  </div>
+                  <div className="mt-2 pt-1.5 border-t border-gray-100 dark:border-gray-800/60 flex items-center justify-between text-[10px] font-bold text-sky-500">
+                    <span>Ir para Gestão de RH</span>
+                    <ChevronRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -572,7 +696,7 @@ export default function SupportCostsModule({ userId, userRole, userIndustry = nu
             exit={{ opacity: 0 }}
             className="space-y-6"
           >
-            {/* KPI METRICS AND WARNING BANNERS */}
+            {/* KPI METRICS */}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               
               <div className="p-5 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl shadow-sm relative overflow-hidden">
@@ -623,43 +747,6 @@ export default function SupportCostsModule({ userId, userRole, userIndustry = nu
                 <div className="absolute bottom-0 inset-x-0 h-1 bg-amber-500" />
               </div>
             </div>
-
-            {/* RED ALERTS BLOCK */}
-            {overheadPercentage > 40 && (
-              <div className="p-4 bg-rose-500/15 border border-rose-500/30 rounded-2xl flex items-start gap-3">
-                <AlertTriangle className="text-rose-500 shrink-0 mt-0.5 animate-bounce" size={20} />
-                <div>
-                  <h4 className="font-extrabold text-sm text-rose-500">Risco Crítico de Fluxo de Caixa detetado!</h4>
-                  <p className="text-xs text-rose-400/90 leading-relaxed mt-0.5">
-                    A sua percentagem de overhead fixo atingiu <strong className="font-bold">{overheadPercentage.toFixed(1)}%</strong> da receita total. Recomenda-se reduzir despesas administrativas do escritório ou otimizar a rota e horários das máquinas de campo para evitar prejuízo este mês.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Alert on utility spike */}
-            <div className="p-4 bg-amber-500/15 border border-amber-500/30 rounded-2xl flex items-start gap-3">
-              <Flame className="text-amber-500 shrink-0 mt-0.5 animate-pulse" size={20} />
-              <div>
-                <h4 className="font-extrabold text-sm text-amber-500">Alerta de Consumo: Despesa de Luz e Geradores!</h4>
-                <p className="text-xs text-amber-400/90 leading-relaxed mt-0.5">
-                  Atenção: A sua conta de Luz (ENERGIA) aumentou 31% este mês na Huíla. Verifique o consumo de combustível e possíveis fugas ou paragens desnecessárias do gerador Perkins 45kVA.
-                </p>
-              </div>
-            </div>
-
-            {/* EPI Alerts section */}
-            {epiAlerts.length > 0 && (
-              <div className="p-4 bg-sky-500/15 border border-sky-500/30 rounded-2xl flex items-start gap-3">
-                <ShieldCheck className="text-sky-400 shrink-0 mt-0.5" size={20} />
-                <div>
-                  <h4 className="font-extrabold text-sm text-sky-400">Segurança no Trabalho (EPI) - Alerta de Entrega!</h4>
-                  <p className="text-xs text-sky-300 leading-relaxed mt-0.5">
-                    Há {epiAlerts.length} colaboradores com distribuição de Equipamentos de Proteção Individual prestes a expirar (dentro de 30 dias). Por favor, garanta a entrega de novas botas e capacetes.
-                  </p>
-                </div>
-              </div>
-            )}
 
             {/* TWO-COLUMN GRID: MARGINS PER ACTIVITY & TIMELINE */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -1134,7 +1221,7 @@ export default function SupportCostsModule({ userId, userRole, userIndustry = nu
                   <p className="text-sm font-black text-gray-900 dark:text-white">Custo de Mão-de-Obra por Unidade Produzida: <span className="text-brand-purple">210 Kz / kg</span></p>
                 </div>
               </div>
-              <span className="text-xs text-gray-400 font-bold hidden md:block">OLO Fintel Agro ERP benchmark</span>
+              <span className="text-xs text-gray-400 font-bold hidden md:block">MiraWelch Agro ERP benchmark</span>
             </div>
 
           </motion.div>

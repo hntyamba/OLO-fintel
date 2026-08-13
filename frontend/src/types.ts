@@ -85,12 +85,127 @@ export interface SurveyResponse {
 export interface OperationalRecord {
   id: string;
   orgId: string;
-  type: 'HARVEST' | 'ANIMAL' | 'CATCH' | 'SALE' | 'EXPENSE';
+  type: 'HARVEST' | 'ANIMAL' | 'CATCH' | 'SALE' | 'EXPENSE' | 'LABOR' | 'FAMILY_CONSUMPTION' | 'FIXED_ASSET' | 'PEST_MONITORING';
   date: string;
   title: string;
   quantity?: number;
   unit?: string;
   amount?: number;
+  notes?: string;
+}
+
+export interface ProductionRecord {
+  id: string;
+  orgId?: string;
+  sector: IndustrySector;
+  date: string;
+  item: string;
+  varietyOrSpecies?: string;
+  quantity: number;
+  unit: string;
+  losses?: number;
+  quality?: string;
+  fieldOrBatchOrVessel?: string;
+  responsible?: string;
+  estimatedValue?: number;
+  notes?: string;
+}
+
+export interface LaborRecord {
+  id: string;
+  orgId?: string;
+  sector: IndustrySector;
+  date: string;
+  workerName: string;
+  roleOrTask: string; // 'Monda', 'Capina', 'Ordenha', 'Tripulação', 'Caixa', 'Vigilância'
+  workersCount: number;
+  hoursWorked: number;
+  dailyRate: number; // Kz per day or per worker
+  totalCost: number; // Kz
+  paymentStatus: 'PAID' | 'PENDING' | 'ADVANCED';
+  fieldOrLocation?: string;
+  notes?: string;
+}
+
+export interface CashInflowRecord {
+  id: string;
+  orgId?: string;
+  sector: IndustrySector;
+  date: string;
+  title: string;
+  amount: number;
+  category: 'SALE_PRODUCT' | 'DIRECT_MARKET' | 'SUBSIDY' | 'SERVICES' | 'ADVANCE' | 'OTHER';
+  clientOrSource: string;
+  paymentMethod: 'CASH' | 'TPA' | 'BANK_TRANSFER' | 'MOBILE_MONEY';
+  invoiceOrReceiptRef?: string;
+  notes?: string;
+}
+
+export interface CashOutflowRecord {
+  id: string;
+  orgId?: string;
+  sector: IndustrySector;
+  date: string;
+  title: string;
+  amount: number;
+  category: 'INPUTS_SEEDS_FERTILIZER' | 'FEED_VACCINES' | 'FUEL_ENERGY' | 'LABOR_PAYROLL' | 'MAINTENANCE_PARTS' | 'FREIGHT_LOGISTICS' | 'FEES_LICENSES' | 'OTHER';
+  supplierOrBeneficiary: string;
+  costCenter: string;
+  paymentMethod: 'CASH' | 'TPA' | 'BANK_TRANSFER';
+  invoiceOrReceiptRef?: string;
+  notes?: string;
+}
+
+export interface FamilyConsumptionRecord {
+  id: string;
+  orgId?: string;
+  sector: IndustrySector;
+  date: string;
+  product: string;
+  quantity: number;
+  unit: string;
+  marketUnitValue: number; // Kz per unit
+  totalEstimatedValue: number; // Kz value consumed
+  beneficiariesCount: number; // Number of family members fed
+  originFieldOrBatch: string;
+  purpose: 'FAMILY_MEALS' | 'COMMUNITY_WORKERS_FOOD' | 'TRADITIONAL_EVENT' | 'RESERVE';
+  notes?: string;
+}
+
+export interface FixedAssetRecord {
+  id: string;
+  orgId?: string;
+  sector: IndustrySector;
+  name: string;
+  assetCategory: 'TRACTOR_MACHINERY' | 'VESSEL_ENGINE' | 'BREEDING_LIVESTOCK' | 'SOLAR_PUMP_IRRIGATION' | 'BUILDING_STORAGE' | 'COMMERCIAL_VEHICLE' | 'COLD_ROOM_FREEZER' | 'PROCESSING_EQUIPMENT';
+  identifierOrPlate?: string;
+  acquisitionDate: string;
+  acquisitionCost: number; // Kz
+  currentCondition: 'EXCELLENT' | 'OPERATIONAL' | 'NEEDS_MAINTENANCE' | 'OUT_OF_SERVICE';
+  usefulLifeYears: number;
+  depreciationAnnualRate: number; // %
+  currentEstimatedValue: number; // Kz
+  locationOrPlot?: string;
+  responsible?: string;
+  lastMaintenanceDate?: string;
+  nextMaintenanceDate?: string;
+  notes?: string;
+}
+
+export interface PestMonitoringRecord {
+  id: string;
+  orgId?: string;
+  sector: IndustrySector;
+  inspectionDate: string;
+  pestOrDiseaseName: string; // Ex: 'Lagarta do Cartucho', 'Febre Aftosa', 'Parasitas de Guelras', 'Gorgulho do Grão'
+  severity: 'LOW' | 'MEDIUM' | 'CRITICAL_OUTBREAK';
+  affectedAreaOrUnits: string; // Ex: '2.5 hectares', '15 cabeças de gado', 'Lote 3'
+  symptomsObserved: string;
+  actionTaken: 'BIOLOGICAL_CONTROL' | 'CHEMICAL_SPRAY' | 'ISOLATION_QUARANTINE' | 'VACCINATION_DIPPING' | 'AERATION_SANITATION' | 'MONITORING_ONLY';
+  productsApplied?: string;
+  interventionCost?: number;
+  resolutionStatus: 'ACTIVE_MONITORING' | 'UNDER_CONTROL' | 'RESOLVED' | 'ESCALATED';
+  inspectorName: string;
   notes?: string;
 }
 

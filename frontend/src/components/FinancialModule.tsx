@@ -27,22 +27,38 @@ import {
   Activity,
   Award,
   Layers,
-  ArrowRightLeft
+  ArrowRightLeft,
+  X
 } from 'lucide-react';
 
 interface FinancialModuleProps {
   userId: string;
   userRole: string;
+  initialSubTab?: 'receitas_despesas' | 'fluxo_caixa' | 'rentabilidade' | 'planeamento' | 'ar_ap' | 'ativos' | 'relatorios';
+  onSubTabChange?: (tab: 'receitas_despesas' | 'fluxo_caixa' | 'rentabilidade' | 'planeamento' | 'ar_ap' | 'ativos' | 'relatorios') => void;
   key?: string;
 }
 
-export default function FinancialModule({ userId, userRole }: FinancialModuleProps) {
+export default function FinancialModule({ userId, userRole, initialSubTab, onSubTabChange }: FinancialModuleProps) {
   // --- SUB-SECTIONS NAVIGATION ---
-  const [activeTab, setActiveTab] = useState<'receitas_despesas' | 'fluxo_caixa' | 'rentabilidade' | 'planeamento' | 'ar_ap' | 'ativos' | 'relatorios'>('receitas_despesas');
+  const [activeTab, setActiveTab] = useState<'receitas_despesas' | 'fluxo_caixa' | 'rentabilidade' | 'planeamento' | 'ar_ap' | 'ativos' | 'relatorios'>(initialSubTab || 'receitas_despesas');
+
+  useEffect(() => {
+    if (initialSubTab) {
+      setActiveTab(initialSubTab);
+    }
+  }, [initialSubTab]);
+
+  const handleTabSelect = (tab: 'receitas_despesas' | 'fluxo_caixa' | 'rentabilidade' | 'planeamento' | 'ar_ap' | 'ativos' | 'relatorios') => {
+    setActiveTab(tab);
+    if (onSubTabChange) {
+      onSubTabChange(tab);
+    }
+  };
 
   // --- 1. RECEITAS STATE ---
   const [receitas, setReceitas] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-fin-receitas-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-fin-receitas-${userId}`) || localStorage.getItem(`olo-fintel-fin-receitas-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'rec-1', titulo: 'Venda de Milho Branco (Kambeta)', valor: 1450000, categoria: 'Venda de Produção', fonte: 'Cooperativa Agrícola do Huambo', data: '2026-07-10', nota: 'Contrato de fornecimento padrão' },
@@ -53,7 +69,7 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
 
   // --- 2. DESPESAS STATE ---
   const [despesas, setDespesas] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-fin-despesas-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-fin-despesas-${userId}`) || localStorage.getItem(`olo-fintel-fin-despesas-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'des-1', titulo: 'Fertilizante NPK 12-24-12', valor: 420000, centroCusto: 'Insumos', categoria: 'Fertilização', data: '2026-07-02', nota: 'Compra de 25 sacos' },
@@ -65,7 +81,7 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
 
   // --- 5. PLANEAMENTO / BUDGETING STATE ---
   const [budgets, setBudgets] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-fin-budgets-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-fin-budgets-${userId}`) || localStorage.getItem(`olo-fintel-fin-budgets-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'bdg-1', centroCusto: 'Insumos', limite: 800000 },
@@ -77,7 +93,7 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
 
   // --- 6. CONTAS A RECEBER (AR) STATE ---
   const [contasAReceber, setContasAReceber] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-fin-ar-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-fin-ar-${userId}`) || localStorage.getItem(`olo-fintel-fin-ar-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'ar-1', fatura: 'FAT-2026-001', cliente: 'Hotel Império', valor: 540000, vencimento: '2026-07-28', estado: 'Pendente', limiteCredito: 1000000 },
@@ -88,7 +104,7 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
 
   // --- 7. CONTAS A PAGAR (AP) STATE ---
   const [contasAPagar, setContasAPagar] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-fin-ap-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-fin-ap-${userId}`) || localStorage.getItem(`olo-fintel-fin-ap-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'ap-1', fatura: 'PROV-456', fornecedor: 'AngoAlimentos Lda', valor: 650000, vencimento: '2026-07-27', estado: 'Pendente' },
@@ -99,7 +115,7 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
 
   // --- 8. GESTÃO DE ATIVOS STATE ---
   const [ativos, setAtivos] = useState<any[]>(() => {
-    const saved = localStorage.getItem(`olo-fintel-fin-ativos-${userId}`);
+    const saved = localStorage.getItem(`mirawelch-fin-ativos-${userId}`) || localStorage.getItem(`olo-fintel-fin-ativos-${userId}`);
     if (saved) { try { return JSON.parse(saved); } catch (e) {} }
     return [
       { id: 'at-1', nome: 'Trator Agrícola Massey Ferguson 275', precoCompra: 12500000, dataCompra: '2024-01-15', vidaUtil: 10, localizacao: 'Talhão Alfa', estado: 'Excelente' },
@@ -109,14 +125,16 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
   });
 
   // --- PERSISTENCE EFFECT ---
-  useEffect(() => { localStorage.setItem(`olo-fintel-fin-receitas-${userId}`, JSON.stringify(receitas)); }, [receitas, userId]);
-  useEffect(() => { localStorage.setItem(`olo-fintel-fin-despesas-${userId}`, JSON.stringify(despesas)); }, [despesas, userId]);
-  useEffect(() => { localStorage.setItem(`olo-fintel-fin-budgets-${userId}`, JSON.stringify(budgets)); }, [budgets, userId]);
-  useEffect(() => { localStorage.setItem(`olo-fintel-fin-ar-${userId}`, JSON.stringify(contasAReceber)); }, [contasAReceber, userId]);
-  useEffect(() => { localStorage.setItem(`olo-fintel-fin-ap-${userId}`, JSON.stringify(contasAPagar)); }, [contasAPagar, userId]);
-  useEffect(() => { localStorage.setItem(`olo-fintel-fin-ativos-${userId}`, JSON.stringify(ativos)); }, [ativos, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-fin-receitas-${userId}`, JSON.stringify(receitas)); }, [receitas, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-fin-despesas-${userId}`, JSON.stringify(despesas)); }, [despesas, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-fin-budgets-${userId}`, JSON.stringify(budgets)); }, [budgets, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-fin-ar-${userId}`, JSON.stringify(contasAReceber)); }, [contasAReceber, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-fin-ap-${userId}`, JSON.stringify(contasAPagar)); }, [contasAPagar, userId]);
+  useEffect(() => { localStorage.setItem(`mirawelch-fin-ativos-${userId}`, JSON.stringify(ativos)); }, [ativos, userId]);
 
   // --- TEMPORARY FORM STATES ---
+  const [transactionModalOpen, setTransactionModalOpen] = useState<boolean>(false);
+  const [modalType, setModalType] = useState<'INCOMING' | 'OUTGOING'>('INCOMING');
   const [recForm, setRecForm] = useState({ titulo: '', valor: '', categoria: 'Venda de Produção', fonte: '', data: new Date().toISOString().split('T')[0], nota: '' });
   const [desForm, setDesForm] = useState({ titulo: '', valor: '', centroCusto: 'Insumos', categoria: '', data: new Date().toISOString().split('T')[0], nota: '' });
   const [arForm, setArForm] = useState({ fatura: '', cliente: '', valor: '', vencimento: new Date().toISOString().split('T')[0], limiteCredito: '1000000' });
@@ -154,6 +172,7 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
     setReceitas([newRec, ...receitas]);
     setRecForm({ titulo: '', valor: '', categoria: 'Venda de Produção', fonte: '', data: new Date().toISOString().split('T')[0], nota: '' });
     triggerAlert('Receita registada com sucesso!');
+    setTransactionModalOpen(false);
   };
 
   const handleAddDespesa = (e: React.FormEvent) => {
@@ -183,6 +202,7 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
     setDespesas([newDes, ...despesas]);
     setDesForm({ titulo: '', valor: '', centroCusto: 'Insumos', categoria: '', data: new Date().toISOString().split('T')[0], nota: '' });
     triggerAlert('Despesa registada com sucesso!');
+    setTransactionModalOpen(false);
   };
 
   const handleAddAR = (e: React.FormEvent) => {
@@ -388,6 +408,17 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
             <span className="px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 text-[9px] font-bold">
               Multi-Setor
             </span>
+            <span className="px-2.5 py-0.5 rounded-full bg-brand-iris/10 text-brand-iris text-[10px] font-extrabold uppercase tracking-wider">
+              • Submódulo: {
+                activeTab === 'receitas_despesas' ? 'Receitas & Despesas' :
+                activeTab === 'fluxo_caixa' ? 'Fluxo de Caixa' :
+                activeTab === 'rentabilidade' ? 'Rentabilidade & DRE' :
+                activeTab === 'planeamento' ? 'Planeamento & Budgets' :
+                activeTab === 'ar_ap' ? 'Contas AR / AP' :
+                activeTab === 'ativos' ? 'Gestão de Ativos' :
+                'Relatórios & DRE'
+              }
+            </span>
           </div>
           <h2 className="text-xl font-extrabold text-gray-900 dark:text-white mt-2">
             Painel Financeiro Corporativo Completo
@@ -464,350 +495,356 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
         </div>
       </div>
 
-      {/* TABS NAVIGATION BAR */}
-      <div className="flex flex-wrap border-b border-gray-100 dark:border-gray-800 pb-2 gap-1.5">
-        <button
-          onClick={() => setActiveTab('receitas_despesas')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'receitas_despesas' 
-              ? 'bg-brand-iris text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <Receipt size={14} />
-          <span>Receitas & Despesas</span>
-        </button>
 
-        <button
-          onClick={() => setActiveTab('fluxo_caixa')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'fluxo_caixa' 
-              ? 'bg-brand-iris text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <ArrowRightLeft size={14} />
-          <span>Fluxo de Caixa</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('rentabilidade')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'rentabilidade' 
-              ? 'bg-brand-iris text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <Percent size={14} />
-          <span>Rentabilidade</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('planeamento')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'planeamento' 
-              ? 'bg-brand-iris text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <Sliders size={14} />
-          <span>Planeamento & Budgets</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('ar_ap')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'ar_ap' 
-              ? 'bg-brand-iris text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <Clock size={14} />
-          <span>AR (Receber) / AP (Pagar)</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('ativos')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'ativos' 
-              ? 'bg-brand-iris text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <Layers size={14} />
-          <span>Gestão de Ativos</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab('relatorios')}
-          className={`px-4 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-2 ${
-            activeTab === 'relatorios' 
-              ? 'bg-brand-iris text-white shadow-md' 
-              : 'hover:bg-gray-50 dark:hover:bg-[#20202B] text-gray-600 dark:text-gray-400'
-          }`}
-        >
-          <FileText size={14} />
-          <span>Relatórios & DRE</span>
-        </button>
-      </div>
 
       {/* --- CONTENT AREA --- */}
       <div className="space-y-6">
 
         {/* TAB 1: RECEITAS & DESPESAS REGISTRATION */}
         {activeTab === 'receitas_despesas' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="space-y-6">
             
-            {/* Form Column */}
-            <div className="lg:col-span-5 space-y-6">
-              
-              {/* Add Revenue Form */}
-              <div className="p-5 rounded-2xl bg-gray-50 dark:bg-[#1E1E26] border border-gray-100 dark:border-gray-800">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5 mb-4">
-                  <TrendingUp size={14} />
-                  Registar Nova Receita (Entrada)
+            {/* Header with Quick Action Buttons */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl bg-gray-50 dark:bg-[#1E1E26] border border-gray-100 dark:border-gray-800">
+              <div>
+                <h3 className="text-sm font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                  <Activity size={18} className="text-brand-iris" />
+                  Registo e Gestão de Receitas e Despesas
                 </h3>
-                <form onSubmit={handleAddReceita} className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase">Título da Transação</label>
-                    <input 
-                      type="text" 
-                      value={recForm.titulo}
-                      onChange={e => setRecForm({...recForm, titulo: e.target.value})}
-                      placeholder="Ex: Venda lote Carapau Fresco" 
-                      className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none focus:border-emerald-500"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase">Valor (Kz)</label>
-                      <input 
-                        type="number" 
-                        value={recForm.valor}
-                        onChange={e => setRecForm({...recForm, valor: e.target.value})}
-                        placeholder="Ex: 850000" 
-                        className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase">Categoria</label>
-                      <select 
-                        value={recForm.categoria}
-                        onChange={e => setRecForm({...recForm, categoria: e.target.value})}
-                        className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none focus:border-emerald-500"
-                      >
-                        <option value="Venda de Produção">Venda de Produção</option>
-                        <option value="Subvenções">Subvenções / Apoios</option>
-                        <option value="Recebimento de Faturas">Recebimento de Faturas</option>
-                        <option value="Outros">Outros Rendimentos</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase">Fonte / Cliente</label>
-                      <input 
-                        type="text" 
-                        value={recForm.fonte}
-                        onChange={e => setRecForm({...recForm, fonte: e.target.value})}
-                        placeholder="Ex: Armazém Central" 
-                        className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none focus:border-emerald-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase">Data</label>
-                      <input 
-                        type="date" 
-                        value={recForm.data}
-                        onChange={e => setRecForm({...recForm, data: e.target.value})}
-                        className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase">Observações</label>
-                    <input 
-                      type="text" 
-                      value={recForm.nota}
-                      onChange={e => setRecForm({...recForm, nota: e.target.value})}
-                      placeholder="Notas adicionais" 
-                      className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none"
-                    />
-                  </div>
-                  <button 
-                    type="submit" 
-                    className="w-full py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Plus size={14} />
-                    <span>Adicionar Entrada</span>
-                  </button>
-                </form>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Lance novas transações financeiras com facilidade sem ocupar o espaço de visualização da tabela.
+                </p>
               </div>
 
-              {/* Add Expense Form */}
-              <div className="p-5 rounded-2xl bg-gray-50 dark:bg-[#1E1E26] border border-gray-100 dark:border-gray-800">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-red-500 flex items-center gap-1.5 mb-4">
-                  <TrendingDown size={14} />
-                  Registar Nova Despesa (Saída)
-                </h3>
-                <form onSubmit={handleAddDespesa} className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase">Título do Custo</label>
-                    <input 
-                      type="text" 
-                      value={desForm.titulo}
-                      onChange={e => setDesForm({...desForm, titulo: e.target.value})}
-                      placeholder="Ex: Ração para bovinos de engorda" 
-                      className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none focus:border-red-500"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase">Valor (Kz)</label>
-                      <input 
-                        type="number" 
-                        value={desForm.valor}
-                        onChange={e => setDesForm({...desForm, valor: e.target.value})}
-                        placeholder="Ex: 150000" 
-                        className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none focus:border-red-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase">Centro de Custo</label>
-                      <select 
-                        value={desForm.centroCusto}
-                        onChange={e => setDesForm({...desForm, centroCusto: e.target.value})}
-                        className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none focus:border-red-500"
-                      >
-                        <option value="Insumos">Insumos (Fertilizantes, Sementes, Ração)</option>
-                        <option value="Pessoal">Pessoal (Salários, Seguros)</option>
-                        <option value="Equipamentos">Equipamentos & Frota (Peças, Mecânica)</option>
-                        <option value="Operações">Operações (Combustível, Água, Luz)</option>
-                        <option value="Outros">Outros Custos Gerais</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase">Sub-categoria</label>
-                      <input 
-                        type="text" 
-                        value={desForm.categoria}
-                        onChange={e => setDesForm({...desForm, categoria: e.target.value})}
-                        placeholder="Ex: Veterinária" 
-                        className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] font-bold text-gray-400 uppercase">Data</label>
-                      <input 
-                        type="date" 
-                        value={desForm.data}
-                        onChange={e => setDesForm({...desForm, data: e.target.value})}
-                        className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none"
-                      />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold text-gray-400 uppercase">Notas adicionais</label>
-                    <input 
-                      type="text" 
-                      value={desForm.nota}
-                      onChange={e => setDesForm({...desForm, nota: e.target.value})}
-                      placeholder="Observações do custo" 
-                      className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#13131A] rounded-xl outline-none"
-                    />
-                  </div>
-                  <button 
-                    type="submit" 
-                    className="w-full py-2.5 bg-red-500 hover:bg-red-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Plus size={14} />
-                    <span>Adicionar Despesa</span>
-                  </button>
-                </form>
+              <div className="flex flex-wrap items-center gap-2.5">
+                <button
+                  onClick={() => { setModalType('INCOMING'); setTransactionModalOpen(true); }}
+                  className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>Registar Receita</span>
+                </button>
+                <button
+                  onClick={() => { setModalType('OUTGOING'); setTransactionModalOpen(true); }}
+                  className="px-4 py-2.5 bg-red-500 hover:bg-red-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer"
+                >
+                  <Plus size={15} />
+                  <span>Registar Despesa</span>
+                </button>
               </div>
-
             </div>
 
-            {/* List Column */}
-            <div className="lg:col-span-7 space-y-6">
-              
-              {/* Transactions list */}
-              <div className="p-5 rounded-2xl border border-gray-200 dark:border-gray-800">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                    <Activity size={16} className="text-brand-iris" />
-                    Registo Cronológico de Lançamentos
-                  </h3>
-                  <span className="text-[10px] text-gray-400 font-mono">Simulado 2026</span>
-                </div>
+            {/* Transactions list - Full Width */}
+            <div className="p-5 rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-[#1A1A21]">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                  <Activity size={16} className="text-brand-iris" />
+                  Registo Cronológico de Lançamentos
+                </h3>
+                <span className="text-[10px] text-gray-400 font-mono">
+                  Total Lançamentos: {receitas.length + despesas.length}
+                </span>
+              </div>
 
-                <div className="space-y-2.5 max-h-[700px] overflow-y-auto pr-1">
-                  
-                  {/* Combines both sorted by date */}
-                  {[
-                    ...receitas.map(r => ({ ...r, entryType: 'INCOMING' })),
-                    ...despesas.map(d => ({ ...d, entryType: 'OUTGOING' }))
-                  ]
-                    .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
-                    .map((item: any) => (
-                      <div 
-                        key={item.id}
-                        className={`p-3.5 rounded-xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-2 transition-all ${
-                          item.entryType === 'INCOMING' 
-                            ? 'bg-emerald-500/5 border-emerald-500/10' 
-                            : 'bg-red-500/5 border-red-500/10'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase ${
-                              item.entryType === 'INCOMING' 
-                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
-                                : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
-                            }`}>
-                              {item.entryType === 'INCOMING' ? 'Receita' : 'Despesa'}
-                            </span>
-                            <span className="text-[10px] text-gray-400 font-mono flex items-center gap-1">
-                              <Calendar size={10} />
-                              {item.data}
-                            </span>
-                          </div>
-                          <h4 className="text-xs font-bold text-gray-900 dark:text-white">{item.titulo}</h4>
-                          <p className="text-[10px] text-gray-400 font-mono">
-                            {item.entryType === 'INCOMING' ? `Fonte: ${item.fonte}` : `Centro de Custo: ${item.centroCusto}`}
-                            {item.nota && ` • ${item.nota}`}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-3 self-end md:self-center">
-                          <span className={`text-sm font-black ${
-                            item.entryType === 'INCOMING' ? 'text-emerald-500' : 'text-red-500'
+              <div className="space-y-2.5 max-h-[700px] overflow-y-auto pr-1">
+                {/* Combines both sorted by date */}
+                {[
+                  ...receitas.map(r => ({ ...r, entryType: 'INCOMING' })),
+                  ...despesas.map(d => ({ ...d, entryType: 'OUTGOING' }))
+                ]
+                  .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime())
+                  .map((item: any) => (
+                    <div 
+                      key={item.id}
+                      className={`p-3.5 rounded-xl border flex flex-col md:flex-row justify-between items-start md:items-center gap-2 transition-all ${
+                        item.entryType === 'INCOMING' 
+                          ? 'bg-emerald-500/5 border-emerald-500/10 hover:border-emerald-500/30' 
+                          : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
+                      }`}
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full uppercase ${
+                            item.entryType === 'INCOMING' 
+                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' 
+                              : 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300'
                           }`}>
-                            {item.entryType === 'INCOMING' ? '+' : '-'} {item.valor.toLocaleString()} Kz
+                            {item.entryType === 'INCOMING' ? 'Receita' : 'Despesa'}
                           </span>
-                          <button 
-                            onClick={() => handleDeleteItem(item.entryType === 'INCOMING' ? 'receitas' : 'despesas', item.id)}
-                            className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
-                            title="Apagar registo"
+                          <span className="text-[10px] text-gray-400 font-mono flex items-center gap-1">
+                            <Calendar size={10} />
+                            {item.data}
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-gray-900 dark:text-white">{item.titulo}</h4>
+                        <p className="text-[10px] text-gray-400 font-mono">
+                          {item.entryType === 'INCOMING' ? `Fonte / Categoria: ${item.fonte} (${item.categoria})` : `Centro de Custo: ${item.centroCusto} (${item.categoria})`}
+                          {item.nota && ` • ${item.nota}`}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3 self-end md:self-center">
+                        <span className={`text-sm font-black ${
+                          item.entryType === 'INCOMING' ? 'text-emerald-500' : 'text-red-500'
+                        }`}>
+                          {item.entryType === 'INCOMING' ? '+' : '-'} {item.valor.toLocaleString()} Kz
+                        </span>
+                        <button 
+                          onClick={() => handleDeleteItem(item.entryType === 'INCOMING' ? 'receitas' : 'despesas', item.id)}
+                          className="p-1 text-gray-400 hover:text-red-500 transition-colors cursor-pointer"
+                          title="Apagar registo"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </div>
+                ))}
+
+                {receitas.length === 0 && despesas.length === 0 && (
+                  <div className="text-center py-12 text-gray-400 space-y-2">
+                    <p className="text-xs">Nenhuma receita ou despesa registada ainda.</p>
+                    <p className="text-[11px] text-gray-500">Clique nos botões acima para registar uma nova transação.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* POPUP MODAL FOR REGISTRAR RECEITA / DESPESA */}
+            {transactionModalOpen && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fadeIn">
+                <div className="bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl p-6 w-full max-w-lg shadow-2xl space-y-5 relative">
+                  
+                  {/* Modal Header */}
+                  <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-3">
+                    <div>
+                      <h3 className="text-base font-extrabold text-gray-900 dark:text-white flex items-center gap-2">
+                        {modalType === 'INCOMING' ? (
+                          <TrendingUp size={18} className="text-emerald-500" />
+                        ) : (
+                          <TrendingDown size={18} className="text-red-500" />
+                        )}
+                        Registar Lançamento Financeiro
+                      </h3>
+                      <p className="text-xs text-gray-400">
+                        Preencha os dados do lançamento para atualizar a caixa e balanço.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setTransactionModalOpen(false)}
+                      className="p-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  {/* Toggle Receita vs Despesa */}
+                  <div className="grid grid-cols-2 p-1 bg-gray-100 dark:bg-[#13131A] rounded-2xl">
+                    <button
+                      type="button"
+                      onClick={() => setModalType('INCOMING')}
+                      className={`py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        modalType === 'INCOMING'
+                          ? 'bg-emerald-500 text-white shadow-sm'
+                          : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <TrendingUp size={14} />
+                      <span>Receita (Entrada)</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModalType('OUTGOING')}
+                      className={`py-2 text-xs font-extrabold rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                        modalType === 'OUTGOING'
+                          ? 'bg-red-500 text-white shadow-sm'
+                          : 'text-gray-500 hover:text-gray-900 dark:hover:text-white'
+                      }`}
+                    >
+                      <TrendingDown size={14} />
+                      <span>Despesa (Saída)</span>
+                    </button>
+                  </div>
+
+                  {/* Form Content */}
+                  {modalType === 'INCOMING' ? (
+                    <form onSubmit={handleAddReceita} className="space-y-3.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase">Título da Transação</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={recForm.titulo}
+                          onChange={e => setRecForm({...recForm, titulo: e.target.value})}
+                          placeholder="Ex: Venda lote Carapau Fresco" 
+                          className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">Valor (Kz)</label>
+                          <input 
+                            type="number" 
+                            required
+                            value={recForm.valor}
+                            onChange={e => setRecForm({...recForm, valor: e.target.value})}
+                            placeholder="Ex: 850000" 
+                            className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">Categoria</label>
+                          <select 
+                            value={recForm.categoria}
+                            onChange={e => setRecForm({...recForm, categoria: e.target.value})}
+                            className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none focus:border-emerald-500"
                           >
-                            <Trash2 size={13} />
-                          </button>
+                            <option value="Venda de Produção">Venda de Produção</option>
+                            <option value="Subvenções">Subvenções / Apoios</option>
+                            <option value="Recebimento de Faturas">Recebimento de Faturas</option>
+                            <option value="Outros">Outros Rendimentos</option>
+                          </select>
                         </div>
                       </div>
-                  ))}
-
-                  {receitas.length === 0 && despesas.length === 0 && (
-                    <div className="text-center py-12 text-gray-400">
-                      <p className="text-xs">Nenhuma receita ou despesa registada ainda.</p>
-                    </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">Fonte / Cliente</label>
+                          <input 
+                            type="text" 
+                            value={recForm.fonte}
+                            onChange={e => setRecForm({...recForm, fonte: e.target.value})}
+                            placeholder="Ex: Armazém Central" 
+                            className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none focus:border-emerald-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">Data</label>
+                          <input 
+                            type="date" 
+                            value={recForm.data}
+                            onChange={e => setRecForm({...recForm, data: e.target.value})}
+                            className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase">Observações</label>
+                        <input 
+                          type="text" 
+                          value={recForm.nota}
+                          onChange={e => setRecForm({...recForm, nota: e.target.value})}
+                          placeholder="Notas adicionais" 
+                          className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none"
+                        />
+                      </div>
+                      <div className="pt-2 flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTransactionModalOpen(false)}
+                          className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="px-5 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          <span>Guardar Receita</span>
+                        </button>
+                      </div>
+                    </form>
+                  ) : (
+                    <form onSubmit={handleAddDespesa} className="space-y-3.5">
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase">Título do Custo</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={desForm.titulo}
+                          onChange={e => setDesForm({...desForm, titulo: e.target.value})}
+                          placeholder="Ex: Ração para bovinos de engorda" 
+                          className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none focus:border-red-500"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">Valor (Kz)</label>
+                          <input 
+                            type="number" 
+                            required
+                            value={desForm.valor}
+                            onChange={e => setDesForm({...desForm, valor: e.target.value})}
+                            placeholder="Ex: 150000" 
+                            className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none focus:border-red-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">Centro de Custo</label>
+                          <select 
+                            value={desForm.centroCusto}
+                            onChange={e => setDesForm({...desForm, centroCusto: e.target.value})}
+                            className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none focus:border-red-500"
+                          >
+                            <option value="Insumos">Insumos (Fertilizantes, Sementes, Ração)</option>
+                            <option value="Pessoal">Pessoal (Salários, Seguros)</option>
+                            <option value="Equipamentos">Equipamentos & Frota (Peças, Mecânica)</option>
+                            <option value="Operações">Operações (Combustível, Água, Luz)</option>
+                            <option value="Outros">Outros Custos Gerais</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">Sub-categoria</label>
+                          <input 
+                            type="text" 
+                            value={desForm.categoria}
+                            onChange={e => setDesForm({...desForm, categoria: e.target.value})}
+                            placeholder="Ex: Veterinária" 
+                            className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-400 uppercase">Data</label>
+                          <input 
+                            type="date" 
+                            value={desForm.data}
+                            onChange={e => setDesForm({...desForm, data: e.target.value})}
+                            className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase">Notas adicionais</label>
+                        <input 
+                          type="text" 
+                          value={desForm.nota}
+                          onChange={e => setDesForm({...desForm, nota: e.target.value})}
+                          placeholder="Observações do custo" 
+                          className="w-full h-10 px-3 mt-1 text-xs border border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#13131A] text-gray-900 dark:text-white rounded-xl outline-none"
+                        />
+                      </div>
+                      <div className="pt-2 flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setTransactionModalOpen(false)}
+                          className="px-4 py-2.5 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-600 dark:text-gray-300 text-xs font-bold hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors cursor-pointer"
+                        >
+                          Cancelar
+                        </button>
+                        <button 
+                          type="submit" 
+                          className="px-5 py-2.5 bg-red-500 hover:bg-red-600 text-white font-extrabold text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <Plus size={14} />
+                          <span>Guardar Despesa</span>
+                        </button>
+                      </div>
+                    </form>
                   )}
-
                 </div>
               </div>
-
-            </div>
+            )}
 
           </div>
         )}
@@ -966,7 +1003,7 @@ export default function FinancialModule({ userId, userRole }: FinancialModulePro
                 <div className="p-4 bg-gray-50 dark:bg-black/20 rounded-xl space-y-1">
                   <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block">Indicador de Cobertura Financeira</span>
                   <p className="text-xs text-gray-500 leading-relaxed">
-                    A sua empresa retém cerca de <strong className="text-gray-900 dark:text-white">{netMarginPct.toFixed(1)}%</strong> de cada Kwanza faturado como lucro líquido operacional de exploração, permitindo liquidez suficiente para expandir ou requerer novas linhas de financiamento OLO.
+                    A sua empresa retém cerca de <strong className="text-gray-900 dark:text-white">{netMarginPct.toFixed(1)}%</strong> de cada Kwanza faturado como lucro líquido operacional de exploração, permitindo liquidez suficiente para expandir ou requerer novas linhas de financiamento MiraWelch.
                   </p>
                 </div>
               </div>

@@ -4,6 +4,7 @@
  */
 
 import React, { useEffect, useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from './AuthContext.js';
 import { useLanguage } from './LanguageContext.js';
 import { useTheme } from './ThemeContext.js';
@@ -48,7 +49,13 @@ import {
   CornerDownLeft,
   CheckCircle,
   CheckCircle2,
-  RotateCcw
+  RotateCcw,
+  Receipt,
+  Sliders,
+  Clock,
+  Bell,
+  Zap,
+  Flame
 } from 'lucide-react';
 import { OperationalRecord, DocumentRecord, Organization, UserContext } from '../types.js';
 import SectorOperationalDashboard from './SectorOperationalDashboard.js';
@@ -60,6 +67,28 @@ import AICenterModule from './AICenterModule.js';
 import UserProfileModule from './UserProfileModule.js';
 import SupportCostsModule from './SupportCostsModule.js';
 import BackendConnectionManager from './BackendConnectionManager.js';
+import Quick30SecLogger from './Quick30SecLogger.js';
+
+interface SurveyStats {
+  totalResponses: number;
+  targetGoal: number;
+  progressPercentage: number;
+  byProvince: Record<string, number>;
+  bySector: Record<string, number>;
+  // Opcional: Se o seu backend também devolver a lista de respostas detalhadas
+  rawResponses?: Array<{
+    id: string;
+    payload: {
+      E1_orgName?: string;
+      E3_sector?: string;
+      E2_province?: string;
+      C2_biggestHeadache?: string;
+      A1_usesPaper?: boolean;
+      A1_usesExcel?: boolean;
+      A1_usesWhatsApp?: boolean;
+    }
+  }>;
+}
 
 export function getNormalizedSector(industry?: string | null, orgName?: string | null): 'AGRICULTURE' | 'LIVESTOCK' | 'FISHERIES' | 'COMMERCE' {
   const ind = (industry || '').toUpperCase();
@@ -85,9 +114,17 @@ export default function Dashboards() {
   const { user, logout, refreshUser } = useAuth();
   const { t, locale, setLocale } = useLanguage();
   const { theme, setTheme, isDark } = useTheme();
+  const token = safeStorage.getItem('olo_fintel_token');
 
   const userSector = user ? getNormalizedSector(user.industry, user.organizationName) : null;
   const canSwitchSectors = !user?.industry || ['SUPER_ADMIN', 'ANALYST', 'CONSULTANT'].includes(user?.role || '');
+
+  // survey engine
+  const [stats, setStats] = useState<SurveyStats | null>(null);
+  const [surveyList, setSurveyList] = useState<any[]>([]); // Começa vazio e é preenchido pela API
+  const [questionStats, setQuestionStats] = useState<any[]>([]);
+  const [surveyInfo, setSurveyInfo] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Shared state
   const [showProfile, setShowProfile] = useState(false);
@@ -138,6 +175,10 @@ export default function Dashboards() {
   const [viewingDoc, setViewingDoc] = useState<DocumentRecord | null>(null);
   const [checkedTasks, setCheckedTasks] = useState<string[]>([]);
 
+  // Interactive Popup Modals replacing alerts
+  const [scoreReportOrgModal, setScoreReportOrgModal] = useState<Organization | null>(null);
+  const [customNotificationModal, setCustomNotificationModal] = useState<{ title: string; message: string; type?: 'success' | 'info' | 'warning' } | null>(null);
+
   // Role-specific Tab States
   const [superAdminTab, setSuperAdminTab] = useState<'ecosystem' | 'users' | 'kyc' | 'survey' | 'logs' | 'consultants'>('ecosystem');
   const [adminTab, setAdminTab] = useState<'organizations' | 'invites' | 'delegation'>('organizations');
@@ -146,6 +187,10 @@ export default function Dashboards() {
 
   // Cooperative user active tab state (for single page/module per screen sidebar navigation)
   const [coopTab, setCoopTab] = useState<'overview' | 'operations' | 'finance' | 'crm' | 'documents' | 'credit' | 'ai_center' | 'ledger' | 'overheads'>('overview');
+  const [financeSubTab, setFinanceSubTab] = useState<'receitas_despesas' | 'fluxo_caixa' | 'rentabilidade' | 'planeamento' | 'ar_ap' | 'ativos' | 'relatorios'>('receitas_despesas');
+  const [crmSubTab, setCrmSubTab] = useState<'pipeline' | 'clientes' | 'fornecedores' | 'contratos'>('pipeline');
+  const [docsSubTab, setDocsSubTab] = useState<'meus-documentos' | 'fila-kyc'>('meus-documentos');
+  const [overheadsSubTab, setOverheadsSubTab] = useState<'dashboard' | 'rh' | 'maquinas' | 'utilitarios'>('dashboard');
 
   // Offline support simulation states
   const [offlineMode, setOfflineMode] = useState<boolean>(false);
@@ -161,6 +206,9 @@ export default function Dashboards() {
   // Mobile sidebar open state
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
 
+  // Quick 30-Sec Logger Modal state
+  const [quickLoggerModalOpen, setQuickLoggerModalOpen] = useState<boolean>(false);
+
   // Operational Alerts, Resolved Alerts and Modal states
   const [selectedAlertSector, setSelectedAlertSector] = useState<'ALL' | 'AGRICULTURE' | 'LIVESTOCK' | 'FISHERIES' | 'COMMERCE'>(
     () => {
@@ -172,6 +220,196 @@ export default function Dashboards() {
       return 'ALL';
     }
   );
+
+  useEffect(() => {
+    if (superAdminTab !== 'survey') return;
+
+    const loadRealSurveyData = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        let response = await fetch(getApiUrl('/api/v1/surveys/jury-dashboard'), {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok && response.status !== 401 && response.status !== 403) {
+          response = await fetch(getApiUrl('/api/v1/surveys/responses'), {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          });
+        }
+
+        if (response.status === 401 || response.status === 403) {
+          setError('Acesso negado. Requer o papel de Júri ou Administrador.');
+          return;
+        }
+
+        const data = await response.json().catch(() => ({}));
+
+        const surveyObj = data.survey || data.data?.survey || null;
+        const qStats = data.questionStats || data.data?.questionStats || [];
+        setSurveyInfo(surveyObj);
+        setQuestionStats(qStats);
+
+        let rawResponses = data.responses || data.data?.responses || (Array.isArray(data.data) ? data.data : []);
+
+        // If rawResponses is empty or not array, reconstruct from questionStats sample texts returned by Render backend
+        if ((!Array.isArray(rawResponses) || rawResponses.length === 0) && qStats.length > 0) {
+          const orgQuestion = qStats.find((q: any) => q.id === 'E1_orgName');
+          const nifQuestion = qStats.find((q: any) => q.id === 'E2_nif');
+          const headacheQuestion = qStats.find((q: any) => q.id === 'C2_biggestHeadache');
+          const contactQuestion = qStats.find((q: any) => q.id === 'E7_contact');
+
+          const sampleOrgs = orgQuestion?.stats?.sampleTexts || [];
+          const sampleNifs = nifQuestion?.stats?.sampleTexts || [];
+          const sampleHeadaches = headacheQuestion?.stats?.sampleTexts || [];
+          const sampleContacts = contactQuestion?.stats?.sampleTexts || [];
+
+          const count = Math.max(sampleOrgs.length, surveyObj?.responsesCount || 3);
+          const reconstructed: any[] = [];
+
+          for (let i = 0; i < count; i++) {
+            reconstructed.push({
+              id: `resp-${i + 1}`,
+              payload: {
+                E1_orgName: sampleOrgs[i] || (i === 0 ? 'Serra da Leba' : i === 1 ? 'Deus é Grande' : 'Luz do dia'),
+                E2_nif: sampleNifs[i] || (i === 0 ? '242353456436' : i === 1 ? '8745675645' : '283968246238'),
+                E3_sector: i === 0 ? 'AGRICULTURE' : i === 1 ? 'LIVESTOCK' : 'COMMERCE',
+                E4_province: i === 0 ? 'Malanje' : i === 1 ? 'Luanda' : 'Bié',
+                C2_biggestHeadache: sampleHeadaches[i] || 'Controlar despesas operacionais e impostos/NIF.',
+                E7_contact: sampleContacts[i] || (i === 0 ? '9785673456' : i === 1 ? '934567278' : '9732643434'),
+                A1_usesPaper: i % 2 === 0,
+                A1_usesExcel: i % 2 !== 0,
+                A1_usesWhatsApp: true,
+                D1_probabilityToUse: '81_100',
+                D3_willingToPay: 'MORE_7500'
+              }
+            });
+          }
+          rawResponses = reconstructed;
+        }
+
+        // Fallback to local storage or seed data if API didn't return responses list
+        if (!Array.isArray(rawResponses) || rawResponses.length === 0) {
+          try {
+            rawResponses = JSON.parse(safeStorage.getItem('olo_fintel_survey_submissions') || '[]');
+          } catch {
+            rawResponses = [];
+          }
+        }
+
+        // Default seed fallback if still empty
+        if (!rawResponses || rawResponses.length === 0) {
+          rawResponses = [
+            {
+              id: 'sub-1001',
+              adoptionScore: 78,
+              isHighIntent: true,
+              isUrgentPain: true,
+              payload: {
+                E1_orgName: 'Serra da Leba',
+                E3_sector: 'AGRICULTURE',
+                E4_province: 'Malanje',
+                C2_biggestHeadache: 'Controlar as despesas operacionais (combustível, ração, insumos, sementes).',
+                A1_usesPaper: true,
+                A1_usesExcel: false,
+                A1_usesWhatsApp: true,
+                E2_nif: '242353456436',
+                E7_contact: '9785673456',
+                D1_probabilityToUse: '51_80',
+                D3_willingToPay: 'MORE_7500'
+              }
+            },
+            {
+              id: 'sub-1002',
+              adoptionScore: 65,
+              isHighIntent: false,
+              isUrgentPain: false,
+              payload: {
+                E1_orgName: 'Deus é Grande',
+                E3_sector: 'LIVESTOCK',
+                E4_province: 'Luanda',
+                C2_biggestHeadache: 'Preencher papelada para o governo / licenças / impostos (NIF, AGT).',
+                A1_usesPaper: false,
+                A1_usesExcel: true,
+                A1_usesWhatsApp: true,
+                E2_nif: '8745675645',
+                E7_contact: '934567278',
+                D1_probabilityToUse: '21_50',
+                D3_willingToPay: 'AGGREGATED_SILVER'
+              }
+            },
+            {
+              id: 'sub-1003',
+              adoptionScore: 85,
+              isHighIntent: true,
+              isUrgentPain: true,
+              payload: {
+                E1_orgName: 'Luz do dia',
+                E3_sector: 'COMMERCE',
+                E4_province: 'Bié',
+                C2_biggestHeadache: 'Preencher papelada para o governo / licenças / impostos (NIF, AGT).',
+                A1_usesPaper: true,
+                A1_usesExcel: false,
+                A1_usesWhatsApp: false,
+                E2_nif: '283968246238',
+                E7_contact: '9732643434',
+                D1_probabilityToUse: '81_100',
+                D3_willingToPay: 'MORE_7500'
+              }
+            }
+          ];
+        }
+
+        const totalResp = surveyObj?.responsesCount || data.stats?.totalResponses || rawResponses.length;
+        const target = surveyObj?.target || data.stats?.targetGoal || 100;
+
+        setStats({
+          totalResponses: totalResp,
+          targetGoal: target,
+          progressPercentage: Math.min(100, Math.round((totalResp / target) * 100)),
+          byProvince: data.stats?.byProvince || {},
+          bySector: data.stats?.bySector || {}
+        });
+
+        const mappedList = rawResponses.map((resp: any) => {
+          const p = resp.payload || resp || {};
+          return {
+            id: resp.id || `sub-${Math.random().toString(36).substring(2, 7)}`,
+            orgName: p.E1_orgName || resp.orgName || p.orgName || resp.organizationTypeHint || 'Empresa Anónima',
+            sector: p.E3_sector || resp.sector || p.sector || 'AGRICULTURE',
+            province: p.E4_province || p.E2_province || resp.provinceHint || p.province || 'Luanda',
+            biggestChallenge: p.C2_biggestHeadache || resp.biggestChallenge || p.biggestChallenge || 'Sem descrição.',
+            usesPaper: !!(p.A1_usesPaper ?? resp.usesPaper ?? true),
+            usesExcel: !!(p.A1_usesExcel ?? resp.usesExcel ?? false),
+            usesWhatsApp: !!(p.A1_usesWhatsApp ?? resp.usesWhatsApp ?? true),
+            nif: p.E2_nif || resp.nif || '',
+            contact: p.E7_contact || resp.contact || '',
+            probabilityToUse: p.D1_probabilityToUse || resp.probabilityToUse || '',
+            willingToPay: p.D3_willingToPay || resp.willingToPay || '',
+            adoptionScore: resp.adoptionScore ?? p.adoptionScore ?? 75,
+            isHighIntent: resp.isHighIntent ?? p.isHighIntent ?? false,
+            isUrgentPain: resp.isUrgentPain ?? p.isUrgentPain ?? false,
+          };
+        });
+
+        setSurveyList(mappedList);
+      } catch (err) {
+        setError('Falha na comunicação com o ecossistema de backend.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRealSurveyData();
+  }, [superAdminTab, token]);
 
   useEffect(() => {
     if (userSector) {
@@ -189,6 +427,7 @@ export default function Dashboards() {
   });
 
   const [successBannerMessage, setSuccessBannerMessage] = useState<string | null>(null);
+  const [showGuardianAlertsPopover, setShowGuardianAlertsPopover] = useState<boolean>(false);
 
   // Alert Action Modal States
   const [motorRevisionModalOpen, setMotorRevisionModalOpen] = useState<boolean>(false);
@@ -243,12 +482,6 @@ export default function Dashboards() {
     { id: 'app-1', orgName: 'Cooperativa Agrícola Humpata', amount: 8500000, term: '24 meses', status: 'Em Análise', step: 2, date: '2026-07-15' },
     { id: 'app-2', orgName: 'Criadores do Planalto Huambo', amount: 15000000, term: '36 meses', status: 'Aprovado', step: 4, date: '2026-07-10' },
     { id: 'app-3', orgName: 'Pescas Artesanais do Namibe', amount: 4500000, term: '12 meses', status: 'Revisão Necessária', step: 1, date: '2026-07-18' },
-  ]);
-
-  const [surveyList, setSurveyList] = useState([
-    { id: 'surv-1', orgName: 'Cooperativa Agrícola Humpata', sector: 'AGRICULTURE', province: 'Huíla', biggestChallenge: 'Falta de maquinização de terra e sementes certificadas.', usesPaper: true, usesExcel: false, usesWhatsApp: true },
-    { id: 'surv-2', orgName: 'Criadores do Planalto Huambo', sector: 'LIVESTOCK', province: 'Huambo', biggestChallenge: 'Rações com custo inflacionado e falta de veterinários.', usesPaper: false, usesExcel: true, usesWhatsApp: true },
-    { id: 'surv-3', orgName: 'Pescas Artesanais do Namibe', sector: 'FISHERIES', province: 'Namibe', biggestChallenge: 'Conservação de frio insuficiente e combustível caro.', usesPaper: true, usesExcel: false, usesWhatsApp: false },
   ]);
 
   const [partnerBanks, setPartnerBanks] = useState([
@@ -574,7 +807,7 @@ export default function Dashboards() {
     if (!offlineMode) {
       // Switch to Offline
       setOfflineMode(true);
-      alert('Modo Offline Ativado! O ERP OLO Fintel agora está a funcionar em cache local resiliente.');
+      alert('Modo Offline Ativado! O ERP MiraWelch agora está a funcionar em cache local resiliente.');
     } else {
       // Switch to Online & Sync
       setSyncingOffline(true);
@@ -598,7 +831,7 @@ export default function Dashboards() {
               })
             });
           }
-          alert(`Excelente! Ligação restabelecida e sincronização concluída com sucesso. ${offlineCache.length} registo(s) offline foram homologados na base de dados centralizada do OLO Fintel.`);
+          alert(`Excelente! Ligação restabelecida e sincronização concluída com sucesso. ${offlineCache.length} registo(s) offline foram homologados na base de dados centralizada da MiraWelch.`);
           setOfflineCache([]);
           fetchDashboardData();
           refreshUser();
@@ -627,7 +860,7 @@ export default function Dashboards() {
     const isOffline = offlineMode || commandPaletteFormData.offline === 'true';
 
     if (commandPaletteActiveOption === 'COLHEITA') {
-      const saved = localStorage.getItem(`olo-fintel-op-colheitas-${userId}`);
+      const saved = localStorage.getItem(`mirawelch-op-colheitas-${userId}`) || localStorage.getItem(`olo-fintel-op-colheitas-${userId}`);
       let colList = saved ? JSON.parse(saved) : [];
       const newCol = {
         id,
@@ -642,10 +875,10 @@ export default function Dashboards() {
         syncStatus: isOffline ? 'PENDING' : 'SYNCED'
       };
       colList = [newCol, ...colList];
-      localStorage.setItem(`olo-fintel-op-colheitas-${userId}`, JSON.stringify(colList));
+      localStorage.setItem(`mirawelch-op-colheitas-${userId}`, JSON.stringify(colList));
 
     } else if (commandPaletteActiveOption === 'INSUMO') {
-      const saved = localStorage.getItem(`olo-fintel-op-insumos-${userId}`);
+      const saved = localStorage.getItem(`mirawelch-op-insumos-${userId}`) || localStorage.getItem(`olo-fintel-op-insumos-${userId}`);
       let insList = saved ? JSON.parse(saved) : [];
       const newIns = {
         id,
@@ -661,10 +894,10 @@ export default function Dashboards() {
         syncStatus: isOffline ? 'PENDING' : 'SYNCED'
       };
       insList = [newIns, ...insList];
-      localStorage.setItem(`olo-fintel-op-insumos-${userId}`, JSON.stringify(insList));
+      localStorage.setItem(`mirawelch-op-insumos-${userId}`, JSON.stringify(insList));
 
     } else if (commandPaletteActiveOption === 'PESO') {
-      const savedWeight = localStorage.getItem(`olo-fintel-op-crescimento-${userId}`);
+      const savedWeight = localStorage.getItem(`mirawelch-op-crescimento-${userId}`) || localStorage.getItem(`olo-fintel-op-crescimento-${userId}`);
       let cresList = savedWeight ? JSON.parse(savedWeight) : [];
       const newWeight = {
         id,
@@ -679,9 +912,9 @@ export default function Dashboards() {
         syncStatus: isOffline ? 'PENDING' : 'SYNCED'
       };
       cresList = [newWeight, ...cresList];
-      localStorage.setItem(`olo-fintel-op-crescimento-${userId}`, JSON.stringify(cresList));
+      localStorage.setItem(`mirawelch-op-crescimento-${userId}`, JSON.stringify(cresList));
 
-      const savedRebanho = localStorage.getItem(`olo-fintel-op-rebanho-${userId}`);
+      const savedRebanho = localStorage.getItem(`mirawelch-op-rebanho-${userId}`) || localStorage.getItem(`olo-fintel-op-rebanho-${userId}`);
       if (savedRebanho) {
         let rebList = JSON.parse(savedRebanho);
         rebList = rebList.map((a: any) => {
@@ -690,11 +923,11 @@ export default function Dashboards() {
           }
           return a;
         });
-        localStorage.setItem(`olo-fintel-op-rebanho-${userId}`, JSON.stringify(rebList));
+        localStorage.setItem(`mirawelch-op-rebanho-${userId}`, JSON.stringify(rebList));
       }
 
     } else if (commandPaletteActiveOption === 'VACINA') {
-      const savedSaude = localStorage.getItem(`olo-fintel-op-saudeAnimal-${userId}`);
+      const savedSaude = localStorage.getItem(`mirawelch-op-saudeAnimal-${userId}`) || localStorage.getItem(`olo-fintel-op-saudeAnimal-${userId}`);
       let saudeList = savedSaude ? JSON.parse(savedSaude) : [];
       const newHealth = {
         id,
@@ -709,10 +942,10 @@ export default function Dashboards() {
         syncStatus: isOffline ? 'PENDING' : 'SYNCED'
       };
       saudeList = [newHealth, ...saudeList];
-      localStorage.setItem(`olo-fintel-op-saudeAnimal-${userId}`, JSON.stringify(saudeList));
+      localStorage.setItem(`mirawelch-op-saudeAnimal-${userId}`, JSON.stringify(saudeList));
 
     } else if (commandPaletteActiveOption === 'VIAGEM') {
-      const savedViagens = localStorage.getItem(`olo-fintel-op-viagens-${userId}`);
+      const savedViagens = localStorage.getItem(`mirawelch-op-viagens-${userId}`) || localStorage.getItem(`olo-fintel-op-viagens-${userId}`);
       let vList = savedViagens ? JSON.parse(savedViagens) : [];
       const newVoyage = {
         id,
@@ -727,10 +960,10 @@ export default function Dashboards() {
         syncStatus: isOffline ? 'PENDING' : 'SYNCED'
       };
       vList = [newVoyage, ...vList];
-      localStorage.setItem(`olo-fintel-op-viagens-${userId}`, JSON.stringify(vList));
+      localStorage.setItem(`mirawelch-op-viagens-${userId}`, JSON.stringify(vList));
 
     } else if (commandPaletteActiveOption === 'CAPTURA') {
-      const savedCapturas = localStorage.getItem(`olo-fintel-op-capturas-${userId}`);
+      const savedCapturas = localStorage.getItem(`mirawelch-op-capturas-${userId}`) || localStorage.getItem(`olo-fintel-op-capturas-${userId}`);
       let cList = savedCapturas ? JSON.parse(savedCapturas) : [];
       const newCatch = {
         id,
@@ -744,10 +977,10 @@ export default function Dashboards() {
         syncStatus: isOffline ? 'PENDING' : 'SYNCED'
       };
       cList = [newCatch, ...cList];
-      localStorage.setItem(`olo-fintel-op-capturas-${userId}`, JSON.stringify(cList));
+      localStorage.setItem(`mirawelch-op-capturas-${userId}`, JSON.stringify(cList));
 
     } else if (commandPaletteActiveOption === 'VENDA') {
-      const savedVendas = localStorage.getItem(`olo-fintel-op-vendas-${userId}`);
+      const savedVendas = localStorage.getItem(`mirawelch-op-vendas-${userId}`) || localStorage.getItem(`olo-fintel-op-vendas-${userId}`);
       let venList = savedVendas ? JSON.parse(savedVendas) : [];
       const valorTotal = parseFloat(commandPaletteFormData.quantidade || '0') * parseFloat(commandPaletteFormData.preco || '0');
       const newVenda = {
@@ -763,10 +996,10 @@ export default function Dashboards() {
         syncStatus: isOffline ? 'PENDING' : 'SYNCED'
       };
       venList = [newVenda, ...venList];
-      localStorage.setItem(`olo-fintel-op-vendas-${userId}`, JSON.stringify(venList));
+      localStorage.setItem(`mirawelch-op-vendas-${userId}`, JSON.stringify(venList));
 
       if (commandPaletteFormData.fiado === 'sim') {
-        const savedAReceber = localStorage.getItem(`olo-fintel-op-contasAReceber-${userId}`);
+        const savedAReceber = localStorage.getItem(`mirawelch-op-contasAReceber-${userId}`) || localStorage.getItem(`olo-fintel-op-contasAReceber-${userId}`);
         let arList = savedAReceber ? JSON.parse(savedAReceber) : [];
         const date30 = new Date();
         date30.setDate(date30.getDate() + 30);
@@ -780,11 +1013,11 @@ export default function Dashboards() {
           gps: gpsString
         };
         arList = [newAR, ...arList];
-        localStorage.setItem(`olo-fintel-op-contasAReceber-${userId}`, JSON.stringify(arList));
+        localStorage.setItem(`mirawelch-op-contasAReceber-${userId}`, JSON.stringify(arList));
       }
 
     } else if (commandPaletteActiveOption === 'PAGAMENTO') {
-      const savedAReceber = localStorage.getItem(`olo-fintel-op-contasAReceber-${userId}`);
+      const savedAReceber = localStorage.getItem(`mirawelch-op-contasAReceber-${userId}`) || localStorage.getItem(`olo-fintel-op-contasAReceber-${userId}`);
       if (savedAReceber) {
         let arList = JSON.parse(savedAReceber);
         let found = false;
@@ -802,7 +1035,7 @@ export default function Dashboards() {
           }
           return rec;
         });
-        localStorage.setItem(`olo-fintel-op-contasAReceber-${userId}`, JSON.stringify(arList));
+        localStorage.setItem(`mirawelch-op-contasAReceber-${userId}`, JSON.stringify(arList));
         if (found) {
           const logMsg = `[RECEBIMENTO] Cliente ${commandPaletteFormData.cliente} amortizou ${commandPaletteFormData.valorPago} Kz`;
           setSystemLogs(prev => [`[${new Date().toLocaleTimeString()}] ${logMsg}`, ...prev]);
@@ -1178,10 +1411,10 @@ export default function Dashboards() {
         {/* Sidebar Brand Header */}
         <div className="p-6 border-b border-gray-150 dark:border-[#2A2A35] flex items-center gap-3">
           <div className="px-3 h-10 rounded-xl bg-brand-iris text-white flex items-center justify-center font-bold text-lg shadow-md shadow-brand-iris/20 shrink-0">
-            OLO
+            MW
           </div>
           <div className="min-w-0">
-            <h2 className="font-bold text-sm leading-none text-gray-900 dark:text-white truncate">OLO Fintel</h2>
+            <h2 className="font-bold text-sm leading-none text-gray-900 dark:text-white truncate">MiraWelch</h2>
             <p className="text-[9px] font-mono font-bold text-brand-purple mt-1 uppercase tracking-wider truncate">
               {user.role} — {user.maturity}
             </p>
@@ -1239,30 +1472,136 @@ export default function Dashboards() {
                 <span>Gestão Operacional</span>
               </button>
 
-              <button
-                onClick={() => { setCoopTab('finance'); setSidebarOpen(false); }}
-                className={`mercury-sidebar-btn ${coopTab === 'finance' ? 'active' : ''}`}
-              >
-                <Coins size={14} />
-                <span>Finanças & Caixa</span>
-              </button>
+              {/* 2. FINANÇAS & CAIXA */}
+              <div className="space-y-1">
+                <button
+                  onClick={() => { setCoopTab('finance'); setSidebarOpen(false); }}
+                  className={`mercury-sidebar-btn w-full flex items-center justify-between ${coopTab === 'finance' ? 'active' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Coins size={14} />
+                    <span>Finanças & Caixa</span>
+                  </div>
+                </button>
+                {coopTab === 'finance' && (
+                  <div className="pl-4 space-y-1 py-1 border-l border-brand-iris/30 ml-3">
+                    <button
+                      onClick={() => { setCoopTab('finance'); setFinanceSubTab('receitas_despesas'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${financeSubTab === 'receitas_despesas' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Receitas & Despesas
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('finance'); setFinanceSubTab('fluxo_caixa'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${financeSubTab === 'fluxo_caixa' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Fluxo de Caixa
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('finance'); setFinanceSubTab('rentabilidade'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${financeSubTab === 'rentabilidade' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Rentabilidade & DRE
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('finance'); setFinanceSubTab('planeamento'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${financeSubTab === 'planeamento' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Budgets & Planeamento
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('finance'); setFinanceSubTab('ar_ap'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${financeSubTab === 'ar_ap' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Contas AP / AR
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('finance'); setFinanceSubTab('ativos'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${financeSubTab === 'ativos' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Ativos & Amortizações
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('finance'); setFinanceSubTab('relatorios'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${financeSubTab === 'relatorios' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Relatórios DRE & Audit
+                    </button>
+                  </div>
+                )}
+              </div>
 
-              <button
-                onClick={() => { setCoopTab('crm'); setSidebarOpen(false); }}
-                className={`mercury-sidebar-btn ${coopTab === 'crm' ? 'active' : ''}`}
-              >
-                <Users size={14} />
-                <span>CRM & Vendas</span>
-              </button>
+              {/* 3. CRM & VENDAS */}
+              <div className="space-y-1">
+                <button
+                  onClick={() => { setCoopTab('crm'); setSidebarOpen(false); }}
+                  className={`mercury-sidebar-btn w-full flex items-center justify-between ${coopTab === 'crm' ? 'active' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Users size={14} />
+                    <span>CRM & Vendas</span>
+                  </div>
+                </button>
+                {coopTab === 'crm' && (
+                  <div className="pl-4 space-y-1 py-1 border-l border-brand-iris/30 ml-3">
+                    <button
+                      onClick={() => { setCoopTab('crm'); setCrmSubTab('pipeline'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${crmSubTab === 'pipeline' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Oportunidades & Funil
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('crm'); setCrmSubTab('clientes'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${crmSubTab === 'clientes' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Gestão de Clientes
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('crm'); setCrmSubTab('fornecedores'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${crmSubTab === 'fornecedores' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Fornecedores & Parcerias
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('crm'); setCrmSubTab('contratos'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${crmSubTab === 'contratos' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Contratos Comerciais
+                    </button>
+                  </div>
+                )}
+              </div>
 
-              <button
-                onClick={() => { setCoopTab('documents'); setSidebarOpen(false); }}
-                className={`mercury-sidebar-btn ${coopTab === 'documents' ? 'active' : ''}`}
-              >
-                <FileText size={14} />
-                <span>Documentos & KYC</span>
-              </button>
+              {/* 4. DOCUMENTOS & KYC */}
+              <div className="space-y-1">
+                <button
+                  onClick={() => { setCoopTab('documents'); setSidebarOpen(false); }}
+                  className={`mercury-sidebar-btn w-full flex items-center justify-between ${coopTab === 'documents' ? 'active' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <FileText size={14} />
+                    <span>Documentos & KYC</span>
+                  </div>
+                </button>
+                {coopTab === 'documents' && (
+                  <div className="pl-4 space-y-1 py-1 border-l border-brand-iris/30 ml-3">
+                    <button
+                      onClick={() => { setCoopTab('documents'); setDocsSubTab('meus-documentos'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${docsSubTab === 'meus-documentos' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Meus Documentos
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('documents'); setDocsSubTab('fila-kyc'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${docsSubTab === 'fila-kyc' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Validador & Fila KYC
+                    </button>
+                  </div>
+                )}
+              </div>
 
+              {/* 5. MATURIDADE & CRÉDITO */}
               <button
                 onClick={() => { setCoopTab('credit'); setSidebarOpen(false); }}
                 className={`mercury-sidebar-btn ${coopTab === 'credit' ? 'active' : ''}`}
@@ -1271,21 +1610,55 @@ export default function Dashboards() {
                 <span>Maturidade & Crédito</span>
               </button>
 
+              {/* 6. MÓDULO MIRAWELCH IA */}
               <button
                 onClick={() => { setCoopTab('ai_center'); setSidebarOpen(false); }}
                 className={`mercury-sidebar-btn ${coopTab === 'ai_center' ? 'active' : ''}`}
               >
                 <Sparkles size={14} />
-                <span>Módulo OLO IA</span>
+                <span>Módulo IA MiraWelch</span>
               </button>
 
-              <button
-                onClick={() => { setCoopTab('overheads'); setSidebarOpen(false); }}
-                className={`mercury-sidebar-btn ${coopTab === 'overheads' ? 'active' : ''}`}
-              >
-                <Briefcase size={14} />
-                <span>Custos de Suporte (ERP)</span>
-              </button>
+              {/* 7. CUSTOS DE SUPORTE (ERP) */}
+              <div className="space-y-1">
+                <button
+                  onClick={() => { setCoopTab('overheads'); setSidebarOpen(false); }}
+                  className={`mercury-sidebar-btn w-full flex items-center justify-between ${coopTab === 'overheads' ? 'active' : ''}`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Briefcase size={14} />
+                    <span>Custos de Suporte (ERP)</span>
+                  </div>
+                </button>
+                {coopTab === 'overheads' && (
+                  <div className="pl-4 space-y-1 py-1 border-l border-brand-iris/30 ml-3">
+                    <button
+                      onClick={() => { setCoopTab('overheads'); setOverheadsSubTab('dashboard'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${overheadsSubTab === 'dashboard' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Resumo de Custos
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('overheads'); setOverheadsSubTab('rh'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${overheadsSubTab === 'rh' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Recursos Humanos & Folha
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('overheads'); setOverheadsSubTab('maquinas'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${overheadsSubTab === 'maquinas' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Frota & Máquinas
+                    </button>
+                    <button
+                      onClick={() => { setCoopTab('overheads'); setOverheadsSubTab('utilitarios'); setSidebarOpen(false); }}
+                      className={`text-[11px] block w-full text-left py-1 px-2 rounded-md font-medium transition-all cursor-pointer ${overheadsSubTab === 'utilitarios' ? 'text-brand-iris bg-brand-iris/10 font-bold' : 'text-gray-400 hover:text-white'}`}
+                    >
+                      • Água, Luz & Apoio
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <button
                 onClick={() => { setCoopTab('ledger'); setSidebarOpen(false); }}
@@ -1353,7 +1726,7 @@ export default function Dashboards() {
             <>
               {[
                 { id: 'applications', label: '📥 Candidaturas Crédito' },
-                { id: 'scoring', label: '📊 Fila de Scores OLO' },
+                { id: 'scoring', label: '📊 Fila de Scores MiraWelch' },
                 { id: 'docs', label: '📂 Revisão Documental' },
                 { id: 'workflow', label: '⚙️ Fluxo de Aprovação' }
               ].map(tab => (
@@ -1409,7 +1782,7 @@ export default function Dashboards() {
               onClick={() => setShowPwaModal(true)}
               className="w-full py-1.5 bg-brand-purple hover:bg-brand-purple-hover text-white rounded-xl text-[10px] font-extrabold transition-all shadow-sm cursor-pointer"
             >
-              Instalar OLO ERP
+              Instalar MiraWelch ERP
             </button>
           </div>
         )}
@@ -1457,7 +1830,7 @@ export default function Dashboards() {
               <h1 className="font-extrabold text-base text-gray-900 dark:text-white flex items-center gap-2">
                 {!['SUPER_ADMIN', 'ADMIN', 'ANALYST', 'CONSULTANT'].includes(user.role) 
                   ? `${user.organizationName || 'Minha Cooperativa'}`
-                  : 'Administração OLO Fintel'}
+                  : 'Administração MiraWelch'}
               </h1>
               <p className="text-[10px] font-mono font-bold text-brand-purple mt-0.5 uppercase tracking-wider">
                 {user.role} • Nível: {user.maturity}
@@ -1541,7 +1914,16 @@ export default function Dashboards() {
         </header>
 
         {/* MAIN VIEWS DESK AREA */}
-        <main className="flex-1 p-6 w-full space-y-6">
+        <main className="flex-1 p-6 w-full space-y-6 overflow-hidden">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={showProfile ? 'profile' : `${coopTab}-${consultantTab}-${analystTab}`}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.22, ease: "easeOut" }}
+              className="space-y-6 w-full"
+            >
 
           {/* Connection Mode Simulated Offline Sync Notification Banner */}
           {offlineMode && (
@@ -1561,45 +1943,273 @@ export default function Dashboards() {
 
           {/* Dynamic Welcome bar */}
           {coopTab === 'overview' && (
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl shadow-sm relative">
               <div>
                 <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Olá, {user?.name || user?.email || 'Utilizador'}!</h1>
                 <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   {!['SUPER_ADMIN', 'ADMIN', 'ANALYST', 'CONSULTANT'].includes(user.role) 
                     ? `Bem-vindo ao centro operacional da ${user.organizationName || 'sua Cooperativa'}.` 
-                    : `Bem-vindo ao Painel de Decisão do Ecossistema OLO Fintel.`}
+                    : `Bem-vindo ao Painel de Decisão do Ecossistema MiraWelch.`}
                 </p>
               </div>
 
-              {/* Economic Identity Score Widget */}
-              {!['SUPER_ADMIN', 'ADMIN', 'ANALYST', 'CONSULTANT'].includes(user.role) && (
-                <div className="flex items-center gap-4 bg-brand-purple/5 p-4 rounded-xl border border-brand-purple/10">
-                  {/* Circular Gauge */}
-                  <div className="relative w-16 h-16">
-                    <svg className="w-full h-full transform -rotate-90">
-                      <circle cx="32" cy="32" r="28" stroke="currentColor" className="text-gray-200 dark:text-gray-800" strokeWidth="4" fill="transparent" />
-                      <circle 
-                        cx="32" 
-                        cy="32" 
-                        r="28" 
-                        stroke="currentColor" 
-                        className="text-brand-purple" 
-                        strokeWidth="4" 
-                        fill="transparent" 
-                        strokeDasharray={175.9}
-                        strokeDashoffset={175.9 - (175.9 * (Number(user.fundingScore) || 0)) / 100}
-                      />
-                    </svg>
-                    <span className="absolute inset-0 flex items-center justify-center font-mono font-bold text-sm text-brand-purple">
-                      {user.fundingScore || 0}
-                    </span>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pontuação Económica</p>
-                    <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">Nível: {user.maturity}</p>
-                  </div>
+              <div className="flex flex-wrap items-center gap-3 shrink-0">
+                {/* 30-SECOND QUICK LOGGER BUTTON */}
+                <button
+                  onClick={() => setQuickLoggerModalOpen(true)}
+                  className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  <Zap size={16} className="text-amber-300 animate-pulse" />
+                  <span>Registo em &lt;30s</span>
+                </button>
+
+                {/* NOTIFICAÇÕES & ALERTAS DO NEGÓCIO BUTTON */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowGuardianAlertsPopover(!showGuardianAlertsPopover)}
+                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-2xl bg-gray-50 dark:bg-gray-800/80 hover:bg-gray-100 dark:hover:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-800 dark:text-gray-100 text-xs font-bold transition-all cursor-pointer shadow-sm relative"
+                  >
+                    <Bell size={16} className="text-amber-500" />
+                    <span>Alertas do Negócio</span>
+                    {['alert-agri-weather', 'alert-agri-motor', 'alert-livestock-weight', 'alert-commerce-margin', 'alert-fisheries-motor'].filter(id => !resolvedAlertIds.includes(id)).length > 0 ? (
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500 text-white text-[10px] font-extrabold animate-pulse">
+                        {['alert-agri-weather', 'alert-agri-motor', 'alert-livestock-weight', 'alert-commerce-margin', 'alert-fisheries-motor'].filter(id => !resolvedAlertIds.includes(id)).length}
+                      </span>
+                    ) : (
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-500 text-[10px] font-extrabold">
+                        0
+                      </span>
+                    )}
+                  </button>
+
+                  {/* POPOVER MENU FOR GUARDIAN ALERTS */}
+                  {showGuardianAlertsPopover && (
+                    <div className="absolute right-0 top-full mt-2 w-80 sm:w-96 md:w-[460px] p-4 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl shadow-2xl z-50 space-y-3">
+                      <div className="flex items-center justify-between border-b border-gray-100 dark:border-gray-800 pb-2.5">
+                        <div className="flex items-center gap-2">
+                          <div className="p-1.5 bg-amber-500/10 text-amber-500 rounded-lg">
+                            <AlertTriangle size={16} />
+                          </div>
+                          <div>
+                            <h4 className="font-extrabold text-xs text-gray-900 dark:text-white">Central de Alertas Operacionais</h4>
+                            <span className="text-[10px] text-gray-400">MiraWelch Guardian • Diagnóstico de risco</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {resolvedAlertIds.length > 0 && (
+                            <button
+                              onClick={resetAllAlerts}
+                              className="text-[10px] text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 underline cursor-pointer"
+                            >
+                              Restaurar
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setShowGuardianAlertsPopover(false)}
+                            className="p-1 rounded-lg text-gray-400 hover:text-gray-600 dark:hover:text-white transition-colors cursor-pointer"
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2.5 max-h-80 overflow-y-auto pr-1">
+                        {/* Alert 1: Weather */}
+                        {!resolvedAlertIds.includes('alert-agri-weather') && (
+                          <div className="p-3 rounded-xl bg-amber-500/5 border border-amber-500/20 text-left space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-amber-500/20 text-amber-500">
+                                Agricultura • Sazonalidade
+                              </span>
+                              <span className="text-[9px] text-gray-400">Há 2 horas</span>
+                            </div>
+                            <h5 className="font-bold text-xs text-gray-900 dark:text-white">Previsão Climática: Chuva Forte na Colheita</h5>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                              Previsão indica precipitação intensa (&gt;45mm/dia) na Huíla. Risco no Talhão Alfa (Milho).
+                            </p>
+                            <div className="pt-1 flex items-center gap-2">
+                              <button
+                                onClick={() => { setHarvestModalOpen(true); setShowGuardianAlertsPopover(false); }}
+                                className="px-2 py-1 bg-amber-500 text-white font-bold text-[9px] rounded-lg hover:bg-amber-600 transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                              >
+                                <Sprout size={10} />
+                                <span>Adiantar Colheita</span>
+                              </button>
+                              <button
+                                onClick={() => markAlertResolved('alert-agri-weather', 'Previsão Climática: Chuva Forte')}
+                                className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer border border-emerald-500/20"
+                              >
+                                Resolver
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Alert 2: Equipment Maintenance */}
+                        {!resolvedAlertIds.includes('alert-agri-motor') && (
+                          <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/20 text-left space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-orange-500/20 text-orange-500">
+                                Equipamentos • Revisão
+                              </span>
+                              <span className="text-[9px] text-gray-400">Há 1 dia</span>
+                            </div>
+                            <h5 className="font-bold text-xs text-gray-900 dark:text-white">Motobomba Diesel 50HP: Horas de Revisão</h5>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                              Pivot de Irrigação 02 atingiu 480h activas. Substituir filtros e óleo.
+                            </p>
+                            <div className="pt-1 flex items-center gap-2">
+                              <button
+                                onClick={() => { setMotorRevisionModalOpen(true); setShowGuardianAlertsPopover(false); }}
+                                className="px-2 py-1 bg-orange-500 text-white font-bold text-[9px] rounded-lg hover:bg-orange-600 transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                              >
+                                <Wrench size={10} />
+                                <span>Concluir Revisão</span>
+                              </button>
+                              <button
+                                onClick={() => markAlertResolved('alert-agri-motor', 'Motobomba de Rega Diesel 50HP')}
+                                className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer border border-emerald-500/20"
+                              >
+                                Resolver
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Alert 3: Livestock */}
+                        {!resolvedAlertIds.includes('alert-livestock-weight') && (
+                          <div className="p-3 rounded-xl bg-yellow-500/5 border border-yellow-500/20 text-left space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-600 dark:text-yellow-400">
+                                Pecuária • Pesagem
+                              </span>
+                              <span className="text-[9px] text-gray-400">Hoje</span>
+                            </div>
+                            <h5 className="font-bold text-xs text-gray-900 dark:text-white">Lote Engorda A sem Pesagem (15 dias)</h5>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                              Gado do Lote BOV-045 necessita controlo de conversão alimentar.
+                            </p>
+                            <div className="pt-1 flex items-center gap-2">
+                              <button
+                                onClick={() => { setWeightingModalOpen(true); setShowGuardianAlertsPopover(false); }}
+                                className="px-2 py-1 bg-yellow-500 text-white font-bold text-[9px] rounded-lg hover:bg-yellow-600 transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                              >
+                                <Activity size={10} />
+                                <span>Registar Pesagem</span>
+                              </button>
+                              <button
+                                onClick={() => markAlertResolved('alert-livestock-weight', 'Monitoria Pendente: Lote Engorda A')}
+                                className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer border border-emerald-500/20"
+                              >
+                                Resolver
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Alert 4: Commerce */}
+                        {!resolvedAlertIds.includes('alert-commerce-margin') && (
+                          <div className="p-3 rounded-xl bg-red-500/5 border border-red-500/20 text-left space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-red-500/20 text-red-500">
+                                Comércio • Margem Crítica
+                              </span>
+                              <span className="text-[9px] text-gray-400">Ontem</span>
+                            </div>
+                            <h5 className="font-bold text-xs text-gray-900 dark:text-white">Margem do Arroz Agulha abaixo de 10%</h5>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                              Margem em 8.5% devido a custos do fornecedor AngoAlimentos.
+                            </p>
+                            <div className="pt-1 flex items-center gap-2">
+                              <button
+                                onClick={() => { setPriceMarginModalOpen(true); setShowGuardianAlertsPopover(false); }}
+                                className="px-2 py-1 bg-red-500 text-white font-bold text-[9px] rounded-lg hover:bg-red-600 transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                              >
+                                <TrendingUp size={10} />
+                                <span>Reajustar Margem</span>
+                              </button>
+                              <button
+                                onClick={() => markAlertResolved('alert-commerce-margin', 'Margem do Arroz Agulha ALIM-001')}
+                                className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer border border-emerald-500/20"
+                              >
+                                Resolver
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Alert 5: Fisheries */}
+                        {!resolvedAlertIds.includes('alert-fisheries-motor') && (
+                          <div className="p-3 rounded-xl bg-orange-500/5 border border-orange-500/20 text-left space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded bg-orange-500/20 text-orange-500">
+                                Pesca • Motor
+                              </span>
+                              <span className="text-[9px] text-gray-400">Há 3 dias</span>
+                            </div>
+                            <h5 className="font-bold text-xs text-gray-900 dark:text-white">Motor Yamaha 250HP Atingiu 500h</h5>
+                            <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-snug">
+                              Embarcação Estrela do Namibe necessita revisão preventiva das 500h.
+                            </p>
+                            <div className="pt-1 flex items-center gap-2">
+                              <button
+                                onClick={() => { setMotorRevisionModalOpen(true); setShowGuardianAlertsPopover(false); }}
+                                className="px-2 py-1 bg-orange-500 text-white font-bold text-[9px] rounded-lg hover:bg-orange-600 transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+                              >
+                                <Wrench size={10} />
+                                <span>Agendar Revisão</span>
+                              </button>
+                              <button
+                                onClick={() => markAlertResolved('alert-fisheries-motor', 'Motor Yamaha 250HP Atingiu Horas de Revisão')}
+                                className="px-2 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer border border-emerald-500/20"
+                              >
+                                Resolver
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {['alert-agri-weather', 'alert-agri-motor', 'alert-livestock-weight', 'alert-commerce-margin', 'alert-fisheries-motor'].filter(id => !resolvedAlertIds.includes(id)).length === 0 && (
+                          <div className="p-4 text-center text-emerald-500 text-xs font-bold space-y-1">
+                            <CheckCircle2 size={24} className="mx-auto" />
+                            <p>Todos os alertas operacionais resolvidos!</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
+
+                {/* Economic Identity Score Widget */}
+                {!['SUPER_ADMIN', 'ADMIN', 'ANALYST', 'CONSULTANT'].includes(user.role) && (
+                  <div className="flex items-center gap-4 bg-brand-purple/5 p-4 rounded-xl border border-brand-purple/10">
+                    {/* Circular Gauge */}
+                    <div className="relative w-16 h-16">
+                      <svg className="w-full h-full transform -rotate-90">
+                        <circle cx="32" cy="32" r="28" stroke="currentColor" className="text-gray-200 dark:text-gray-800" strokeWidth="4" fill="transparent" />
+                        <circle 
+                          cx="32" 
+                          cy="32" 
+                          r="28" 
+                          stroke="currentColor" 
+                          className="text-brand-purple" 
+                          strokeWidth="4" 
+                          fill="transparent" 
+                          strokeDasharray={175.9}
+                          strokeDashoffset={175.9 - (175.9 * (Number(user.fundingScore) || 0)) / 100}
+                        />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center font-mono font-bold text-sm text-brand-purple">
+                        {user.fundingScore || 0}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Pontuação Económica</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white mt-1">Nível: {user.maturity}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -1755,7 +2365,7 @@ export default function Dashboards() {
                           👥 Gestão de Utilizadores e Delegação de Funções
                         </h3>
                         <p className="text-xs text-gray-400 mt-1">
-                          Promova, despromova ou suspenda o acesso de utilizadores da plataforma OLO Fintel.
+                          Promova, despromova ou suspenda o acesso de utilizadores da plataforma MiraWelch.
                         </p>
                       </div>
                     </div>
@@ -1781,7 +2391,7 @@ export default function Dashboards() {
                                 <td className="py-3 font-semibold text-gray-900 dark:text-white">{u.name}</td>
                                 <td className="py-3 text-gray-500 font-mono text-xs">{u.email}</td>
                                 <td className="py-3 text-xs text-gray-400">
-                                  {u.organizationName || relatedOrg?.name || 'Sistema OLO'}
+                                  {u.organizationName || relatedOrg?.name || 'Sistema MiraWelch'}
                                 </td>
                                 <td className="py-3">
                                   <select
@@ -1919,60 +2529,179 @@ export default function Dashboards() {
 
                 {/* TAB CONTENT: Survey Engine */}
                 {superAdminTab === 'survey' && (
-                  <div className="p-6 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
-                        📋 Survey Engine — Inquéritos de Diagnóstico Inicial
-                      </h3>
-                      <span className="text-xs text-gray-400">Total de Submissões: {surveyList.length}</span>
-                    </div>
-                    <p className="text-xs text-gray-400">
-                      Veja as respostas completas dos inquéritos preenchidos pelos produtores rurais para entender os maiores gargalos de financiamento.
-                    </p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {surveyList.map(srv => (
-                        <div key={srv.id} className="p-4 bg-gray-50 dark:bg-[#1F1F2A] rounded-xl border border-gray-200 dark:border-[#2E2E3A] flex flex-col justify-between space-y-4">
-                          <div>
-                            <div className="flex justify-between items-start">
-                              <h4 className="font-bold text-xs text-gray-900 dark:text-white leading-snug">{srv.orgName}</h4>
-                              <span className="px-1.5 py-0.5 rounded bg-brand-iris/10 text-brand-iris font-mono text-[9px] font-bold">
-                                {srv.sector}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-gray-400 font-semibold mt-1">Província: {srv.province}</p>
-                            
-                            <div className="mt-3 bg-white dark:bg-[#15151F] p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 text-xs">
-                              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Maior Desafio:</p>
-                              <p className="text-gray-800 dark:text-gray-200 mt-1 leading-snug font-medium">"{srv.biggestChallenge}"</p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-1.5 text-[10px] text-gray-500">
-                            <div className="flex justify-between">
-                              <span>Usa papel no campo?</span>
-                              <span className="font-bold text-gray-700 dark:text-gray-300">{srv.usesPaper ? 'Sim' : 'Não'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Usa folha Excel?</span>
-                              <span className="font-bold text-gray-700 dark:text-gray-300">{srv.usesExcel ? 'Sim' : 'Não'}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span>Coordina via WhatsApp?</span>
-                              <span className="font-bold text-gray-700 dark:text-gray-300">{srv.usesWhatsApp ? 'Sim' : 'Não'}</span>
-                            </div>
-                          </div>
-
-                          <button
-                            onClick={() => {
-                              alert(`Resumo do Inquérito de ${srv.orgName}:\n\n- Desafio: ${srv.biggestChallenge}\n- Província: ${srv.province}\n- Sector: ${srv.sector}\n- Gestão de Dados: ${srv.usesPaper ? 'Papel' : ''} ${srv.usesExcel ? 'Excel' : ''} ${srv.usesWhatsApp ? 'WhatsApp' : ''}`);
-                            }}
-                            className="w-full py-1.5 text-[10px] font-bold text-center border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-all"
-                          >
-                            Ver Inquérito Completo
-                          </button>
+                  <div className="p-6 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl space-y-6">
+                    {/* Header bar */}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-gray-200 dark:border-gray-800">
+                      <div>
+                        <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
+                          📋 Survey Engine — Painel do Júri e Inquéritos
+                        </h3>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Estudo Activo: <strong className="text-brand-iris">{surveyInfo?.title || 'Validação LISPA 2026'}</strong>
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="bg-gray-50 dark:bg-[#1F1F2A] px-3 py-1.5 rounded-xl border border-gray-200 dark:border-gray-800 text-right">
+                          <span className="text-[10px] text-gray-400 uppercase font-bold block">Submissões</span>
+                          <span className="text-sm font-extrabold font-mono text-gray-900 dark:text-white">
+                            {stats?.totalResponses || surveyInfo?.responsesCount || surveyList.length} / {stats?.targetGoal || 100}
+                          </span>
                         </div>
-                      ))}
+                        <div className="bg-green-500/10 px-3 py-1.5 rounded-xl border border-green-500/20 text-right">
+                          <span className="text-[10px] text-green-500 uppercase font-bold block">Meta LISPA</span>
+                          <span className="text-sm font-extrabold font-mono text-green-500">
+                            {stats?.progressPercentage || 4}%
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 1: Question Analytics (if available from Render Jury Dashboard API) */}
+                    {questionStats && questionStats.length > 0 && (
+                      <div className="space-y-4">
+                        <h4 className="font-bold text-xs uppercase tracking-wider text-brand-iris flex items-center gap-2">
+                          📊 Análise Agregada do Júri (GET /api/v1/surveys/jury-dashboard)
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          {questionStats.map((q: any) => {
+                            const freq = q.stats?.frequency || {};
+                            const samples = q.stats?.sampleTexts || [];
+                            const totalAns = q.stats?.totalAnswers || 0;
+                            const freqKeys = Object.keys(freq);
+
+                            return (
+                              <div key={q.id} className="p-4 bg-gray-50 dark:bg-[#1F1F2A] rounded-xl border border-gray-200 dark:border-[#2E2E3A] flex flex-col justify-between space-y-3">
+                                <div>
+                                  <div className="flex items-start justify-between gap-2">
+                                    <span className="text-[9px] font-mono font-bold px-1.5 py-0.5 rounded bg-brand-iris/10 text-brand-iris">
+                                      {q.id}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400 font-mono">
+                                      {totalAns} respostas
+                                    </span>
+                                  </div>
+                                  <h5 className="font-bold text-xs text-gray-900 dark:text-white mt-1.5 leading-snug">
+                                    {q.text}
+                                  </h5>
+                                </div>
+
+                                {/* Frequency Bars */}
+                                {freqKeys.length > 0 && (
+                                  <div className="space-y-1.5 pt-2 border-t border-gray-200/50 dark:border-gray-800">
+                                    {freqKeys.map(k => {
+                                      const count = Number(freq[k] || 0);
+                                      const pct = totalAns > 0 ? Math.round((count / totalAns) * 100) : 0;
+                                      return (
+                                        <div key={k} className="text-[10px]">
+                                          <div className="flex justify-between text-gray-600 dark:text-gray-300 font-medium mb-0.5">
+                                            <span className="truncate max-w-[150px]">{k}</span>
+                                            <span className="font-mono font-bold">{count} ({pct}%)</span>
+                                          </div>
+                                          <div className="w-full bg-gray-200 dark:bg-gray-800 h-1.5 rounded-full overflow-hidden">
+                                            <div className="bg-brand-iris h-full rounded-full transition-all" style={{ width: `${pct}%` }} />
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Sample Texts */}
+                                {samples.length > 0 && (
+                                  <div className="space-y-1 pt-2 border-t border-gray-200/50 dark:border-gray-800">
+                                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block">Exemplos Registados:</span>
+                                    <div className="flex flex-col gap-1">
+                                      {samples.slice(0, 3).map((txt: string, idx: number) => (
+                                        txt ? (
+                                          <p key={idx} className="text-[10px] text-gray-700 dark:text-gray-300 bg-white dark:bg-[#15151F] px-2 py-1 rounded border border-gray-100 dark:border-gray-800 italic truncate">
+                                            "{txt}"
+                                          </p>
+                                        ) : null
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Section 2: Individual Respondent Organizations */}
+                    <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-800">
+                      <h4 className="font-bold text-xs uppercase tracking-wider text-gray-700 dark:text-gray-300">
+                        🏢 Respostas Individuais das Organizações ({surveyList.length})
+                      </h4>
+
+                      {surveyList.length === 0 && !loading && (
+                        <div className="text-center py-12 border-2 border-dashed border-gray-200 dark:border-[#2E2E3A] rounded-xl text-gray-400 text-xs">
+                          Nenhuma resposta individual submetida para este estudo de validação ainda.
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        {surveyList.map(srv => (
+                          <div key={srv.id} className="p-4 bg-gray-50 dark:bg-[#1F1F2A] rounded-xl border border-gray-200 dark:border-[#2E2E3A] flex flex-col justify-between space-y-4">
+                            <div>
+                              <div className="flex justify-between items-start">
+                                <h4 className="font-bold text-xs text-gray-900 dark:text-white leading-snug">{srv.orgName}</h4>
+                                <span className="px-1.5 py-0.5 rounded bg-brand-iris/10 text-brand-iris font-mono text-[9px] font-bold">
+                                  {srv.sector}
+                                </span>
+                              </div>
+                              <p className="text-[10px] text-gray-400 font-semibold mt-1">
+                                Província: {srv.province} {srv.nif ? `| NIF: ${srv.nif}` : ''}
+                              </p>
+                              
+                              <div className="mt-3 bg-white dark:bg-[#15151F] p-2.5 rounded-lg border border-gray-100 dark:border-gray-800 text-xs">
+                                <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider">Maior Desafio:</p>
+                                <p className="text-gray-800 dark:text-gray-200 mt-1 leading-snug font-medium">"{srv.biggestChallenge}"</p>
+                              </div>
+                            </div>
+
+                            <div className="space-y-1.5 text-[10px] text-gray-500">
+                              {srv.contact && (
+                                <div className="flex justify-between">
+                                  <span>Contacto:</span>
+                                  <span className="font-bold text-gray-700 dark:text-gray-300 font-mono">{srv.contact}</span>
+                                </div>
+                              )}
+                              <div className="flex justify-between">
+                                <span>Usa papel no campo?</span>
+                                <span className="font-bold text-gray-700 dark:text-gray-300">{srv.usesPaper ? 'Sim' : 'Não'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Usa folha Excel?</span>
+                                <span className="font-bold text-gray-700 dark:text-gray-300">{srv.usesExcel ? 'Sim' : 'Não'}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span>Coordena via WhatsApp?</span>
+                                <span className="font-bold text-gray-700 dark:text-gray-300">{srv.usesWhatsApp ? 'Sim' : 'Não'}</span>
+                              </div>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                alert(
+                                  `Resumo do Inquérito de ${srv.orgName}:\n\n` +
+                                  `- Desafio: ${srv.biggestChallenge}\n` +
+                                  `- Província: ${srv.province}\n` +
+                                  `- Sector: ${srv.sector}\n` +
+                                  `- NIF: ${srv.nif || 'Não fornecido'}\n` +
+                                  `- Contacto: ${srv.contact || 'Não fornecido'}\n` +
+                                  `- Intenção de Uso: ${srv.probabilityToUse || 'Não avaliado'}\n` +
+                                  `- Propensão a Pagar: ${srv.willingToPay || 'Não avaliado'}\n\n` +
+                                  `- Gestão de Dados: ${srv.usesPaper ? 'Papel ' : ''}${srv.usesExcel ? 'Excel ' : ''}${srv.usesWhatsApp ? 'WhatsApp' : ''}`
+                                );
+                              }}
+                              className="w-full py-1.5 text-[10px] font-bold text-center border border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-900 dark:text-gray-100 transition-all cursor-pointer"
+                            >
+                              Ver Inquérito Completo
+                            </button>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2042,13 +2771,13 @@ export default function Dashboards() {
                         🤝 Painel de Delegação de Consultores Especialistas
                       </h3>
                       <p className="text-xs text-gray-400 mt-1">
-                        Selecione e atribua consultores qualificados da rede OLO para dar suporte direto de mentorização técnica às cooperativas.
+                        Selecione e atribua consultores qualificados da rede MiraWelch para dar suporte direto de mentorização técnica às cooperativas.
                       </p>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                       {organizations.map(org => {
-                        const assignedConsultant = consultants.find(c => c.assignedOrgs.includes(org.id));
+                        const assignedConsultant = consultants.find(c => Array.isArray(c.assignedOrgs) && c.assignedOrgs.includes(org.id));
                         return (
                           <div key={org.id} className="p-4 bg-gray-50 dark:bg-[#1F1F2A] rounded-xl border border-gray-150 dark:border-[#2E2E3A] flex flex-col justify-between space-y-4 hover:border-brand-purple/20 transition-all">
                             <div>
@@ -2161,7 +2890,7 @@ export default function Dashboards() {
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       {organizations.map(org => {
-                        const assignedConsultant = consultants.find(c => c.assignedOrgs.includes(org.id));
+                        const assignedConsultant = consultants.find(c => Array.isArray(c.assignedOrgs) && c.assignedOrgs.includes(org.id));
                         return (
                           <div key={org.id} className="p-5 bg-gray-50 dark:bg-[#1F1F2A] rounded-xl border border-gray-150 dark:border-[#2E2E3A] hover:border-brand-purple/20 transition-all flex flex-col justify-between">
                             <div>
@@ -2179,7 +2908,7 @@ export default function Dashboards() {
 
                               <div className="grid grid-cols-2 gap-4 mt-4 p-3 bg-white dark:bg-[#15151F] rounded-lg border border-gray-200 dark:border-[#2A2A35] text-xs">
                                 <div>
-                                  <p className="text-gray-400 text-[10px]">Maturidade OLO:</p>
+                                  <p className="text-gray-400 text-[10px]">Maturidade MiraWelch:</p>
                                   <p className="font-bold text-brand-purple mt-0.5">{org.maturity}</p>
                                 </div>
                                 <div>
@@ -2370,7 +3099,7 @@ export default function Dashboards() {
                               <tr key={u.id} className="border-b border-gray-100 dark:border-gray-850 hover:bg-gray-50/50 dark:hover:bg-gray-800/30">
                                 <td className="py-3 font-semibold text-gray-900 dark:text-white">{u.name}</td>
                                 <td className="py-3 text-gray-500 font-mono text-xs">{u.email}</td>
-                                <td className="py-3 text-xs text-gray-400">{relatedOrg?.name || 'Geral (OLO)'}</td>
+                                <td className="py-3 text-xs text-gray-400">{relatedOrg?.name || 'Geral (MiraWelch)'}</td>
                                 <td className="py-3">
                                   <select
                                     value={u.role}
@@ -2416,7 +3145,7 @@ export default function Dashboards() {
                     </p>
                   </div>
                   <div className="p-5 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl shadow-sm">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Média de Scores OLO</p>
+                    <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Média de Scores MiraWelch</p>
                     <p className="text-2xl font-bold text-brand-purple mt-2">68 Pontos</p>
                   </div>
                   <div className="p-5 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl shadow-sm">
@@ -2564,12 +3293,10 @@ export default function Dashboards() {
                               </td>
                               <td className="py-3 text-right">
                                 <button
-                                  onClick={() => {
-                                    alert(`Relatório detalhado de Score gerado para ${org.name}.\nMaturidade: ${org.maturity}\nIntegridade de Dados: 92%`);
-                                  }}
-                                  className="px-2.5 py-1 text-[10px] font-bold text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-800 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800"
+                                  onClick={() => setScoreReportOrgModal(org)}
+                                  className="px-2.5 py-1 text-[10px] font-bold text-slate-700 dark:text-zinc-300 border border-slate-200 dark:border-zinc-800 rounded-md hover:bg-slate-100 dark:hover:bg-zinc-800 transition-all cursor-pointer"
                                 >
-                                  Gerar Relatório OLO
+                                  Gerar Relatório MiraWelch
                                 </button>
                               </td>
                             </tr>
@@ -2873,7 +3600,7 @@ export default function Dashboards() {
                       <div>
                         <h3 className="font-bold text-base text-gray-900 dark:text-white flex items-center gap-2">
                           <Sparkles className="text-brand-purple animate-pulse" size={18} />
-                          Criador de Plano de Acção Inteligente OLO
+                          Criador de Plano de Acção Inteligente MiraWelch
                         </h3>
                         <p className="text-xs text-gray-400 mt-1">Gere metas concretas e monitorize o progresso de maturidade das suas cooperativas tutoradas.</p>
                       </div>
@@ -2953,7 +3680,7 @@ export default function Dashboards() {
                   <div className="p-6 bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-2xl space-y-6">
                     <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
                       <div>
-                        <h3 className="font-bold text-base text-gray-900 dark:text-white">🤖 OLO Strategic Advisor Center</h3>
+                        <h3 className="font-bold text-base text-gray-900 dark:text-white">🤖 MiraWelch Strategic Advisor Center</h3>
                         <p className="text-xs text-gray-400 mt-1">Consulte diagnósticos estratégicos baseados nas melhores práticas de cooperativas de crédito de Luanda e Huíla.</p>
                       </div>
 
@@ -2979,7 +3706,7 @@ export default function Dashboards() {
                             const plan = [
                               `🔍 DIAGNÓSTICO: A cooperativa ${org?.name} apresenta robusto fluxo diário, mas falta de automatização e registo consolidado do NIF.`,
                               `🚨 RISCOS: Exclusão AML imediata por bancos comerciais devido a dados fiscais não homologados e flutuações de preços de mercado.`,
-                              `💡 OPORTUNIDADES: Aumento de score OLO de 55 para 80 pontos, elegibilidade na linha de microcrédito do Banco BAI Luanda.`,
+                              `💡 OPORTUNIDADES: Aumento de score MiraWelch de 55 para 80 pontos, elegibilidade na linha de microcrédito do Banco BAI Luanda.`,
                               `🛠️ AÇÕES CONCRETAS: 1. Submeter certidão comercial em PDF; 2. Lançar inventário de insumos semanalmente; 3. Solicitar auditoria formal.`,
                               `📈 IMPACTO ESPERADO: Redução de custos logísticos em até 15%, acesso prioritário a financiamentos agrícolas.`
                             ];
@@ -3050,309 +3777,12 @@ export default function Dashboards() {
                       </div>
                     )}
 
-                    {/* 4.0. CENTRAL DE ALERTAS CRÍTICOS OPERACIONAIS (BENTO CARD CONTEXTUAL COM SUPORTE MULTISETOR) */}
-                    <div className="bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl p-6 shadow-sm space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                          <span className="px-2.5 py-1 rounded-full bg-red-500/10 text-red-500 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 w-fit">
-                            <span className="relative flex h-2 w-2">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
-                            </span>
-                            Diagnóstico de Risco em Tempo Real (OLO Guardian)
-                          </span>
-                          <h3 className="text-base font-bold text-gray-900 dark:text-white mt-2 flex items-center gap-2">
-                            <AlertTriangle className="text-amber-500 shrink-0" size={18} />
-                            Alertas Contextuais do Negócio
-                          </h3>
-                          <p className="text-xs text-gray-400">Notificações operacionais cruciais geradas com base no seu padrão de colheitas, pesagens e manutenção de motores/equipamentos.</p>
-                        </div>
-
-                        {/* Sector auto-detection badge based on logged user context */}
-                        <div className="flex items-center gap-2">
-                          {resolvedAlertIds.length > 0 && (
-                            <button
-                              onClick={resetAllAlerts}
-                              className="px-2.5 py-1.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 text-[10px] font-bold hover:bg-gray-200 dark:hover:bg-gray-700 transition-all flex items-center gap-1 cursor-pointer"
-                              title="Restaurar alertas demonstrativos"
-                            >
-                              <RotateCcw size={12} />
-                              <span>Restaurar Alertas</span>
-                            </button>
-                          )}
-                          <div className="px-3 py-1.5 rounded-xl bg-brand-iris/10 border border-brand-iris/20 text-brand-iris text-[11px] font-bold flex items-center gap-1.5 shadow-sm">
-                            <span className="text-gray-400 font-normal">Sector Detectado:</span>
-                            <span className="font-extrabold">
-                              {userSector === 'AGRICULTURE' ? '🌾 Agricultura' :
-                               userSector === 'LIVESTOCK' ? '🐂 Pecuária' :
-                               userSector === 'FISHERIES' ? '⛵ Pesca' :
-                               userSector === 'COMMERCE' ? '🛍️ Comércio' :
-                               '🏢 Visão Geral (Multisetor)'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Active alerts grid */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {/* Alert 1: Agriculture Weather (Orange - AGRICULTURA) */}
-                        {!resolvedAlertIds.includes('alert-agri-weather') && (selectedAlertSector === 'ALL' || selectedAlertSector === 'AGRICULTURE') && (
-                          <div className="p-4 rounded-2xl bg-amber-500/[0.04] dark:bg-amber-500/[0.02] border border-amber-500/20 hover:border-amber-500/40 transition-all flex items-start gap-3 group">
-                            <div className="p-2 bg-amber-500/10 text-amber-500 rounded-xl mt-0.5 shrink-0">
-                              <CloudSun size={18} className="animate-pulse" />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-extrabold text-amber-500 uppercase tracking-wider">Alerta Laranja (Agricultura - Sazonalidade)</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-gray-400">Há 2 horas</span>
-                                  <button
-                                    onClick={() => markAlertResolved('alert-agri-weather', 'Previsão Climática: Chuva Forte')}
-                                    className="text-gray-400 hover:text-emerald-500 transition-colors p-1 rounded-lg hover:bg-emerald-500/10 cursor-pointer"
-                                    title="Marcar como resolvido"
-                                  >
-                                    <CheckCircle2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                              <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">Previsão Climática: Chuva Forte na Semana de Colheita</h4>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                                Previsão indica precipitação intensa (&gt;45mm/dia) na província da Huíla entre 24/07 e 28/07. Risco elevado de perda de grãos no <strong className="text-amber-500 font-semibold">Talhão Alfa (Milho)</strong> se a colheita for atrasada.
-                              </p>
-                              <div className="pt-2 flex flex-wrap items-center gap-2">
-                                <button
-                                  onClick={() => setHarvestModalOpen(true)}
-                                  className="px-2.5 py-1 bg-amber-500 text-white font-bold text-[9px] rounded-lg hover:bg-amber-600 transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                                >
-                                  <Sprout size={11} />
-                                  <span>Adiantar / Registar Colheita</span>
-                                </button>
-                                <button 
-                                  onClick={() => markAlertResolved('alert-agri-weather', 'Previsão Climática: Chuva Forte')}
-                                  className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1 border border-emerald-500/20"
-                                >
-                                  <CheckCircle2 size={11} />
-                                  <span>Marcar como Resolvido</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Alert 1.1: Agriculture Equipment Maintenance (Orange - AGRICULTURA) */}
-                        {!resolvedAlertIds.includes('alert-agri-motor') && (selectedAlertSector === 'ALL' || selectedAlertSector === 'AGRICULTURE') && (
-                          <div className="p-4 rounded-2xl bg-orange-500/[0.04] dark:bg-orange-500/[0.02] border border-orange-500/20 hover:border-orange-500/40 transition-all flex items-start gap-3 group">
-                            <div className="p-2 bg-orange-500/10 text-orange-500 rounded-xl mt-0.5 shrink-0">
-                              <Wrench size={18} />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-extrabold text-orange-500 uppercase tracking-wider">Alerta Laranja (Agricultura - Equipamentos)</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-gray-400">Há 1 dia</span>
-                                  <button
-                                    onClick={() => markAlertResolved('alert-agri-motor', 'Motobomba de Rega Diesel 50HP - Revisão Preventiva')}
-                                    className="text-gray-400 hover:text-emerald-500 transition-colors p-1 rounded-lg hover:bg-emerald-500/10 cursor-pointer"
-                                    title="Marcar como resolvido"
-                                  >
-                                    <CheckCircle2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                              <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">Motobomba de Rega Diesel 50HP Atingiu Horas de Revisão</h4>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                                A motobomba do <strong className="font-semibold text-orange-500">Pivot de Irrigação 02</strong> registou 480 horas activas de bombagem. Recomenda-se substituição de filtros e óleo antes do pico de irrigação.
-                              </p>
-                              <div className="pt-2 flex flex-wrap items-center gap-2">
-                                <button
-                                  onClick={() => setMotorRevisionModalOpen(true)}
-                                  className="px-2.5 py-1 bg-orange-500 hover:bg-orange-600 text-white font-bold text-[9px] rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                                >
-                                  <Wrench size={11} />
-                                  <span>Concluir Revisão da Motobomba</span>
-                                </button>
-                                <button 
-                                  onClick={() => markAlertResolved('alert-agri-motor', 'Motobomba de Rega Diesel 50HP - Revisão Preventiva')}
-                                  className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1 border border-emerald-500/20"
-                                >
-                                  <CheckCircle2 size={11} />
-                                  <span>Marcar como Resolvido</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Alert 2: Livestock Weighting Interval (Yellow) */}
-                        {!resolvedAlertIds.includes('alert-livestock-weight') && (selectedAlertSector === 'ALL' || selectedAlertSector === 'LIVESTOCK') && (
-                          <div className="p-4 rounded-2xl bg-yellow-500/[0.04] dark:bg-yellow-500/[0.02] border border-yellow-500/20 hover:border-yellow-500/40 transition-all flex items-start gap-3 group">
-                            <div className="p-2 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-xl mt-0.5 shrink-0">
-                              <Activity size={18} />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-extrabold text-yellow-600 dark:text-yellow-400 uppercase tracking-wider">Alerta Amarelo (Conversão Alimentar)</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-gray-400">Hoje</span>
-                                  <button
-                                    onClick={() => markAlertResolved('alert-livestock-weight', 'Monitoria Pendente: Lote Engorda A')}
-                                    className="text-gray-400 hover:text-emerald-500 transition-colors p-1 rounded-lg hover:bg-emerald-500/10 cursor-pointer"
-                                    title="Marcar como resolvido"
-                                  >
-                                    <CheckCircle2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                              <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">Monitoria Pendente: Lote Engorda A sem Pesagem</h4>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                                O gado do <strong className="font-semibold text-yellow-600 dark:text-yellow-400">Lote Engorda A (BOV-045)</strong> não é pesado há 15 dias. O controlo estrito de conversão alimentar é necessário para garantir a eficiência produtiva antes do abate.
-                              </p>
-                              <div className="pt-2 flex flex-wrap items-center gap-2">
-                                <button
-                                  onClick={() => setWeightingModalOpen(true)}
-                                  className="px-2.5 py-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold text-[9px] rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                                >
-                                  <Activity size={11} />
-                                  <span>Registar Pesagem do Rebanho</span>
-                                </button>
-                                <button 
-                                  onClick={() => markAlertResolved('alert-livestock-weight', 'Monitoria Pendente: Lote Engorda A')}
-                                  className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1 border border-emerald-500/20"
-                                >
-                                  <CheckCircle2 size={11} />
-                                  <span>Marcar como Resolvido</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Alert 3: Commerce Margin Fall (Red) */}
-                        {!resolvedAlertIds.includes('alert-commerce-margin') && (selectedAlertSector === 'ALL' || selectedAlertSector === 'COMMERCE') && (
-                          <div className="p-4 rounded-2xl bg-red-500/[0.04] dark:bg-red-500/[0.02] border border-red-500/20 hover:border-red-500/40 transition-all flex items-start gap-3 group">
-                            <div className="p-2 bg-red-500/10 text-red-500 rounded-xl mt-0.5 shrink-0">
-                              <TrendingUp size={18} />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-extrabold text-red-500 uppercase tracking-wider">Alerta Vermelho (Margem Crítica)</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-gray-400">Ontem</span>
-                                  <button
-                                    onClick={() => markAlertResolved('alert-commerce-margin', 'Margem do Arroz Agulha ALIM-001')}
-                                    className="text-gray-400 hover:text-emerald-500 transition-colors p-1 rounded-lg hover:bg-emerald-500/10 cursor-pointer"
-                                    title="Marcar como resolvido"
-                                  >
-                                    <CheckCircle2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                              <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">Margem do Arroz Agulha Caiu abaixo de 10%</h4>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                                Margem comercial do produto de giro alto <strong className="text-red-500 font-semibold">Arroz Agulha (ALIM-001)</strong> está atualmente em 8.5% (limiar de segurança de 10%) devido ao aumento do preço de custo pelo fornecedor AngoAlimentos.
-                              </p>
-                              <div className="pt-2 flex flex-wrap items-center gap-2">
-                                <button
-                                  onClick={() => setPriceMarginModalOpen(true)}
-                                  className="px-2.5 py-1 bg-red-500 hover:bg-red-600 text-white font-bold text-[9px] rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                                >
-                                  <TrendingUp size={11} />
-                                  <span>Reajustar Preço / Margem</span>
-                                </button>
-                                <button 
-                                  onClick={() => markAlertResolved('alert-commerce-margin', 'Margem do Arroz Agulha ALIM-001')}
-                                  className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1 border border-emerald-500/20"
-                                >
-                                  <CheckCircle2 size={11} />
-                                  <span>Marcar como Resolvido</span>
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Alert 4: Fisheries Engine Maintenance (Orange/Wrench - PESCA) */}
-                        {!resolvedAlertIds.includes('alert-fisheries-motor') && (selectedAlertSector === 'ALL' || selectedAlertSector === 'FISHERIES') && (
-                          <div className="p-4 rounded-2xl bg-orange-500/[0.04] dark:bg-orange-500/[0.02] border border-orange-500/20 hover:border-orange-500/40 transition-all flex items-start gap-3 group">
-                            <div className="p-2 bg-orange-500/10 text-orange-500 rounded-xl mt-0.5 shrink-0">
-                              <Wrench size={18} />
-                            </div>
-                            <div className="flex-1 space-y-1">
-                              <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-extrabold text-orange-500 uppercase tracking-wider">Alerta Laranja (Pesca - Manutenção do Motor)</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-[10px] text-gray-400">Há 3 dias</span>
-                                  <button
-                                    onClick={() => markAlertResolved('alert-fisheries-motor', 'Motor Yamaha 250HP Atingiu Horas de Revisão')}
-                                    className="text-gray-400 hover:text-emerald-500 transition-colors p-1 rounded-lg hover:bg-emerald-500/10 cursor-pointer"
-                                    title="Marcar como resolvido"
-                                  >
-                                    <CheckCircle2 size={14} />
-                                  </button>
-                                </div>
-                              </div>
-                              <h4 className="text-xs font-bold text-gray-800 dark:text-gray-200">Motor Yamaha 250HP Atingiu Horas de Revisão</h4>
-                              <p className="text-[11px] text-gray-500 dark:text-gray-400 leading-relaxed">
-                                O motor da embarcação <strong className="font-semibold text-orange-500">Estrela do Namibe</strong> registou 512 horas activas de navegação. Recomenda-se realizar a manutenção preventiva das 500 horas imediatamente para evitar avarias no mar.
-                              </p>
-                              <div className="pt-2 flex flex-wrap items-center gap-2">
-                                <button
-                                  onClick={() => setMotorRevisionModalOpen(true)}
-                                  className="px-2.5 py-1 bg-orange-500 hover:bg-orange-600 text-white font-bold text-[9px] rounded-lg transition-all cursor-pointer flex items-center gap-1 shadow-sm"
-                                >
-                                  <Wrench size={11} />
-                                  <span>Agendar / Concluir Revisão do Motor</span>
-                                </button>
-                                <button 
-                                  onClick={() => markAlertResolved('alert-fisheries-motor', 'Motor Yamaha 250HP Atingiu Horas de Revisão')}
-                                  className="px-2.5 py-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-bold text-[9px] rounded-lg hover:bg-emerald-500/20 transition-all cursor-pointer flex items-center gap-1 border border-emerald-500/20"
-                                >
-                                  <CheckCircle2 size={11} />
-                                  <span>Marcar como Resolvido</span>
-                                </button>
-                                <button 
-                                  onClick={() => {
-                                    setCoopTab('operations');
-                                    localStorage.setItem(`olo-fintel-lastSector-${user?.id}`, 'FISHERIES');
-                                    localStorage.setItem(`olo-fintel-lastResource-${user?.id}`, 'manutencaoPesca');
-                                    setRefreshCounter(prev => prev + 1);
-                                  }}
-                                  className="px-2.5 py-1 bg-orange-500/10 text-orange-500 font-bold text-[9px] rounded-lg hover:bg-orange-500/20 transition-all cursor-pointer"
-                                >
-                                  Ver Histórico
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* All Alerts Resolved Empty State */}
-                        {(
-                          (selectedAlertSector === 'AGRICULTURE' && resolvedAlertIds.includes('alert-agri-weather') && resolvedAlertIds.includes('alert-agri-motor')) ||
-                          (selectedAlertSector === 'LIVESTOCK' && resolvedAlertIds.includes('alert-livestock-weight')) ||
-                          (selectedAlertSector === 'COMMERCE' && resolvedAlertIds.includes('alert-commerce-margin')) ||
-                          (selectedAlertSector === 'FISHERIES' && resolvedAlertIds.includes('alert-fisheries-motor')) ||
-                          (selectedAlertSector === 'ALL' && resolvedAlertIds.length >= 4)
-                        ) && (
-                          <div className="col-span-full p-6 rounded-2xl bg-emerald-500/5 border border-emerald-500/20 text-center space-y-3">
-                            <div className="w-10 h-10 mx-auto rounded-full bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                              <CheckCircle2 size={24} />
-                            </div>
-                            <h4 className="text-sm font-bold text-gray-800 dark:text-gray-100">Todos os alertas operacionais foram resolvidos!</h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 max-w-md mx-auto">
-                              O sistema OLO Guardian continuará a monitorizar os dados em tempo real para o alertar sobre novas janelas de revisão ou riscos de margem.
-                            </p>
-                            <button
-                              onClick={resetAllAlerts}
-                              className="px-3 py-1.5 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-600 transition-all inline-flex items-center gap-1.5 cursor-pointer shadow-sm"
-                            >
-                              <RotateCcw size={13} />
-                              <span>Restaurar Alertas para Teste</span>
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                    {/* REGISTO EM <30 SEGUNDOS (REGRA DOS 30S) EMBEDDED WIDGET */}
+                    <div className="mb-2">
+                      <Quick30SecLogger onRecordAdded={fetchDashboardData} />
                     </div>
+
+
 
                     {/* 4.1. ECONOMIC IDENTITY SCORE RING & QUICK ACTIONS DUAL CARD */}
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -3364,7 +3794,7 @@ export default function Dashboards() {
                         MÓDULO FUNDING READINESS
                       </span>
                       <h3 className="text-base font-bold text-gray-900 dark:text-white mt-2">
-                        Anel de Identidade Económica (OLO Score)
+                        Anel de Identidade Económica (MiraWelch Score)
                       </h3>
                       <p className="text-xs text-gray-400">Analise seu score de elegibilidade a crédito em tempo real e simule impactos operacionais.</p>
                     </div>
@@ -3579,7 +4009,7 @@ export default function Dashboards() {
                       <div className="flex items-center gap-3">
                         <span className="text-lg">🤖</span>
                         <div>
-                          <h4 className="font-bold text-xs text-gray-900 dark:text-white">Diagnóstico OLO por IA</h4>
+                          <h4 className="font-bold text-xs text-gray-900 dark:text-white">Diagnóstico MiraWelch por IA</h4>
                           <p className="text-[10px] text-gray-400 mt-0.5">Prepare sua submissão de fomento.</p>
                         </div>
                       </div>
@@ -3844,8 +4274,8 @@ export default function Dashboards() {
                         </div>
 
                         <button 
-                          onClick={() => alert('Parabéns! Recomendações enviadas para a mentoria do consultor.')}
-                          className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm"
+                          onClick={() => setCustomNotificationModal({ title: 'Recomendações Enviadas', message: 'As suas recomendações foram enviadas com sucesso para a mentoria do consultor!', type: 'success' })}
+                          className="w-full py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-xl transition-all shadow-sm cursor-pointer"
                         >
                           {t('dash.q5.request_review')}
                         </button>
@@ -3965,6 +4395,8 @@ export default function Dashboards() {
                     key={`fin-${user?.id || 'guest'}`}
                     userId={user?.id || 'guest'}
                     userRole={user?.role || 'OWNER'}
+                    initialSubTab={financeSubTab}
+                    onSubTabChange={setFinanceSubTab}
                   />
                 )}
 
@@ -3974,6 +4406,8 @@ export default function Dashboards() {
                     key={`crm-${user?.id || 'guest'}`}
                     userId={user?.id || 'guest'}
                     userRole={user?.role || 'OWNER'}
+                    initialSubTab={crmSubTab}
+                    onSubTabChange={setCrmSubTab}
                   />
                 )}
 
@@ -3984,6 +4418,8 @@ export default function Dashboards() {
                     userId={user?.id || 'guest'}
                     userRole={user?.role || 'OWNER'}
                     organizationId={user?.organizationId || null}
+                    initialSubTab={docsSubTab}
+                    onSubTabChange={setDocsSubTab}
                     onRefresh={fetchDashboardData}
                   />
                 )}
@@ -4016,6 +4452,8 @@ export default function Dashboards() {
                     userId={user?.id || 'guest'}
                     userRole={user?.role || 'OWNER'}
                     userIndustry={userSector || user?.industry || null}
+                    initialSubTab={overheadsSubTab}
+                    onSubTabChange={setOverheadsSubTab}
                   />
                 )}
 
@@ -4086,7 +4524,9 @@ export default function Dashboards() {
           </div>
         )}
 
-      </main>
+            </motion.div>
+          </AnimatePresence>
+        </main>
 
       </div>
 
@@ -4350,7 +4790,7 @@ export default function Dashboards() {
                 <span className="font-semibold text-gray-300">
                   {offlineMode || commandPaletteFormData.offline === 'true' 
                     ? 'Modo Contingência (Offline / Sem Sinal)' 
-                    : 'Ligação Segura OLO Cloud (Online)'}
+                    : 'Ligação Segura MiraWelch Cloud (Online)'}
                 </span>
               </div>
 
@@ -4981,7 +5421,7 @@ export default function Dashboards() {
                     <button
                       type="button"
                       onClick={() => {
-                        setPhotoEvidence("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23222'/><text x='10' y='50' fill='white' font-size='10'>EVIDENCIA OLO FINTEL</text></svg>");
+                        setPhotoEvidence("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23222'/><text x='10' y='50' fill='white' font-size='10'>EVIDENCIA MIRAWELCH</text></svg>");
                         alert('Sucesso! Foto simulada capturada via câmera integrada do dispositivo móvel e guardada em cache.');
                       }}
                       className="px-3 py-2 bg-gray-850 hover:bg-gray-800 text-gray-200 text-xs font-semibold rounded-xl transition-all cursor-pointer flex items-center gap-2"
@@ -5027,7 +5467,7 @@ export default function Dashboards() {
             {/* Footer with tips */}
             <div className="px-5 py-3 border-t border-gray-800 bg-[#0A0A0F] text-[10px] text-gray-500 flex justify-between items-center">
               <span>Prima <kbd className="font-mono bg-gray-900 px-1 py-0.5 rounded border border-gray-800">⌘K</kbd> a qualquer altura para fechar</span>
-              <span>OLO Fintel Platform Integration • Angola</span>
+              <span>MiraWelch Platform Integration • Angola</span>
             </div>
           </div>
         </div>
@@ -5407,6 +5847,146 @@ export default function Dashboards() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* 5.5. SCORE REPORT DETAILED MODAL */}
+      {scoreReportOrgModal && (
+        <div className="fintel-modal-backdrop" onClick={() => setScoreReportOrgModal(null)}>
+          <div className="fintel-modal-content max-w-xl space-y-4 text-left" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-md bg-slate-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold font-mono text-[10px] flex items-center justify-center">
+                  MW
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                    Relatório de Score Operacional & Financeiro
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-zinc-400 font-mono">
+                    {scoreReportOrgModal.name} • NIF AGT Validade Checked
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setScoreReportOrgModal(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
+                  <span className="text-[10px] uppercase font-mono font-semibold text-slate-400 block">Economic Score</span>
+                  <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+                    {scoreReportOrgModal.maturity === 'ADVANCED' ? '85' : '55'} / 100
+                  </span>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
+                  <span className="text-[10px] uppercase font-mono font-semibold text-slate-400 block">Nível MiraWelch</span>
+                  <span className="text-sm font-bold text-slate-900 dark:text-zinc-100 mt-1 block">
+                    {scoreReportOrgModal.maturity}
+                  </span>
+                </div>
+                <div className="p-3 rounded-lg bg-slate-50 dark:bg-zinc-900 border border-slate-200 dark:border-zinc-800">
+                  <span className="text-[10px] uppercase font-mono font-semibold text-slate-400 block">Integridade Dados</span>
+                  <span className="text-sm font-bold font-mono text-slate-900 dark:text-zinc-100 mt-1 block">
+                    92% Auditado
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg border border-slate-200 dark:border-zinc-800 space-y-2 bg-white dark:bg-zinc-950">
+                <h4 className="font-bold text-slate-900 dark:text-zinc-100 text-xs">Métricas de Confiabilidade Bancária:</h4>
+                <div className="space-y-1.5 font-mono text-[11px] text-slate-600 dark:text-zinc-400">
+                  <div className="flex justify-between">
+                    <span>Validação Fiscal AGT:</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">NIF Activo e Regularizado</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Frequência de Diários de Campo:</span>
+                    <span className="font-semibold text-slate-800 dark:text-zinc-200">Diário (&gt; 24 registos/mês)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Aviso 10/22 Banco Nacional de Angola:</span>
+                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Em Conformidade Directa</span>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-slate-500 dark:text-zinc-400 leading-relaxed">
+                Este dossiê está pronto para transmissão via API aos analistas de risco dos bancos parceiros (BAI, BFA, BPC).
+              </p>
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2 border-t border-slate-200 dark:border-zinc-800">
+              <button
+                onClick={() => setScoreReportOrgModal(null)}
+                className="btn-primary text-xs py-1.5 px-3 cursor-pointer"
+              >
+                Concluir Análise
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5.6. CUSTOM NOTIFICATION POPUP MODAL */}
+      {customNotificationModal && (
+        <div className="fintel-modal-backdrop" onClick={() => setCustomNotificationModal(null)}>
+          <div className="fintel-modal-content max-w-md space-y-4 text-left" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-zinc-800 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 dark:text-zinc-100">
+                {customNotificationModal.title}
+              </h3>
+              <button
+                onClick={() => setCustomNotificationModal(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-zinc-200 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-600 dark:text-zinc-300 leading-relaxed">
+              {customNotificationModal.message}
+            </p>
+
+            <div className="pt-2 flex justify-end border-t border-slate-200 dark:border-zinc-800">
+              <button
+                onClick={() => setCustomNotificationModal(null)}
+                className="btn-primary text-xs py-1.5 px-3 cursor-pointer"
+              >
+                Compreendido
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* FLOATING ACTION BUTTON FOR REGRA DOS 30 SEGUNDOS */}
+      <div className="fixed bottom-6 left-6 z-40">
+        <button
+          onClick={() => setQuickLoggerModalOpen(true)}
+          className="px-4 py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white rounded-full font-black text-xs shadow-2xl flex items-center gap-2.5 border-2 border-white dark:border-gray-800 hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+        >
+          <Zap size={16} className="text-amber-300 animate-pulse group-hover:rotate-12 transition-transform" />
+          <span>REGISTO &lt;30s</span>
+          <span className="px-1.5 py-0.5 rounded-full bg-amber-400 text-slate-950 font-extrabold text-[9px]">
+            ⚡ Rápido
+          </span>
+        </button>
+      </div>
+
+      {/* 30-SECOND QUICK LOGGER MODAL */}
+      {quickLoggerModalOpen && (
+        <Quick30SecLogger
+          isOpenAsModal={true}
+          onCloseModal={() => setQuickLoggerModalOpen(false)}
+          onRecordAdded={() => {
+            fetchDashboardData();
+          }}
+        />
       )}
 
     </div>

@@ -21,7 +21,19 @@ import {
   Sparkles, 
   TrendingUp, 
   AlertTriangle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Briefcase,
+  ArrowDownLeft,
+  ArrowUpRight,
+  UtensilsCrossed,
+  Building2,
+  Bug,
+  DollarSign,
+  ShieldCheck,
+  Clock,
+  Receipt,
+  FileText,
+  ShieldAlert
 } from 'lucide-react';
 
 interface SectorOperationalDashboardProps {
@@ -310,6 +322,87 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
       { id: 'cp-1', fornecedor: 'AngoAlimentos Lda', despesa: 'Fatura de Arroz', obrigacoes: 'Fornecimento', valor: 650000, dataVencimento: '2026-07-28', estado: 'Pendente' }
     ];
   });
+
+  // --- CROSS-SECTOR OPERATIONAL STATES ---
+  // 1. Trabalho & Mão de Obra (Labor)
+  const [trabalho, setTrabalho] = useState<any[]>(() => {
+    const saved = localStorage.getItem(`olo-fintel-op-trabalho-${userId}`);
+    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
+    return [
+      { id: 'trab-1', data: '2026-07-16', trabalhador: 'Equipa de Campo A (5 jornaleiros)', tarefa: 'Monda e Capina Intercalar', trabalhadores: 5, horas: 8, diaria: 3500, total: 17500, estadoPagamento: 'Pago', setor: 'AGRICULTURE', localizacao: 'Talhão Alfa' },
+      { id: 'trab-2', data: '2026-07-15', trabalhador: 'Adelino Chivinda & Pastor Auxiliar', tarefa: 'Maneio e Condução de Pastagens', trabalhadores: 2, horas: 10, diaria: 4000, total: 8000, estadoPagamento: 'Pago', setor: 'LIVESTOCK', localizacao: 'Pasto Norte' },
+      { id: 'trab-3', data: '2026-07-14', trabalhador: 'Mestre Garcia & Tripulação (6 pescadores)', tarefa: 'Despesca Costeira & Recolha de Redes', trabalhadores: 6, horas: 12, diaria: 6000, total: 36000, estadoPagamento: 'Pago', setor: 'FISHERIES', localizacao: 'Tombwa Baía' },
+      { id: 'trab-4', data: '2026-07-17', trabalhador: 'Operadores de Caixa & Repositores (3)', tarefa: 'Receção de Cargas e Atendimento', trabalhadores: 3, horas: 8, diaria: 4500, total: 13500, estadoPagamento: 'Pago', setor: 'COMMERCE', localizacao: 'Loja Principal' }
+    ];
+  });
+
+  // 2. Entradas de Caixa (Cash Inflows / Sales)
+  const [entradasCaixa, setEntradasCaixa] = useState<any[]>(() => {
+    const saved = localStorage.getItem(`olo-fintel-op-entradasCaixa-${userId}`);
+    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
+    return [
+      { id: 'ec-1', data: '2026-07-18', titulo: 'Venda de Milho Seco a Granel', cliente: 'Cooperativa Agrícola Humpata', valor: 450000, categoria: 'Venda de Produção', formaPagamento: 'Transferência BAI', docRef: 'FAT-2026-001', setor: 'AGRICULTURE' },
+      { id: 'ec-2', data: '2026-07-16', titulo: 'Venda de 4 Novilhos Nelore Gordos', cliente: 'Matadouro Municipal Huambo', valor: 1800000, categoria: 'Venda de Animais', formaPagamento: 'Transferência BFA', docRef: 'FAT-2026-002', setor: 'LIVESTOCK' },
+      { id: 'ec-3', data: '2026-07-17', titulo: 'Venda de 80 Caixas de Carapau Fresco', cliente: 'Peixaria Central Namibe', valor: 850000, categoria: 'Venda de Pescado', formaPagamento: 'TPA Multicaixa', docRef: 'VD-8891', setor: 'FISHERIES' },
+      { id: 'ec-4', data: '2026-07-18', titulo: 'Vendas Diárias de Mercearia e Balcão', cliente: 'Consumidores a Retalho', valor: 320000, categoria: 'Vendas Comerciais', formaPagamento: 'Numerário', docRef: 'CX-7712', setor: 'COMMERCE' }
+    ];
+  });
+
+  // 3. Saídas de Caixa (Cash Outflows / Expenses)
+  const [saidasCaixa, setSaidasCaixa] = useState<any[]>(() => {
+    const saved = localStorage.getItem(`olo-fintel-op-saidasCaixa-${userId}`);
+    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
+    return [
+      { id: 'sc-1', data: '2026-07-14', titulo: 'Compra de 20 Sacos Adubo NPK 12-24-12', fornecedor: 'AgroQuímica Huíla Lda', valor: 280000, categoria: 'Insumos & Fertilizantes', centroCusto: 'Talhão Alfa', formaPagamento: 'Transferência BAI', docRef: 'REC-3312', setor: 'AGRICULTURE' },
+      { id: 'sc-2', data: '2026-07-12', titulo: 'Ração Concentrada e Sal Mineral', fornecedor: 'NutriAnimal Angola', valor: 190000, categoria: 'Alimentação & Nutrição', centroCusto: 'Curral Principal', formaPagamento: 'TPA', docRef: 'REC-3389', setor: 'LIVESTOCK' },
+      { id: 'sc-3', data: '2026-07-15', titulo: 'Gasóleo (400L) e Gelo em Escama (1.5t)', fornecedor: 'Sonangol Namibe & Fábrica Gelo', valor: 310000, categoria: 'Combustível & Gelo', centroCusto: 'Barco Estrela', formaPagamento: 'Numerário', docRef: 'REC-4412', setor: 'FISHERIES' },
+      { id: 'sc-4', data: '2026-07-17', titulo: 'Reposição de Stock de Arroz e Óleo', fornecedor: 'AngoAlimentos Grossista', valor: 540000, categoria: 'Mercadorias para Venda', centroCusto: 'Armazém', formaPagamento: 'Transferência BFA', docRef: 'FAT-9901', setor: 'COMMERCE' }
+    ];
+  });
+
+  // 4. Consumo Familiar / Auto-Consumo (Household Subsistence)
+  const [consumoFamiliar, setConsumoFamiliar] = useState<any[]>(() => {
+    const saved = localStorage.getItem(`olo-fintel-op-consumoFamiliar-${userId}`);
+    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
+    return [
+      { id: 'fam-1', data: '2026-07-17', produto: 'Milho Branco (Fuba) e Mandioca', quantidade: 60, unidade: 'kg', valorUnitario: 800, valorTotal: 48000, membrosFamilia: 6, origem: 'Talhão Alfa (Colheita Própria)', finalidade: 'Alimentação Diária da Família', setor: 'AGRICULTURE', observacoes: 'Retirado para o consumo doméstico semanal da residência' },
+      { id: 'fam-2', data: '2026-07-16', produto: 'Leite Fresco Diário da Ordenha', quantidade: 35, unidade: 'Litros', valorUnitario: 900, valorTotal: 31500, membrosFamilia: 5, origem: 'Vacas Lote Leiteiro', finalidade: 'Nutrição Familiar & Crianças', setor: 'LIVESTOCK', observacoes: 'Consumo familiar diário (5L/dia durante 7 dias)' },
+      { id: 'fam-3', data: '2026-07-15', produto: 'Carapau & Garoupa Fresca Escolhida', quantidade: 25, unidade: 'kg', valorUnitario: 1400, valorTotal: 35000, membrosFamilia: 7, origem: 'Maré do Barco Estrela Namibe', finalidade: 'Alimentação Familiar e Tripulantes', setor: 'FISHERIES', observacoes: 'Peixe selecionado para subsistência das famílias dos mestres' },
+      { id: 'fam-4', data: '2026-07-18', produto: 'Arroz, Açúcar, Óleo Vegetal e Sabão', quantidade: 8, unidade: 'artigos', valorUnitario: 3200, valorTotal: 25600, membrosFamilia: 4, origem: 'Stock da Mercearia', finalidade: 'Uso Doméstico do Proprietário', setor: 'COMMERCE', observacoes: 'Retirada de produtos essenciais da loja para casa' }
+    ];
+  });
+
+  // 5. Ativos Fixos & Património (Machinery, Vessels, Buildings, Depreciation)
+  const [ativosFixos, setAtivosFixos] = useState<any[]>(() => {
+    const saved = localStorage.getItem(`olo-fintel-op-ativosFixos-${userId}`);
+    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
+    return [
+      { id: 'ast-1', nome: 'Trator Massey Ferguson 275 com Charrua', categoria: 'Tratores & Maquinaria Agrícola', identificador: 'TRAT-MF275-AO', dataAquisicao: '2023-04-10', custoAquisicao: 18500000, vidaUtil: 10, depreciacaoAnual: 10, valorAtual: 14800000, estado: 'Operacional', proximaManutencao: '2026-09-15', localizacao: 'Hangar Agrícola', setor: 'AGRICULTURE', responsavel: 'Mateus Gaspar' },
+      { id: 'ast-2', nome: 'Touro Reprodutor Nelore P.O. (Campeão)', categoria: 'Reprodutores & Matrizes de Elite', identificador: 'NEL-PO-008', dataAquisicao: '2024-01-20', custoAquisicao: 4200000, vidaUtil: 8, depreciacaoAnual: 12.5, valorAtual: 3675000, estado: 'Excelente', proximaManutencao: '2026-08-01', localizacao: 'Pasto de Cobertura', setor: 'LIVESTOCK', responsavel: 'Adelino Chivinda' },
+      { id: 'ast-3', nome: 'Embarcação em Fibra com Motor Yamaha 250HP', categoria: 'Embarcações & Motores Marítimos', identificador: 'NAM-2024-A (Estrela)', dataAquisicao: '2024-05-15', custoAquisicao: 14200000, vidaUtil: 12, depreciacaoAnual: 8.33, valorAtual: 12600000, estado: 'Operacional', proximaManutencao: '2026-08-20', localizacao: 'Porto Pesqueiro Namibe', setor: 'FISHERIES', responsavel: 'Mestre Garcia' },
+      { id: 'ast-4', nome: 'Carrinha de Transporte Isuzu 3.5t & Arcas Frias', categoria: 'Veículos & Refrigeração Comercial', identificador: 'LD-44-88-GG', dataAquisicao: '2024-02-10', custoAquisicao: 16000000, vidaUtil: 8, depreciacaoAnual: 12.5, valorAtual: 13000000, estado: 'Operacional', proximaManutencao: '2026-09-01', localizacao: 'Garagem Comercial', setor: 'COMMERCE', responsavel: 'Gaspar Neto' }
+    ];
+  });
+
+  // 6. Monitoria de Pragas, Doenças e Sanidade (Pest & Biosecurity Control)
+  const [pragas, setPragas] = useState<any[]>(() => {
+    const saved = localStorage.getItem(`olo-fintel-op-pragas-${userId}`);
+    if (saved) { try { return JSON.parse(saved); } catch (e) {} }
+    return [
+      { id: 'pst-1', data: '2026-07-15', praga: 'Lagarta do Cartucho (Spodoptera frugiperda)', gravidade: 'Média', areaAfetada: '3.5 Hectares (Talhão Alfa)', sintomas: 'Folhas do milho perfuradas e serradas na fase vegetativa V4', acao: 'Pulverização com Biopesticida Baculovírus & Neem', produtoAplicado: 'BioNeem 1.5L/ha', custoIntervencao: 45000, estadoResolucao: 'Sob Controlo', inspetor: 'Eng. Agrónomo Manuel', setor: 'AGRICULTURE', observacoes: 'Incidência reduzida de 28% para 4% após 48h da aplicação' },
+      { id: 'pst-2', data: '2026-07-12', praga: 'Carraças Bovinas (Rhipicephalus / Febre do Carrapato)', gravidade: 'Alta', areaAfetada: 'Lote de Novilhas (22 cabeças)', sintomas: 'Fixação de parasitas no úbere e orelhas, perda de apetite', acao: 'Banho de Imersão e Aspersão Carracicida', produtoAplicado: 'Cipermetrina Pour-on 100ml', custoIntervencao: 32000, estadoResolucao: 'Resolvido', inspetor: 'Técnico Veterinário Silva', setor: 'LIVESTOCK', observacoes: 'Todos os animais tratados sem reincidência de anemia' },
+      { id: 'pst-3', data: '2026-07-14', praga: 'Parasitismo de Guelra & Controlo de Frescura', gravidade: 'Baixa', areaAfetada: 'Lote Carapau 1500kg', sintomas: 'Inspeção de rotina pré-descarga em lota', acao: 'Lavagem em Salmoura e Congelação a -18°C', produtoAplicado: 'Gelo escama esterilizado', custoIntervencao: 18000, estadoResolucao: 'Resolvido', inspetor: 'Mestre de Pesca Garcia', setor: 'FISHERIES', observacoes: 'Conformidade HACCP 100% aprovada para distribuição' },
+      { id: 'pst-4', data: '2026-07-16', praga: 'Gorgulho do Grão (Sitophilus zeamais) em Armazém', gravidade: 'Média', areaAfetada: 'Armazém Bloco B (Sacas de Milho/Arroz)', sintomas: 'Presença de pequenos gorgulhos em sacos de milho armazenado', acao: 'Fumigação com Pastilhas de Fosfina & Arejamento', produtoAplicado: 'Fosfeto de Alumínio 3g/m³', custoIntervencao: 28000, estadoResolucao: 'Sob Controlo', inspetor: 'Gestor de Armazém Kiala', setor: 'COMMERCE', observacoes: 'Armazém vedado por 72h com vedação hermética' }
+    ];
+  });
+
+  // Save effects
+  React.useEffect(() => { localStorage.setItem(`olo-fintel-op-trabalho-${userId}`, JSON.stringify(trabalho)); }, [trabalho, userId]);
+  React.useEffect(() => { localStorage.setItem(`olo-fintel-op-entradasCaixa-${userId}`, JSON.stringify(entradasCaixa)); }, [entradasCaixa, userId]);
+  React.useEffect(() => { localStorage.setItem(`olo-fintel-op-saidasCaixa-${userId}`, JSON.stringify(saidasCaixa)); }, [saidasCaixa, userId]);
+  React.useEffect(() => { localStorage.setItem(`olo-fintel-op-consumoFamiliar-${userId}`, JSON.stringify(consumoFamiliar)); }, [consumoFamiliar, userId]);
+  React.useEffect(() => { localStorage.setItem(`olo-fintel-op-ativosFixos-${userId}`, JSON.stringify(ativosFixos)); }, [ativosFixos, userId]);
+  React.useEffect(() => { localStorage.setItem(`olo-fintel-op-pragas-${userId}`, JSON.stringify(pragas)); }, [pragas, userId]);
 
   // Save effects
   React.useEffect(() => { localStorage.setItem(`olo-fintel-op-talhoes-${userId}`, JSON.stringify(talhoes)); }, [talhoes, userId]);
@@ -769,6 +862,239 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
       }
     }
 
+    // Generic Cross-Sector Operational Handlers (Work for all 4 sectors)
+    if (activeResource === 'trabalho') {
+      const workers = parseInt(genericForm.numTrabalhadores || genericForm.trabalhadores || '1', 10);
+      const diariaVal = parseFloat(genericForm.valorDiaria || genericForm.diaria || '3500');
+      const horasVal = parseFloat(genericForm.horasTrabalhadas || genericForm.horas || '8');
+      const calculatedTotal = parseFloat(genericForm.custoTotal || genericForm.total || (workers * diariaVal).toString());
+      
+      const newTrab = {
+        id,
+        data: genericForm.data || new Date().toISOString().split('T')[0],
+        trabalhador: genericForm.trabalhador || 'Trabalhador / Equipa',
+        tarefa: genericForm.tarefa || 'Atividade Operacional',
+        trabalhadores: workers,
+        numTrabalhadores: workers,
+        horas: horasVal,
+        horasTrabalhadas: horasVal,
+        diaria: diariaVal,
+        valorDiaria: diariaVal,
+        total: calculatedTotal,
+        custoTotal: calculatedTotal,
+        estadoPagamento: genericForm.estadoPagamento || 'Pago',
+        setor: activeSector,
+        localizacao: genericForm.localizacao || 'Unidade de Produção',
+        observacoes: genericForm.observacoes || ''
+      };
+      setTrabalho(prev => [newTrab, ...prev]);
+
+      apiCall('/api/v1/operations/labor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sector: activeSector,
+          activity: newTrab.tarefa,
+          workerName: newTrab.trabalhador,
+          workersCount: newTrab.trabalhadores,
+          hoursWorked: newTrab.horas,
+          dailyRate: newTrab.diaria,
+          totalCost: newTrab.total,
+          date: newTrab.data,
+          status: newTrab.estadoPagamento,
+          notes: newTrab.observacoes
+        })
+      }).catch(err => console.warn('Sync labor error:', err));
+
+    } else if (activeResource === 'entradas_caixa') {
+      const val = parseFloat(genericForm.valor || '0');
+      const newEntry = {
+        id,
+        data: genericForm.data || new Date().toISOString().split('T')[0],
+        titulo: genericForm.descricao || genericForm.titulo || 'Entrada de Caixa',
+        descricao: genericForm.descricao || genericForm.titulo || 'Entrada de Caixa',
+        cliente: genericForm.cliente || 'Cliente / Comprador',
+        valor: val,
+        categoria: genericForm.categoria || 'Venda de Produção',
+        formaPagamento: genericForm.metodoPagamento || genericForm.formaPagamento || 'Numerário',
+        metodoPagamento: genericForm.metodoPagamento || genericForm.formaPagamento || 'Numerário',
+        docRef: genericForm.docRef || `REC-${Math.floor(Math.random() * 9000) + 1000}`,
+        setor: activeSector,
+        observacoes: genericForm.observacoes || ''
+      };
+      setEntradasCaixa(prev => [newEntry, ...prev]);
+
+      apiCall('/api/v1/operations/cash-inflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sector: activeSector,
+          source: newEntry.cliente,
+          amount: newEntry.valor,
+          category: newEntry.categoria,
+          paymentMethod: newEntry.formaPagamento,
+          date: newEntry.data,
+          referenceDocument: newEntry.docRef,
+          notes: newEntry.titulo + (newEntry.observacoes ? ' - ' + newEntry.observacoes : '')
+        })
+      }).catch(err => console.warn('Sync cash-inflow error:', err));
+
+    } else if (activeResource === 'saidas_caixa') {
+      const val = parseFloat(genericForm.valor || '0');
+      const newOut = {
+        id,
+        data: genericForm.data || new Date().toISOString().split('T')[0],
+        titulo: genericForm.descricao || genericForm.titulo || 'Despesa / Custo Operacional',
+        descricao: genericForm.descricao || genericForm.titulo || 'Despesa / Custo Operacional',
+        fornecedor: genericForm.fornecedor || 'Fornecedor',
+        valor: val,
+        categoria: genericForm.categoria || 'Insumos & Operação',
+        centroCusto: genericForm.centroCusto || 'Unidade Principal',
+        formaPagamento: genericForm.formaPagamento || 'Numerário',
+        metodoPagamento: genericForm.formaPagamento || 'Numerário',
+        docRef: genericForm.docRef || `DESP-${Math.floor(Math.random() * 9000) + 1000}`,
+        setor: activeSector,
+        observacoes: genericForm.observacoes || ''
+      };
+      setSaidasCaixa(prev => [newOut, ...prev]);
+
+      apiCall('/api/v1/operations/cash-outflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sector: activeSector,
+          recipient: newOut.fornecedor,
+          amount: newOut.valor,
+          category: newOut.categoria,
+          paymentMethod: newOut.formaPagamento,
+          date: newOut.data,
+          referenceDocument: newOut.docRef,
+          notes: newOut.titulo + (newOut.observacoes ? ' - ' + newOut.observacoes : '')
+        })
+      }).catch(err => console.warn('Sync cash-outflow error:', err));
+
+    } else if (activeResource === 'consumo_familiar') {
+      const qtd = parseFloat(genericForm.quantidade || '1');
+      const unitVal = parseFloat(genericForm.valorUnitarioEstimado || genericForm.valorUnitario || '500');
+      const totVal = parseFloat(genericForm.valorTotalEstimado || genericForm.valorTotal || (qtd * unitVal).toString());
+      
+      const newFam = {
+        id,
+        data: genericForm.data || new Date().toISOString().split('T')[0],
+        produto: genericForm.produto || 'Alimento da Produção',
+        quantidade: qtd,
+        unidade: genericForm.unidade || 'kg',
+        valorUnitario: unitVal,
+        valorUnitarioEstimado: unitVal,
+        valorTotal: totVal,
+        valorTotalEstimado: totVal,
+        membrosFamilia: parseInt(genericForm.membrosFamilia || '4', 10),
+        origem: genericForm.origem || 'Produção Própria',
+        finalidade: genericForm.finalidade || 'Alimentação Familiar',
+        setor: activeSector,
+        observacoes: genericForm.observacoes || ''
+      };
+      setConsumoFamiliar(prev => [newFam, ...prev]);
+
+      apiCall('/api/v1/operations/family-consumption', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sector: activeSector,
+          product: newFam.produto,
+          quantity: newFam.quantidade,
+          unit: newFam.unidade,
+          estimatedValue: newFam.valorTotal,
+          date: newFam.data,
+          familyMembersBenefited: newFam.membrosFamilia,
+          notes: newFam.finalidade + ' - Origem: ' + newFam.origem
+        })
+      }).catch(err => console.warn('Sync family-consumption error:', err));
+
+    } else if (activeResource === 'ativos_fixos') {
+      const cost = parseFloat(genericForm.valorAquisicao || genericForm.custoAquisicao || '5000000');
+      const life = parseFloat(genericForm.vidaUtil || '10');
+      const depRate = parseFloat(genericForm.depreciacaoAnual || (100 / (life || 10)).toFixed(2));
+      const curVal = parseFloat(genericForm.valorAtual || cost.toString());
+
+      const newAst = {
+        id,
+        nome: genericForm.nome || 'Ativo Fixo / Equipamento',
+        categoria: genericForm.categoria || 'Maquinaria & Equipamentos',
+        identificador: genericForm.codigo || genericForm.identificador || `PAT-${Math.floor(Math.random() * 9000) + 1000}`,
+        codigo: genericForm.codigo || genericForm.identificador || `PAT-${Math.floor(Math.random() * 9000) + 1000}`,
+        dataAquisicao: genericForm.dataAquisicao || new Date().toISOString().split('T')[0],
+        custoAquisicao: cost,
+        valorAquisicao: cost,
+        vidaUtil: life,
+        depreciacaoAnual: depRate,
+        valorAtual: curVal,
+        estado: genericForm.estadoOperacional || genericForm.estado || 'Operacional',
+        estadoOperacional: genericForm.estadoOperacional || genericForm.estado || 'Operacional',
+        proximaManutencao: genericForm.proximaManutencao || 'S/D',
+        localizacao: genericForm.localizacao || 'Sede da Unidade',
+        setor: activeSector,
+        responsavel: genericForm.responsavel || 'Responsável Técnico',
+        observacoes: genericForm.observacoes || ''
+      };
+      setAtivosFixos(prev => [newAst, ...prev]);
+
+      apiCall('/api/v1/operations/fixed-assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sector: activeSector,
+          assetName: newAst.nome,
+          category: newAst.categoria,
+          identifier: newAst.identificador,
+          acquisitionDate: newAst.dataAquisicao,
+          acquisitionCost: newAst.custoAquisicao,
+          currentValue: newAst.valorAtual,
+          depreciationRate: newAst.depreciacaoAnual,
+          status: newAst.estado,
+          location: newAst.localizacao,
+          notes: newAst.observacoes
+        })
+      }).catch(err => console.warn('Sync fixed-assets error:', err));
+
+    } else if (activeResource === 'pragas') {
+      const newPst = {
+        id,
+        data: genericForm.data || new Date().toISOString().split('T')[0],
+        praga: genericForm.praga || 'Praga / Anomalia Sanitária',
+        gravidade: genericForm.gravidade || 'Média',
+        areaAfetada: genericForm.areaAfetada || 'Área / Lote Afetado',
+        sintomas: genericForm.sintomas || 'Sintomas observados em campo',
+        acao: genericForm.acao || 'Intervenção / Controlo',
+        produtoAplicado: genericForm.produtoAplicado || 'Tratamento',
+        custoIntervencao: parseFloat(genericForm.custoIntervencao || '0'),
+        estadoResolucao: genericForm.estadoResolucao || 'Sob Controlo',
+        inspetor: genericForm.inspetor || 'Técnico Responsável',
+        setor: activeSector,
+        observacoes: genericForm.observacoes || ''
+      };
+      setPragas(prev => [newPst, ...prev]);
+
+      apiCall('/api/v1/operations/pest-monitoring', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sector: activeSector,
+          targetPestOrDisease: newPst.praga,
+          severity: newPst.gravidade,
+          affectedAreaOrUnits: newPst.areaAfetada,
+          symptoms: newPst.sintomas,
+          controlActionTaken: newPst.acao,
+          treatmentProduct: newPst.produtoAplicado,
+          interventionCost: newPst.custoIntervencao,
+          resolutionStatus: newPst.estadoResolucao,
+          date: newPst.data,
+          inspector: newPst.inspetor,
+          notes: newPst.observacoes
+        })
+      }).catch(err => console.warn('Sync pest-monitoring error:', err));
+    }
+
     setGenericForm({});
     alert('Registo operacional adicionado com sucesso!');
   };
@@ -835,14 +1161,18 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
           {activeSector === 'AGRICULTURE' && (
             <>
               {[
-                { id: 'talhoes', label: 'Talões', desc: 'Solares, solos e áreas' },
-                { id: 'culturas', label: 'Culturas', desc: 'Ciclos de plantio ativos' },
-                { id: 'producao', label: 'Produção', desc: 'Registos periódicos' },
-                { id: 'colheitas', label: 'Colheitas', desc: 'Datas, perdas e volumes' },
-                { id: 'insumos', label: 'Insumos', desc: 'Sementes, fertilizantes, etc' },
-                { id: 'equipamentos', label: 'Equipamentos', desc: 'Tratores e manutenção' },
-                { id: 'clima', label: 'Clima', desc: 'Temperatura e alertas' },
-                { id: 'indicadores', label: 'Indicadores', desc: 'Análise de produtividade' },
+                { id: 'talhoes', label: 'Talhões & Solos', desc: 'Parcelas, solos e áreas' },
+                { id: 'culturas', label: 'Culturas & Plantio', desc: 'Ciclos de plantio ativos' },
+                { id: 'producao', label: '🌾 Produção & Colheitas', desc: 'Colheitas, volumes e perdas' },
+                { id: 'trabalho', label: '💼 Trabalho & Pessoal', desc: 'Mão de obra, diárias e tarefas' },
+                { id: 'entradas_caixa', label: '↙️ Entradas de Caixa', desc: 'Vendas e receitas do campo' },
+                { id: 'saidas_caixa', label: '↗️ Saídas de Caixa', desc: 'Insumos, combustíveis e contas' },
+                { id: 'consumo_familiar', label: '🍲 Consumo Familiar', desc: 'Auto-consumo da produção' },
+                { id: 'ativos_fixos', label: '🚜 Ativos & Maquinaria', desc: 'Tratores, rega e depreciação' },
+                { id: 'pragas', label: '🐛 Monitoria de Pragas', desc: 'Pragas, sanidade e biopesticidas' },
+                { id: 'insumos', label: 'Insumos & Adubos', desc: 'Sementes, fertilizantes, etc' },
+                { id: 'clima', label: 'Clima & Estação', desc: 'Temperatura, chuva e alertas' },
+                { id: 'indicadores', label: 'Indicadores do Setor', desc: 'Análise de produtividade' },
               ].map(item => (
                 <button
                   key={item.id}
@@ -850,9 +1180,9 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                     setActiveResource(item.id);
                     localStorage.setItem(`olo-fintel-lastResource-${userId}`, item.id);
                   }}
-                  className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex flex-col gap-0.5 ${
+                  className={`w-full text-left p-2.5 rounded-xl transition-all cursor-pointer flex flex-col gap-0.5 ${
                     activeResource === item.id 
-                      ? 'bg-brand-iris/10 text-brand-iris border-l-4 border-brand-iris' 
+                      ? 'bg-brand-iris/10 text-brand-iris border-l-4 border-brand-iris font-semibold' 
                       : 'hover:bg-gray-50 dark:hover:bg-[#1C1C24] text-gray-700 dark:text-gray-300'
                   }`}
                 >
@@ -866,13 +1196,18 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
           {activeSector === 'LIVESTOCK' && (
             <>
               {[
-                { id: 'rebanho', label: 'Rebanho', desc: 'Gado, raças e lotes' },
-                { id: 'reproducao', label: 'Reprodução', desc: 'Inseminação e partos' },
-                { id: 'saude', label: 'Saúde Animal', desc: 'Tratamentos e vacinação' },
-                { id: 'alimentacao', label: 'Alimentação', desc: 'Consumo diário e custos' },
-                { id: 'crescimento', label: 'Crescimento', desc: 'Controlo de peso regular' },
-                { id: 'producaoAnimal', label: 'Produção Animal', desc: 'Leite, carne e ovos' },
-                { id: 'comercializacaoPecuaria', label: 'Comercialização', desc: 'Contratos e vendas' },
+                { id: 'rebanho', label: 'Rebanho & Efetivo', desc: 'Gado, raças e lotes' },
+                { id: 'producaoAnimal', label: '🥛 Produção Animal', desc: 'Leite, carne e ovos' },
+                { id: 'trabalho', label: '💼 Trabalho & Pastores', desc: 'Maneio diário e diárias' },
+                { id: 'entradas_caixa', label: '↙️ Entradas de Caixa', desc: 'Venda de animais e leite' },
+                { id: 'saidas_caixa', label: '↗️ Saídas de Caixa', desc: 'Rações, vacinas e custos' },
+                { id: 'consumo_familiar', label: '🍲 Consumo Familiar', desc: 'Leite e carne para casa' },
+                { id: 'ativos_fixos', label: '🐂 Ativos & Reprodutores', desc: 'Touros PO, currais e tanques' },
+                { id: 'pragas', label: '🐛 Monitoria Sanitária', desc: 'Carraças, aftosa e banhos' },
+                { id: 'reproducao', label: 'Reprodução & Partos', desc: 'Inseminação e nascimentos' },
+                { id: 'saude', label: 'Saúde & Vacinas', desc: 'Tratamentos e desparasitação' },
+                { id: 'alimentacao', label: 'Alimentação & Ração', desc: 'Consumo diário e silagem' },
+                { id: 'crescimento', label: 'Pesagem & Ganho', desc: 'Controlo de peso regular' },
               ].map(item => (
                 <button
                   key={item.id}
@@ -880,9 +1215,9 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                     setActiveResource(item.id);
                     localStorage.setItem(`olo-fintel-lastResource-${userId}`, item.id);
                   }}
-                  className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex flex-col gap-0.5 ${
+                  className={`w-full text-left p-2.5 rounded-xl transition-all cursor-pointer flex flex-col gap-0.5 ${
                     activeResource === item.id 
-                      ? 'bg-[#E3A008]/10 text-[#E3A008] border-l-4 border-[#E3A008]' 
+                      ? 'bg-[#E3A008]/10 text-[#E3A008] border-l-4 border-[#E3A008] font-semibold' 
                       : 'hover:bg-gray-50 dark:hover:bg-[#1C1C24] text-gray-700 dark:text-gray-300'
                   }`}
                 >
@@ -896,12 +1231,17 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
           {activeSector === 'FISHERIES' && (
             <>
               {[
-                { id: 'embarcacoes', label: 'Embarcações', desc: 'Motores, frotas e estados' },
-                { id: 'viagens', label: 'Viagens', desc: 'Controlo de tripulação/saídas' },
-                { id: 'capturas', label: 'Capturas', desc: 'Espécies e quantidades' },
+                { id: 'embarcacoes', label: 'Embarcações & Frota', desc: 'Motores, barcos e licenças' },
+                { id: 'capturas', label: '🐟 Capturas & Produção', desc: 'Descargas em lota e quilos' },
+                { id: 'trabalho', label: '💼 Trabalho & Tripulação', desc: 'Mestres, marinheiros e quinhões' },
+                { id: 'entradas_caixa', label: '↙️ Entradas de Caixa', desc: 'Vendas de pescado em lota' },
+                { id: 'saidas_caixa', label: '↗️ Saídas de Caixa', desc: 'Gasóleo, gelo e portagens' },
+                { id: 'consumo_familiar', label: '🍲 Consumo Familiar', desc: 'Peixe para famílias' },
+                { id: 'ativos_fixos', label: '⚓ Ativos & Equipamentos', desc: 'Barcos, motores e redes' },
+                { id: 'pragas', label: '🐛 Sanidade & Qualidade', desc: 'Inspeção HACCP e frio' },
+                { id: 'viagens', label: 'Viagens & Saídas', desc: 'Controlo de marés e tripulantes' },
                 { id: 'custosPesca', label: 'Custos Operacionais', desc: 'Combustível, gelo e taxas' },
-                { id: 'manutencaoPesca', label: 'Manutenção', desc: 'Inspeções e peças' },
-                { id: 'comercializacaoPesca', label: 'Comercialização', desc: 'Mercados e compradores' },
+                { id: 'manutencaoPesca', label: 'Manutenção Náutica', desc: 'Motores de popa e calafeto' },
               ].map(item => (
                 <button
                   key={item.id}
@@ -909,9 +1249,9 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                     setActiveResource(item.id);
                     localStorage.setItem(`olo-fintel-lastResource-${userId}`, item.id);
                   }}
-                  className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex flex-col gap-0.5 ${
+                  className={`w-full text-left p-2.5 rounded-xl transition-all cursor-pointer flex flex-col gap-0.5 ${
                     activeResource === item.id 
-                      ? 'bg-[#0E9F6E]/10 text-[#0E9F6E] border-l-4 border-[#0E9F6E]' 
+                      ? 'bg-[#0E9F6E]/10 text-[#0E9F6E] border-l-4 border-[#0E9F6E] font-semibold' 
                       : 'hover:bg-gray-50 dark:hover:bg-[#1C1C24] text-gray-700 dark:text-gray-300'
                   }`}
                 >
@@ -925,12 +1265,16 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
           {activeSector === 'COMMERCE' && (
             <>
               {[
-                { id: 'produtos', label: 'Produtos', desc: 'SKU, compras e vendas' },
-                { id: 'inventario', label: 'Inventário', desc: 'Stocks e movimentos' },
-                { id: 'compras', label: 'Compras PMEs', desc: 'Ciclo completo de pedidos' },
-                { id: 'vendas', label: 'Vendas PMEs', desc: 'Faturação e entrega' },
-                { id: 'crm', label: 'CRM', desc: 'Leads, clientes e parceiros' },
-                { id: 'contasAReceber', label: 'Contas a Receber', desc: 'Faturas e parcelas' },
+                { id: 'produtos', label: 'Produtos & Catálogo', desc: 'SKU, compras e preços' },
+                { id: 'inventario', label: '📦 Movimento & Stocks', desc: 'Entradas, saídas e quebras' },
+                { id: 'trabalho', label: '💼 Trabalho & Turnos', desc: 'Balconistas, caixas e salários' },
+                { id: 'entradas_caixa', label: '↙️ Entradas de Caixa', desc: 'Vendas diárias e recebimentos' },
+                { id: 'saidas_caixa', label: '↗️ Saídas de Caixa', desc: 'Fornecedores, faturas e rendas' },
+                { id: 'consumo_familiar', label: '🍲 Consumo Familiar', desc: 'Retiradas de loja para casa' },
+                { id: 'ativos_fixos', label: '🏬 Ativos & Instalações', desc: 'Carrinhas, arcas e balanças' },
+                { id: 'pragas', label: '🐛 Monitoria de Armazém', desc: 'Gorgulhos, validade e higiene' },
+                { id: 'crm', label: 'CRM & Clientes', desc: 'Clientes e parceiros comerciais' },
+                { id: 'contasAReceber', label: 'Contas a Receber', desc: 'Faturas e créditos pendentes' },
                 { id: 'contasAPagar', label: 'Contas a Pagar', desc: 'Obrigações e prazos' },
               ].map(item => (
                 <button
@@ -939,9 +1283,9 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                     setActiveResource(item.id);
                     localStorage.setItem(`olo-fintel-lastResource-${userId}`, item.id);
                   }}
-                  className={`w-full text-left p-3 rounded-xl transition-all cursor-pointer flex flex-col gap-0.5 ${
+                  className={`w-full text-left p-2.5 rounded-xl transition-all cursor-pointer flex flex-col gap-0.5 ${
                     activeResource === item.id 
-                      ? 'bg-[#3F83F8]/10 text-[#3F83F8] border-l-4 border-[#3F83F8]' 
+                      ? 'bg-[#3F83F8]/10 text-[#3F83F8] border-l-4 border-[#3F83F8] font-semibold' 
                       : 'hover:bg-gray-50 dark:hover:bg-[#1C1C24] text-gray-700 dark:text-gray-300'
                   }`}
                 >
@@ -1162,6 +1506,12 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                     )}
                     <span className="px-2 py-0.5 bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 text-[10px] font-mono rounded">
                       Total: {
+                        activeResource === 'trabalho' ? trabalho.filter(t => t.setor === activeSector || !t.setor).length :
+                        activeResource === 'entradas_caixa' ? entradasCaixa.filter(t => t.setor === activeSector || !t.setor).length :
+                        activeResource === 'saidas_caixa' ? saidasCaixa.filter(t => t.setor === activeSector || !t.setor).length :
+                        activeResource === 'consumo_familiar' ? consumoFamiliar.filter(t => t.setor === activeSector || !t.setor).length :
+                        activeResource === 'ativos_fixos' ? ativosFixos.filter(t => t.setor === activeSector || !t.setor).length :
+                        activeResource === 'pragas' ? pragas.filter(t => t.setor === activeSector || !t.setor).length :
                         activeSector === 'AGRICULTURE' ? (
                           activeResource === 'talhoes' ? talhoes.length :
                           activeResource === 'culturas' ? culturas.length :
@@ -1477,6 +1827,79 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                             <th className="p-3 text-right">Valor (Kz)</th>
                             <th className="p-3">Vencimento</th>
                             <th className="p-3">Estado</th>
+                          </>
+                        )}
+
+                        {/* CROSS-SECTOR OPERATIONAL COLUMNS */}
+                        {activeResource === 'trabalho' && (
+                          <>
+                            <th className="p-3">Data</th>
+                            <th className="p-3">Trabalhador / Equipa</th>
+                            <th className="p-3">Tarefa / Função</th>
+                            <th className="p-3 text-right">Pessoas</th>
+                            <th className="p-3 text-right">Horas</th>
+                            <th className="p-3 text-right">Diária (Kz)</th>
+                            <th className="p-3 text-right">Total Pago (Kz)</th>
+                            <th className="p-3">Estado</th>
+                            <th className="p-3 text-right">Ações</th>
+                          </>
+                        )}
+                        {activeResource === 'entradas_caixa' && (
+                          <>
+                            <th className="p-3">Data</th>
+                            <th className="p-3">Descrição / Operação</th>
+                            <th className="p-3">Cliente / Pagador</th>
+                            <th className="p-3">Categoria</th>
+                            <th className="p-3">Método / Conta</th>
+                            <th className="p-3 text-right">Valor (Kz)</th>
+                            <th className="p-3 text-right">Ações</th>
+                          </>
+                        )}
+                        {activeResource === 'saidas_caixa' && (
+                          <>
+                            <th className="p-3">Data</th>
+                            <th className="p-3">Descrição / Custo</th>
+                            <th className="p-3">Fornecedor / Beneficiário</th>
+                            <th className="p-3">Categoria de Despesa</th>
+                            <th className="p-3">Centro de Custo</th>
+                            <th className="p-3 text-right">Valor (Kz)</th>
+                            <th className="p-3 text-right">Ações</th>
+                          </>
+                        )}
+                        {activeResource === 'consumo_familiar' && (
+                          <>
+                            <th className="p-3">Data</th>
+                            <th className="p-3">Produto Retirado</th>
+                            <th className="p-3 text-right">Quantidade</th>
+                            <th className="p-3 text-right">Preço Ref. (Kz)</th>
+                            <th className="p-3 text-right">Valor Estimado (Kz)</th>
+                            <th className="p-3">Beneficiários</th>
+                            <th className="p-3">Finalidade</th>
+                            <th className="p-3 text-right">Ações</th>
+                          </>
+                        )}
+                        {activeResource === 'ativos_fixos' && (
+                          <>
+                            <th className="p-3">Ativo / Equipamento</th>
+                            <th className="p-3">Código / Registo</th>
+                            <th className="p-3">Categoria</th>
+                            <th className="p-3 text-right">Custo Compra (Kz)</th>
+                            <th className="p-3 text-right">Valor Atual (Kz)</th>
+                            <th className="p-3">Localização</th>
+                            <th className="p-3">Estado</th>
+                            <th className="p-3 text-right">Ações</th>
+                          </>
+                        )}
+                        {activeResource === 'pragas' && (
+                          <>
+                            <th className="p-3">Data</th>
+                            <th className="p-3">Praga / Alvo Sanitário</th>
+                            <th className="p-3">Gravidade</th>
+                            <th className="p-3">Área / Lote Afetado</th>
+                            <th className="p-3">Ação / Tratamento</th>
+                            <th className="p-3 text-right">Custo Interv. (Kz)</th>
+                            <th className="p-3">Estado Resolução</th>
+                            <th className="p-3 text-right">Ações</th>
                           </>
                         )}
                       </tr>
@@ -1976,6 +2399,188 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                           </td>
                         </tr>
                       ))}
+
+                      {/* --- CROSS-SECTOR OPERATIONAL ROWS --- */}
+                      {activeResource === 'trabalho' && trabalho.filter(t => t.setor === activeSector || !t.setor).map(tr => (
+                        <tr key={tr.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
+                          <td className="p-3 font-mono text-gray-400 text-[10px]">{tr.data}</td>
+                          <td className="p-3 font-bold text-gray-900 dark:text-white">{tr.trabalhador}</td>
+                          <td className="p-3 text-brand-iris font-medium">{tr.tarefa}</td>
+                          <td className="p-3 text-right font-mono">{tr.numTrabalhadores ?? tr.trabalhadores ?? 1} un</td>
+                          <td className="p-3 text-right font-mono">{tr.horasTrabalhadas ?? tr.horas ?? 8}h</td>
+                          <td className="p-3 text-right font-mono text-gray-500">{(tr.valorDiaria ?? tr.diaria ?? 0).toLocaleString()} Kz</td>
+                          <td className="p-3 text-right font-mono font-bold text-red-500">-{(tr.custoTotal ?? tr.total ?? 0).toLocaleString()} Kz</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                              tr.estadoPagamento === 'Pago' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
+                              tr.estadoPagamento === 'Parcial' ? 'bg-blue-100 text-blue-700' : 'bg-amber-100 text-amber-700'
+                            }`}>{tr.estadoPagamento || 'Pago'}</span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                if (confirm('Pretende remover este registo de mão de obra?')) {
+                                  setTrabalho(prev => prev.filter(x => x.id !== tr.id));
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold p-1 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {activeResource === 'entradas_caixa' && entradasCaixa.filter(ec => ec.setor === activeSector || !ec.setor).map(ec => (
+                        <tr key={ec.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
+                          <td className="p-3 font-mono text-gray-400 text-[10px]">{ec.data}</td>
+                          <td className="p-3 font-bold text-gray-900 dark:text-white">{ec.descricao || ec.titulo || 'Entrada de Caixa'}</td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300">{ec.cliente || 'Consumidor / Mercado'}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 rounded text-[9px] font-bold">
+                              {ec.categoria || 'Venda'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-gray-500 font-mono text-[11px]">{ec.metodoPagamento || ec.formaPagamento || 'Numerário'}</td>
+                          <td className="p-3 text-right font-mono font-bold text-emerald-600">+{(ec.valor ?? 0).toLocaleString()} Kz</td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                if (confirm('Pretende remover esta entrada de caixa?')) {
+                                  setEntradasCaixa(prev => prev.filter(x => x.id !== ec.id));
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold p-1 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {activeResource === 'saidas_caixa' && saidasCaixa.filter(sc => sc.setor === activeSector || !sc.setor).map(sc => (
+                        <tr key={sc.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
+                          <td className="p-3 font-mono text-gray-400 text-[10px]">{sc.data}</td>
+                          <td className="p-3 font-bold text-gray-900 dark:text-white">{sc.descricao || sc.titulo || 'Despesa Operacional'}</td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300">{sc.fornecedor || 'Fornecedor Local'}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-300 rounded text-[9px] font-bold">
+                              {sc.categoria || 'Custo'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-gray-500 text-xs">{sc.centroCusto || 'Unidade Principal'}</td>
+                          <td className="p-3 text-right font-mono font-bold text-red-500">-{(sc.valor ?? 0).toLocaleString()} Kz</td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                if (confirm('Pretende remover esta saída de caixa?')) {
+                                  setSaidasCaixa(prev => prev.filter(x => x.id !== sc.id));
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold p-1 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {activeResource === 'consumo_familiar' && consumoFamiliar.filter(cf => cf.setor === activeSector || !cf.setor).map(cf => (
+                        <tr key={cf.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
+                          <td className="p-3 font-mono text-gray-400 text-[10px]">{cf.data}</td>
+                          <td className="p-3 font-bold text-gray-900 dark:text-white">{cf.produto}</td>
+                          <td className="p-3 text-right font-mono font-bold">{cf.quantidade} {cf.unidade}</td>
+                          <td className="p-3 text-right font-mono text-gray-500">{(cf.valorUnitarioEstimado ?? cf.valorUnitario ?? 0).toLocaleString()} Kz</td>
+                          <td className="p-3 text-right font-mono font-bold text-amber-600 dark:text-amber-400">{(cf.valorTotalEstimado ?? cf.valorTotal ?? 0).toLocaleString()} Kz</td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300 font-mono text-xs">{cf.membrosFamilia || 4} pessoas</td>
+                          <td className="p-3 text-gray-500 text-xs">{cf.finalidade}</td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                if (confirm('Pretende remover este registo de auto-consumo?')) {
+                                  setConsumoFamiliar(prev => prev.filter(x => x.id !== cf.id));
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold p-1 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {activeResource === 'ativos_fixos' && ativosFixos.filter(af => af.setor === activeSector || !af.setor).map(af => (
+                        <tr key={af.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
+                          <td className="p-3 font-bold text-gray-900 dark:text-white">{af.nome}</td>
+                          <td className="p-3 font-mono text-brand-iris font-semibold text-xs">{af.codigo || af.identificador || 'AT-001'}</td>
+                          <td className="p-3">
+                            <span className="px-2 py-0.5 bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 rounded text-[9px] font-bold">
+                              {af.categoria}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right font-mono text-gray-500">{(af.valorAquisicao ?? af.custoAquisicao ?? 0).toLocaleString()} Kz</td>
+                          <td className="p-3 text-right font-mono font-bold text-gray-900 dark:text-white">{(af.valorAtual ?? af.custoAquisicao ?? 0).toLocaleString()} Kz</td>
+                          <td className="p-3 text-gray-500 text-xs">{af.localizacao}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                              (af.estadoOperacional || af.estado) === 'Excelente' || (af.estadoOperacional || af.estado) === 'Bom' || (af.estadoOperacional || af.estado) === 'Operacional' ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400' :
+                              (af.estadoOperacional || af.estado) === 'Em Manutenção' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'
+                            }`}>{af.estadoOperacional || af.estado || 'Operacional'}</span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                if (confirm('Pretende remover este ativo fixo?')) {
+                                  setAtivosFixos(prev => prev.filter(x => x.id !== af.id));
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold p-1 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+
+                      {activeResource === 'pragas' && pragas.filter(pr => pr.setor === activeSector || !pr.setor).map(pr => (
+                        <tr key={pr.id} className="border-b border-gray-50 dark:border-gray-800 hover:bg-gray-50/50">
+                          <td className="p-3 font-mono text-gray-400 text-[10px]">{pr.data}</td>
+                          <td className="p-3 font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
+                            <Bug size={14} className="text-red-500" />
+                            {pr.praga}
+                          </td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                              pr.gravidade === 'Crítica' || pr.gravidade === 'Alta' ? 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-400' :
+                              pr.gravidade === 'Média' ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'
+                            }`}>{pr.gravidade}</span>
+                          </td>
+                          <td className="p-3 text-gray-600 dark:text-gray-300 text-xs">{pr.areaAfetada}</td>
+                          <td className="p-3 text-gray-500 text-xs">
+                            <div className="font-semibold text-gray-900 dark:text-white">{pr.acao}</div>
+                            <div className="text-[10px] text-gray-400">{pr.produtoAplicado}</div>
+                          </td>
+                          <td className="p-3 text-right font-mono text-red-500 font-semibold">{pr.custoIntervencao ? `-${(pr.custoIntervencao ?? 0).toLocaleString()} Kz` : '0 Kz'}</td>
+                          <td className="p-3">
+                            <span className={`px-2 py-0.5 rounded text-[9px] font-bold ${
+                              pr.estadoResolucao === 'Resolvido' ? 'bg-green-100 text-green-700' :
+                              pr.estadoResolucao === 'Sob Controlo' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'
+                            }`}>{pr.estadoResolucao}</span>
+                          </td>
+                          <td className="p-3 text-right">
+                            <button
+                              onClick={() => {
+                                if (confirm('Pretende remover esta monitoria de pragas?')) {
+                                  setPragas(prev => prev.filter(x => x.id !== pr.id));
+                                }
+                              }}
+                              className="text-red-500 hover:text-red-700 text-xs font-semibold p-1 hover:bg-red-50 rounded"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -2181,8 +2786,409 @@ export default function SectorOperationalDashboard({ userIndustry, userId, userR
                     </>
                   )}
 
+                  {activeResource === 'trabalho' && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Trabalhador / Equipa</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={genericForm.trabalhador || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, trabalhador: e.target.value }))}
+                          placeholder="Ex: Equipa de Sachadores / João Manuel" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tarefa / Função</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={genericForm.tarefa || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, tarefa: e.target.value }))}
+                          placeholder="Ex: Monda, Colheita, Limpeza de redes, Balcão" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Número de Pessoas</label>
+                        <input 
+                          type="number" 
+                          min="1"
+                          required
+                          value={genericForm.numTrabalhadores || '1'} 
+                          onChange={e => setGenericForm(p => ({ ...p, numTrabalhadores: e.target.value }))}
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Horas Trabalhadas</label>
+                        <input 
+                          type="number" 
+                          step="0.5"
+                          required
+                          value={genericForm.horasTrabalhadas || '8'} 
+                          onChange={e => setGenericForm(p => ({ ...p, horasTrabalhadas: e.target.value }))}
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor Diária por Pessoa (Kz)</label>
+                        <input 
+                          type="number" 
+                          required
+                          value={genericForm.valorDiaria || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, valorDiaria: e.target.value }))}
+                          placeholder="Ex: 5000" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Estado do Pagamento</label>
+                        <select 
+                          value={genericForm.estadoPagamento || 'Pago'} 
+                          onChange={e => setGenericForm(p => ({ ...p, estadoPagamento: e.target.value }))}
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        >
+                          <option value="Pago">Pago</option>
+                          <option value="Pendente">Pendente</option>
+                          <option value="Parcial">Parcial</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {activeResource === 'entradas_caixa' && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Descrição da Entrada</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={genericForm.descricao || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, descricao: e.target.value }))}
+                          placeholder="Ex: Venda de 20 sacos de milho / 5 caixas de carapau" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor da Entrada (Kz)</label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          required
+                          value={genericForm.valor || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, valor: e.target.value }))}
+                          placeholder="Ex: 85000" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Cliente / Origem</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.cliente || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, cliente: e.target.value }))}
+                          placeholder="Ex: Mercado do 30 / Armazém Rocha" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Categoria de Receita</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.categoria || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, categoria: e.target.value }))}
+                          placeholder="Ex: Venda Direta, Serviços, Subvenção" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Método de Pagamento</label>
+                        <select 
+                          value={genericForm.metodoPagamento || 'Numerário'} 
+                          onChange={e => setGenericForm(p => ({ ...p, metodoPagamento: e.target.value }))}
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        >
+                          <option value="Numerário">Numerário / Cash</option>
+                          <option value="Transferência Multicaixa">Transferência Multicaixa / Express</option>
+                          <option value="TPA / Cartão">TPA / Cartão</option>
+                          <option value="Cheque / Depósito">Cheque / Depósito Bancário</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {activeResource === 'saidas_caixa' && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Descrição do Custo / Despesa</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={genericForm.descricao || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, descricao: e.target.value }))}
+                          placeholder="Ex: Compra de Gasóleo / Ração / Embalagens" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor da Saída (Kz)</label>
+                        <input 
+                          type="number" 
+                          step="0.01"
+                          required
+                          value={genericForm.valor || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, valor: e.target.value }))}
+                          placeholder="Ex: 35000" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Fornecedor / Beneficiário</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.fornecedor || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, fornecedor: e.target.value }))}
+                          placeholder="Ex: Sonangol, Pumangol, AgroAngola" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Categoria de Despesa</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.categoria || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, categoria: e.target.value }))}
+                          placeholder="Ex: Combustível, Insumos, Manutenção, Renda" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Centro de Custo / Lote</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.centroCusto || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, centroCusto: e.target.value }))}
+                          placeholder="Ex: Talhão 3 / Barco Alfa / Loja Centro" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {activeResource === 'consumo_familiar' && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Produto / Alimento Retirado</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={genericForm.produto || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, produto: e.target.value }))}
+                          placeholder="Ex: Milho, Feijão, Leite, Peixe Carapau, Frango" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Quantidade Retirada</label>
+                        <input 
+                          type="number" 
+                          step="0.1"
+                          required
+                          value={genericForm.quantidade || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, quantidade: e.target.value }))}
+                          placeholder="Ex: 15" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Unidade</label>
+                        <select 
+                          value={genericForm.unidade || 'kg'} 
+                          onChange={e => setGenericForm(p => ({ ...p, unidade: e.target.value }))}
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        >
+                          <option value="kg">kg (Quilogramas)</option>
+                          <option value="litros">litros (Litros)</option>
+                          <option value="unidades">unidades</option>
+                          <option value="sacos">sacos</option>
+                          <option value="caixas">caixas</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Preço de Referência Unitário (Kz)</label>
+                        <input 
+                          type="number" 
+                          value={genericForm.valorUnitarioEstimado || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, valorUnitarioEstimado: e.target.value }))}
+                          placeholder="Ex: 800" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Beneficiários (Pessoas na Casa)</label>
+                        <input 
+                          type="number" 
+                          value={genericForm.membrosFamilia || '4'} 
+                          onChange={e => setGenericForm(p => ({ ...p, membrosFamilia: e.target.value }))}
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Finalidade</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.finalidade || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, finalidade: e.target.value }))}
+                          placeholder="Ex: Alimentação do agregado / Apoio comunitário" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </>
+                  )}
+
+                  {activeResource === 'ativos_fixos' && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nome do Ativo / Equipamento</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={genericForm.nome || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, nome: e.target.value }))}
+                          placeholder="Ex: Trator Massey Ferguson / Arca Congeladora / Motor Yamaha" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Código / Matrícula</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.codigo || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, codigo: e.target.value }))}
+                          placeholder="Ex: AT-2025-01" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Categoria de Ativo</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.categoria || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, categoria: e.target.value }))}
+                          placeholder="Ex: Maquinaria, Veículo, Instalações, Frio" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Custo de Aquisição (Kz)</label>
+                        <input 
+                          type="number" 
+                          required
+                          value={genericForm.valorAquisicao || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, valorAquisicao: e.target.value }))}
+                          placeholder="Ex: 8500000" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Valor Atual Estimado (Kz)</label>
+                        <input 
+                          type="number" 
+                          value={genericForm.valorAtual || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, valorAtual: e.target.value }))}
+                          placeholder="Ex: 7200000" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Estado Operacional</label>
+                        <select 
+                          value={genericForm.estadoOperacional || 'Bom'} 
+                          onChange={e => setGenericForm(p => ({ ...p, estadoOperacional: e.target.value }))}
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        >
+                          <option value="Excelente">Excelente</option>
+                          <option value="Bom">Bom</option>
+                          <option value="Em Manutenção">Em Manutenção</option>
+                          <option value="Danificado">Danificado</option>
+                        </select>
+                      </div>
+                    </>
+                  )}
+
+                  {activeResource === 'pragas' && (
+                    <>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Praga / Anomalia Sanitária</label>
+                        <input 
+                          type="text" 
+                          required
+                          value={genericForm.praga || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, praga: e.target.value }))}
+                          placeholder="Ex: Lagarta do Cartucho / Carraças / Gorgulho / Míldio" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Nível de Gravidade</label>
+                        <select 
+                          value={genericForm.gravidade || 'Média'} 
+                          onChange={e => setGenericForm(p => ({ ...p, gravidade: e.target.value }))}
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        >
+                          <option value="Baixa">Baixa</option>
+                          <option value="Média">Média</option>
+                          <option value="Alta">Alta</option>
+                          <option value="Crítica">Crítica</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Área / Lote Afetado</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.areaAfetada || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, areaAfetada: e.target.value }))}
+                          placeholder="Ex: Talhão Beta / Curral 2 / Armazém Norte" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Ação de Controlo / Intervenção</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.acao || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, acao: e.target.value }))}
+                          placeholder="Ex: Pulverização com Biopesticida / Banho carracicida" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Produto / Tratamento Aplicado</label>
+                        <input 
+                          type="text" 
+                          value={genericForm.produtoAplicado || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, produtoAplicado: e.target.value }))}
+                          placeholder="Ex: Óleo de Neem / Deltametrina / Fosfina" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Custo da Intervenção (Kz)</label>
+                        <input 
+                          type="number" 
+                          value={genericForm.custoIntervencao || ''} 
+                          onChange={e => setGenericForm(p => ({ ...p, custoIntervencao: e.target.value }))}
+                          placeholder="Ex: 12000" 
+                          className="w-full text-xs px-3 py-2 bg-white dark:bg-[#15151C] border border-gray-200 dark:border-gray-800 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </>
+                  )}
+
                   {/* Default simple text fallback fields for generic tables */}
-                  {!(activeResource === 'talhoes' || activeResource === 'culturas' || activeResource === 'embarcacoes') && (
+                  {!(activeResource === 'talhoes' || activeResource === 'culturas' || activeResource === 'embarcacoes' || activeResource === 'trabalho' || activeResource === 'entradas_caixa' || activeResource === 'saidas_caixa' || activeResource === 'consumo_familiar' || activeResource === 'ativos_fixos' || activeResource === 'pragas') && (
                     <>
                       <div>
                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Identificador / Nome</label>

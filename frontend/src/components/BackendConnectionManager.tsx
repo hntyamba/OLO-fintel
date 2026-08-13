@@ -19,7 +19,7 @@ export default function BackendConnectionManager({ className, isFloating = false
 
   // Loaded configuration on mount
   useEffect(() => {
-    const savedUrl = localStorage.getItem('olo_fintel_custom_api_url') || '';
+    const savedUrl = localStorage.getItem('mirawelch_custom_api_url') || localStorage.getItem('olo_fintel_custom_api_url') || '';
     setCustomUrl(savedUrl);
     
     // Evaluate actual URL used currently

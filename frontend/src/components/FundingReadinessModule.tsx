@@ -151,8 +151,8 @@ export default function FundingReadinessModule({
     },
     {
       id: 'line-fgc-jovem',
-      name: 'Garantia de Crédito OLO - Microfomento',
-      entity: 'Fundo de Garantia de Crédito & OLO Fintel',
+      name: 'Garantia de Crédito MiraWelch - Microfomento',
+      entity: 'Fundo de Garantia de Crédito & MiraWelch',
       description: 'Financiamento rápido com dispensa de garantias reais para cooperativas iniciantes ou intermédias em Angola. Foco na inclusão financeira de associações rurais e pesqueiras.',
       maxAmount: '5.000.000 Kz',
       interestRate: '5% ao ano',
@@ -289,18 +289,38 @@ export default function FundingReadinessModule({
       const res = await fetch(getApiUrl(`/api/funding/applications/${organizationId || 'guest'}`));
       if (res.ok) {
         const data = await res.json();
-        setApplications(data);
+        if (Array.isArray(data)) {
+          setApplications(data);
+        } else if (data && Array.isArray(data.applications)) {
+          setApplications(data.applications);
+        } else {
+          setApplications([]);
+        }
       } else {
         // Fallback to local storage
         const saved = localStorage.getItem(`olo-funding-apps-${userId}`);
         if (saved) {
-          setApplications(JSON.parse(saved));
+          try {
+            const parsed = JSON.parse(saved);
+            setApplications(Array.isArray(parsed) ? parsed : []);
+          } catch {
+            setApplications([]);
+          }
+        } else {
+          setApplications([]);
         }
       }
     } catch (e) {
       const saved = localStorage.getItem(`olo-funding-apps-${userId}`);
       if (saved) {
-        setApplications(JSON.parse(saved));
+        try {
+          const parsed = JSON.parse(saved);
+          setApplications(Array.isArray(parsed) ? parsed : []);
+        } catch {
+          setApplications([]);
+        }
+      } else {
+        setApplications([]);
       }
     }
   };
@@ -382,7 +402,7 @@ export default function FundingReadinessModule({
         if (subscores.documental < 20) {
           fallbackSteps.push({
             title: 'Submeter Alvará Comercial e Ata de Constituição da Cooperativa',
-            description: 'Envie todos os documentos obrigatórios para validação pela equipa OLO. A falta de documentos verificados é a principal causa de reprovação de crédito (KYC/AML).',
+            description: 'Envie todos os documentos obrigatórios para validação pela equipa MiraWelch. A falta de documentos verificados é a principal causa de reprovação de crédito (KYC/AML).',
             category: 'Documental',
             impact: 'ALTO'
           });
@@ -408,7 +428,7 @@ export default function FundingReadinessModule({
         if (fallbackSteps.length === 0) {
           fallbackSteps.push({
             title: 'Auditoria de Conformidade e Preparação de Pitch Deck',
-            description: 'Com um score excelente de prontidão, prepare uma apresentação estruturada com ajuda de um consultor fintel OLO para aceder à Linha Aviso 10 do BNA.',
+            description: 'Com um score excelente de prontidão, prepare uma apresentação estruturada com ajuda de um consultor MiraWelch para aceder à Linha Aviso 10 do BNA.',
             category: 'Financeiro',
             impact: 'ALTO'
           });
@@ -464,8 +484,9 @@ export default function FundingReadinessModule({
 
       if (res.ok) {
         const data = await res.json();
-        setApplications(prev => [data.application, ...prev]);
-        alert(`Candidatura ao programa "${showApplyModal.name}" submetida com sucesso! A equipa de analistas OLO Fintel irá avaliar e responder em até 48 horas.`);
+        const createdApp = data?.application || newApp;
+        setApplications(prev => [createdApp, ...(Array.isArray(prev) ? prev : [])]);
+        alert(`Candidatura ao programa "${showApplyModal.name}" submetida com sucesso! A equipa de analistas MiraWelch irá avaliar e responder em até 48 horas.`);
         setShowApplyModal(null);
         setApplyForm({
           amountRequested: '',
@@ -480,7 +501,8 @@ export default function FundingReadinessModule({
       }
     } catch (err) {
       // Local fallback
-      const updatedList = [newApp, ...applications];
+      const currentApps = Array.isArray(applications) ? applications : [];
+      const updatedList = [newApp, ...currentApps];
       setApplications(updatedList);
       localStorage.setItem(`olo-funding-apps-${userId}`, JSON.stringify(updatedList));
       alert(`Candidatura ao programa "${showApplyModal.name}" registada com sucesso localmente no simulador!`);
@@ -625,7 +647,7 @@ export default function FundingReadinessModule({
         <div className="lg:col-span-8 space-y-4">
           <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
             <CheckCircle2 size={16} className="text-brand-purple" />
-            Checklist de Conformidade OLO Fintel
+            Checklist de Conformidade MiraWelch
           </h4>
           <p className="text-xs text-gray-400">
             Atingir 100 pontos de prontidão exige a formalização de todas as vertentes abaixo. Complete as tarefas pendentes nos respetivos módulos superiores.
@@ -790,7 +812,7 @@ export default function FundingReadinessModule({
           <div>
             <h4 className="text-xs font-bold text-gray-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
               <Sparkles className="text-brand-purple animate-pulse" size={16} />
-              Plano de Ação Inteligente OLO (Gerado por IA)
+              Plano de Ação Inteligente MiraWelch (Gerado por IA)
             </h4>
             <p className="text-xs text-gray-400 mt-1">
               Gerado instantaneamente com recurso a IA generativa com base nas suas lacunas e subscores reais.
@@ -874,7 +896,7 @@ export default function FundingReadinessModule({
             Candidaturas Estruturadas a Financiamento
           </h4>
           <p className="text-xs text-gray-400 mt-1">
-            Programas oficiais ativos em Angola. OLO Fintel sincroniza os seus dados diretamente com os bancos validadores para acelerar o desembolso.
+            Programas oficiais ativos em Angola. A MiraWelch sincroniza os seus dados diretamente com os bancos validadores para acelerar o desembolso.
           </p>
         </div>
 
@@ -944,7 +966,7 @@ export default function FundingReadinessModule({
           Histórico de Candidaturas Submetidas
         </h4>
 
-        {applications.length === 0 ? (
+        {(!Array.isArray(applications) || applications.length === 0) ? (
           <p className="text-xs text-gray-400 text-center py-6 bg-gray-50 dark:bg-black/10 rounded-xl border border-gray-100 dark:border-gray-800">
             Nenhuma candidatura enviada ainda. Submeta o formulário acima num dos programas elegíveis.
           </p>
@@ -962,7 +984,7 @@ export default function FundingReadinessModule({
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
-                {applications.map((app) => (
+                {(Array.isArray(applications) ? applications : []).map((app) => (
                   <tr key={app.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-800/20 font-medium text-gray-700 dark:text-gray-300">
                     <td className="p-3 font-mono text-[10px]">
                       {new Date(app.submittedAt).toLocaleDateString()}
@@ -1013,7 +1035,7 @@ export default function FundingReadinessModule({
               <div>
                 <span className="text-[9px] font-bold text-brand-purple uppercase bg-brand-purple/10 px-2 py-0.5 rounded">Formulário Oficial de Crédito</span>
                 <h3 className="text-base font-bold text-gray-900 dark:text-white mt-1.5">{showApplyModal.name}</h3>
-                <p className="text-[11px] text-gray-400 mt-0.5">Sincronizado via OLO Fintel com o validador.</p>
+                <p className="text-[11px] text-gray-400 mt-0.5">Sincronizado via MiraWelch com o validador.</p>
               </div>
               <button 
                 onClick={() => setShowApplyModal(null)}

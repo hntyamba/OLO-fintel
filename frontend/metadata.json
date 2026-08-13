@@ -1,6 +1,6 @@
 {
-  "name": "OLO Fintel",
-  "description": "Economic Operating System and Funding Readiness Platform for Angolan SMEs and Cooperatives",
+  "name": "MiraWelch",
+  "description": "Plataforma de Crescimento para Cooperativas e PMEs • Raízes fortes. Dados reais. Futuro próspero.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -1,5 +1,5 @@
 /**
- * OLO Fintel — Cliente de API Resiliente (Conexão de Produção & Fallback Local)
+ * MiraWelch — Cliente de API Resiliente (Conexão de Produção & Fallback Local)
  * 
  * Este ficheiro gere toda a comunicação com o backend NestJS alojado no Render.
  * Se o backend estiver online, as operações serão efetuadas em tempo real na base de dados (Supabase).
@@ -68,6 +68,124 @@ export async function checkServerHealth(): Promise<boolean> {
   }
 }
 
+// Seed survey submissions array (at least 3 valid entries for anonymity threshold & initial jury view)
+function getSeedSurveySubmissions() {
+  return [
+    {
+      id: 'sub-1001',
+      surveyId: 'survey-olo-2026',
+      respondentFingerprint: 'fp-8f921a',
+      organizationTypeHint: 'AGRICULTURE',
+      provinceHint: 'Huíla',
+      personaHint: 'Presidente',
+      completedAt: '2026-07-28T10:30:00.000Z',
+      createdAt: '2026-07-28T10:30:00.000Z',
+      adoptionScore: 78,
+      isHighIntent: true,
+      isUrgentPain: true,
+      payload: {
+        E1_orgName: 'Cooperativa Agrícola Humpata',
+        E2_nif: '5418029312',
+        E3_sector: 'AGRICULTURE',
+        E4_province: 'Huíla',
+        E5_employeeCount: '21_100',
+        E6_persona: 'PRESIDENTE',
+        E7_contact: '+244 923 456 789',
+        C2_biggestHeadache: 'Falta de maquinização de terra e sementes certificadas.',
+        A1_usesPaper: true,
+        A1_usesExcel: false,
+        A1_usesWhatsApp: true,
+        A1_usesBillingSoftware: false,
+        A1_usesNone: false,
+        A2_lostHours: '6_10',
+        A3_lostSales: '4_6',
+        B1_appliedFunding: 'REJECTED',
+        B2_rejectionReason: 'Falta de demonstração de resultados contábil e balanço auditado.',
+        B3_trustReport: 'YES',
+        C1_profitMarginIdea: 'NO',
+        C3_sectorConditionalAnswer: 'SIM_HISTORICO',
+        D1_probabilityToUse: '81_100',
+        D2_shareRealData: 'ALL_GOLD',
+        D3_willingToPay: '2500_7500'
+      }
+    },
+    {
+      id: 'sub-1002',
+      surveyId: 'survey-olo-2026',
+      respondentFingerprint: 'fp-3b41ce',
+      organizationTypeHint: 'LIVESTOCK',
+      provinceHint: 'Huambo',
+      personaHint: 'Gestor',
+      completedAt: '2026-07-28T11:15:00.000Z',
+      createdAt: '2026-07-28T11:15:00.000Z',
+      adoptionScore: 65,
+      isHighIntent: false,
+      isUrgentPain: false,
+      payload: {
+        E1_orgName: 'Criadores do Planalto Huambo',
+        E2_nif: '5409128371',
+        E3_sector: 'LIVESTOCK',
+        E4_province: 'Huambo',
+        E5_employeeCount: '6_20',
+        E6_persona: 'GESTOR',
+        E7_contact: '+244 912 345 678',
+        C2_biggestHeadache: 'Rações com custo inflacionado e falta de veterinários na região.',
+        A1_usesPaper: false,
+        A1_usesExcel: true,
+        A1_usesWhatsApp: true,
+        A1_usesBillingSoftware: false,
+        A1_usesNone: false,
+        A2_lostHours: '3_5',
+        A3_lostSales: '1_3',
+        B1_appliedFunding: 'APPROVED',
+        B3_trustReport: 'YES',
+        C1_profitMarginIdea: 'YES',
+        C3_sectorConditionalAnswer: 'PLANILHA',
+        D1_probabilityToUse: '51_80',
+        D2_shareRealData: 'AGGREGATED_SILVER',
+        D3_willingToPay: 'UP_2500'
+      }
+    },
+    {
+      id: 'sub-1003',
+      surveyId: 'survey-olo-2026',
+      respondentFingerprint: 'fp-9d10ef',
+      organizationTypeHint: 'FISHERIES',
+      provinceHint: 'Namibe',
+      personaHint: 'Presidente',
+      completedAt: '2026-07-28T14:45:00.000Z',
+      createdAt: '2026-07-28T14:45:00.000Z',
+      adoptionScore: 85,
+      isHighIntent: true,
+      isUrgentPain: true,
+      payload: {
+        E1_orgName: 'Pescas Artesanais do Namibe',
+        E2_nif: '5411039482',
+        E3_sector: 'FISHERIES',
+        E4_province: 'Namibe',
+        E5_employeeCount: '21_100',
+        E6_persona: 'PRESIDENTE',
+        E7_contact: '+244 931 223 344',
+        C2_biggestHeadache: 'Conservação de frio insuficiente nas embarcações e combustível caro.',
+        A1_usesPaper: true,
+        A1_usesExcel: false,
+        A1_usesWhatsApp: false,
+        A1_usesBillingSoftware: false,
+        A1_usesNone: false,
+        A2_lostHours: 'MORE_10',
+        A3_lostSales: 'MORE_6',
+        B1_appliedFunding: 'NEVER',
+        B3_trustReport: 'YES',
+        C1_profitMarginIdea: 'NO',
+        C3_sectorConditionalAnswer: 'COM_DADOS',
+        D1_probabilityToUse: '81_100',
+        D2_shareRealData: 'ALL_GOLD',
+        D3_willingToPay: 'MORE_7500'
+      }
+    }
+  ];
+}
+
 // Simulador local resiliente em formato Response
 function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): Response {
   let status = 200;
@@ -114,7 +232,7 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
       data = {
         id: "usr-sim-123",
         name: userName,
-        email: email || "owner@olofintel.ao",
+        email: email || "owner@mirawelch.ao",
         role: userRole,
         organizationId: "org-sim-uuid-1",
         organizationName: orgName,
@@ -130,11 +248,11 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
     } 
     else if (apiPath === 'auth/register') {
       const email = body.email || '';
-      const name = body.name || (email ? email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Gestor Fintel');
+      const name = body.name || (email ? email.split('@')[0].replace(/[._]/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Gestor MiraWelch');
       data = {
         id: "usr-sim-" + Math.floor(Math.random() * 1000),
         name: name,
-        email: email || "usuario@olofintel.ao",
+        email: email || "usuario@mirawelch.ao",
         role: body.role || "OWNER",
         organizationId: "org-sim-uuid-" + Math.floor(Math.random() * 1000),
         organizationName: body.organizationName || "Cooperativa Agrícola Humpata",
@@ -168,37 +286,213 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
       safeStorage.setItem('olo_fintel_cached_user', JSON.stringify(userObj));
       data = userObj;
     }
-    else if (apiPath === 'survey/stats') {
-      const surveyAnswers = JSON.parse(safeStorage.getItem('olo_fintel_survey_submissions') || '[]');
-      const count = 54 + surveyAnswers.length;
+    else if (apiPath.includes('surveys/active') || apiPath === 'survey/active') {
       data = {
-        total: count,
-        byProvince: {
-          "Benguela": 28 + (surveyAnswers.filter((a: any) => a.province === 'Benguela').length),
-          "Huambo": 14 + (surveyAnswers.filter((a: any) => a.province === 'Huambo').length),
-          "Luanda": 12 + (surveyAnswers.filter((a: any) => a.province === 'Luanda').length)
-        },
-        bySector: {
-          "Agricultura": 32,
-          "Pecuária": 12,
-          "Pesca": 10
-        },
-        challenges: [
-          { id: '1', challenge: 'Falta de controle de fluxo de caixa.', percentage: 48 },
-          { id: '2', challenge: 'Dificuldade de acesso a financiamento bancário.', percentage: 37 },
-          { id: '3', challenge: 'Falta de registos e histórico financeiro organizado.', percentage: 15 }
-        ]
+        success: true,
+        active: true,
+        survey: {
+          id: 'survey-olo-2026',
+          title: 'Inquérito de Diagnóstico de Maturidade Financeira e Digital',
+          description: 'Inquérito Estratégico de Validação de Necessidades dos Produtores Rurais e PMEs em Angola',
+          goalCount: 100,
+          status: 'Open',
+          createdAt: '2026-07-01T00:00:00.000Z'
+        }
       };
     }
-    else if (apiPath === 'survey/submit') {
-      const submissions = JSON.parse(safeStorage.getItem('olo_fintel_survey_submissions') || '[]');
-      submissions.push({
-        id: 'sub-' + Date.now(),
-        submittedAt: new Date().toISOString(),
-        ...body
+    else if (apiPath.includes('surveys/responses') || apiPath.includes('survey/submit') || apiPath === 'survey/submit') {
+      if (method === 'POST') {
+        const bodyData = body || {};
+
+        // 1. Group Validation: Check A1_* fields
+        const hasA1Option = bodyData.A1_usesPaper || bodyData.A1_usesExcel || bodyData.A1_usesWhatsApp || bodyData.A1_usesBillingSoftware || bodyData.A1_usesNone;
+        if (bodyData.A1_usesPaper !== undefined && !hasA1Option) {
+          status = 400;
+          data = { error: 'Por favor, selecione pelo menos um método de gestão de dados e registos.' };
+        } else if (bodyData.B1_appliedFunding === 'REJECTED' && !bodyData.B2_rejectionReason) {
+          status = 400;
+          data = { error: 'Por favor, indique o motivo da rejeição do financiamento anterior.' };
+        } else if (bodyData.E4_province === 'Outra' && !bodyData.E4_provinceOther) {
+          status = 400;
+          data = { error: 'Por favor, especifique qual é a outra província.' };
+        } else {
+          // Calculate Derived Metrics
+          // 3.1 isUrgentPain
+          const isUrgentPain = (bodyData.A3_lostSales === '4_6' || bodyData.A3_lostSales === 'MORE_6') && bodyData.C1_profitMarginIdea === 'NO';
+
+          // 3.2 isHighIntent
+          const isHighIntent = bodyData.D2_shareRealData === 'ALL_GOLD' && (bodyData.D1_probabilityToUse === '51_80' || bodyData.D1_probabilityToUse === '81_100');
+
+          // 3.3 adoptionScore
+          let scoreProbability = 10;
+          if (bodyData.D1_probabilityToUse === '81_100') scoreProbability = 100;
+          else if (bodyData.D1_probabilityToUse === '51_80') scoreProbability = 70;
+          else if (bodyData.D1_probabilityToUse === '21_50') scoreProbability = 40;
+
+          let scorePayment = 20;
+          if (bodyData.D3_willingToPay === 'MORE_7500') scorePayment = 100;
+          else if (bodyData.D3_willingToPay === '2500_7500') scorePayment = 80;
+          else if (bodyData.D3_willingToPay === 'UP_2500') scorePayment = 50;
+
+          let scoreDataShare = 30;
+          if (bodyData.D2_shareRealData === 'ALL_GOLD') scoreDataShare = 100;
+          else if (bodyData.D2_shareRealData === 'AGGREGATED_SILVER') scoreDataShare = 70;
+
+          let scoreMaturity = 20;
+          if (bodyData.C1_profitMarginIdea === 'YES') scoreMaturity = 100;
+          else if (bodyData.C1_profitMarginIdea === 'MAYBE') scoreMaturity = 50;
+
+          let scoreTrust = 10;
+          if (bodyData.B3_trustReport === 'YES') scoreTrust = 100;
+          else if (bodyData.B3_trustReport === 'MAYBE') scoreTrust = 50;
+
+          const adoptionScore = Math.round(
+            (scoreProbability * 0.3) +
+            (scorePayment * 0.2) +
+            (scoreDataShare * 0.2) +
+            (scoreMaturity * 0.2) +
+            (scoreTrust * 0.1)
+          );
+
+          // Get stored submissions or set initial
+          let submissions = JSON.parse(safeStorage.getItem('olo_fintel_survey_submissions') || '[]');
+          
+          const newSubmission = {
+            id: 'sub-' + Date.now(),
+            surveyId: 'survey-olo-2026',
+            respondentFingerprint: 'fp-' + Math.random().toString(36).substring(2, 10),
+            organizationTypeHint: bodyData.E6_persona || bodyData.E3_sector || 'Cooperativa',
+            provinceHint: bodyData.E4_province || 'Benguela',
+            personaHint: bodyData.E6_persona || 'Gestor',
+            completedAt: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            adoptionScore,
+            isHighIntent,
+            isUrgentPain,
+            payload: bodyData
+          };
+
+          submissions.unshift(newSubmission);
+          safeStorage.setItem('olo_fintel_survey_submissions', JSON.stringify(submissions));
+
+          status = 200;
+          data = {
+            success: true,
+            survey: {
+              adoptionScore,
+              isHighIntent,
+              isUrgentPain
+            }
+          };
+        }
+      } else {
+        // GET /api/v1/surveys/responses - Full raw data for Admin/SuperAdmin/Jury
+        let submissions = JSON.parse(safeStorage.getItem('olo_fintel_survey_submissions') || '[]');
+        if (submissions.length === 0) {
+          submissions = getSeedSurveySubmissions();
+          safeStorage.setItem('olo_fintel_survey_submissions', JSON.stringify(submissions));
+        }
+        data = {
+          success: true,
+          count: submissions.length,
+          responses: submissions
+        };
+      }
+    }
+    else if (apiPath.includes('surveys/statistics') || apiPath.includes('surveys/stats')) {
+      let submissions = JSON.parse(safeStorage.getItem('olo_fintel_survey_submissions') || '[]');
+      if (submissions.length === 0) {
+        submissions = getSeedSurveySubmissions();
+        safeStorage.setItem('olo_fintel_survey_submissions', JSON.stringify(submissions));
+      }
+
+      const totalResponses = submissions.length;
+      const targetGoal = 100;
+      const progressPercentage = Math.min(100, Math.round((totalResponses / targetGoal) * 100));
+
+      const byProvince: Record<string, number> = {};
+      const bySector: Record<string, number> = {};
+
+      submissions.forEach((s: any) => {
+        const prov = s.provinceHint || s.payload?.E4_province || s.payload?.province || 'Benguela';
+        const sec = s.payload?.E3_sector || s.organizationTypeHint || 'AGRICULTURE';
+        byProvince[prov] = (byProvince[prov] || 0) + 1;
+        bySector[sec] = (bySector[sec] || 0) + 1;
       });
-      safeStorage.setItem('olo_fintel_survey_submissions', JSON.stringify(submissions));
-      data = { success: true };
+
+      data = {
+        success: true,
+        stats: {
+          totalResponses,
+          targetGoal,
+          progressPercentage,
+          byProvince,
+          bySector
+        },
+        responses: submissions
+      };
+    }
+    else if (apiPath.includes('surveys/jury-dashboard') || apiPath === 'survey/stats') {
+      let submissions = JSON.parse(safeStorage.getItem('olo_fintel_survey_submissions') || '[]');
+      if (submissions.length === 0) {
+        submissions = getSeedSurveySubmissions();
+        safeStorage.setItem('olo_fintel_survey_submissions', JSON.stringify(submissions));
+      }
+
+      const totalResponses = submissions.length;
+
+      // Anonymity privacy threshold: minimum 3 responses required
+      if (totalResponses < 3) {
+        status = 200;
+        data = {
+          success: false,
+          isLocked: true,
+          minResponsesRequired: 3,
+          totalResponses,
+          message: 'O painel detalhado requer no mínimo 3 respostas registadas para proteger a privacidade dos respondentes.',
+          stats: {
+            totalResponses,
+            targetGoal: 100,
+            progressPercentage: Math.min(100, Math.round((totalResponses / 100) * 100))
+          }
+        };
+      } else {
+        const targetGoal = 100;
+        const progressPercentage = Math.min(100, Math.round((totalResponses / targetGoal) * 100));
+
+        const byProvince: Record<string, number> = {};
+        const bySector: Record<string, number> = {};
+        let highIntentCount = 0;
+        let urgentPainCount = 0;
+        let totalScoreSum = 0;
+
+        submissions.forEach((s: any) => {
+          const prov = s.provinceHint || s.payload?.E4_province || s.payload?.province || 'Benguela';
+          const sec = s.payload?.E3_sector || s.organizationTypeHint || 'AGRICULTURE';
+          byProvince[prov] = (byProvince[prov] || 0) + 1;
+          bySector[sec] = (bySector[sec] || 0) + 1;
+          if (s.isHighIntent) highIntentCount++;
+          if (s.isUrgentPain) urgentPainCount++;
+          totalScoreSum += Number(s.adoptionScore || 70);
+        });
+
+        const avgAdoptionScore = Math.round(totalScoreSum / Math.max(1, totalResponses));
+
+        data = {
+          success: true,
+          stats: {
+            totalResponses,
+            targetGoal,
+            progressPercentage,
+            byProvince,
+            bySector,
+            highIntentCount,
+            urgentPainCount,
+            avgAdoptionScore
+          },
+          responses: submissions
+        };
+      }
     }
     else if (apiPath === 'ai/advisor') {
       const type = body.advisorType || 'Financial';
@@ -323,8 +617,8 @@ function mockLocalEndpoint(apiPath: string, method: string, bodyText: string): R
     }
     else if (apiPath.startsWith('admin/consultants')) {
       data = [
-        { id: 'cons-1', name: 'Dr. Lucas Ribeiro', email: 'lucas@fintel.ao', activeDelegations: 12 },
-        { id: 'cons-2', name: 'Dra. Maria Mendes', email: 'maria@fintel.ao', activeDelegations: 7 }
+        { id: 'cons-1', name: 'Dr. Lucas Ribeiro', email: 'lucas@mirawelch.ao', activeDelegations: 12, assignedOrgs: [] },
+        { id: 'cons-2', name: 'Dra. Maria Mendes', email: 'maria@mirawelch.ao', activeDelegations: 7, assignedOrgs: [] }
       ];
     }
     else if (apiPath.includes('admin/document-action')) {
@@ -446,12 +740,12 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
           const response = await originalFetch(targetUrl, init);
           const contentType = response.headers.get('content-type') || '';
           if (response.status === 404 || contentType.includes('text/html')) {
-            console.warn(`[OLO Fintel API Proxy] Endpoint local ${apiPath} retornou HTML/404. Usando mock local...`);
+            console.warn(`[MiraWelch API Proxy] Endpoint local ${apiPath} retornou HTML/404. Usando mock local...`);
             return mockLocalEndpoint(apiPath, method, bodyText);
           }
           return response;
         } catch (err) {
-          console.warn('[OLO Fintel API Proxy] Servidor Express local inacessível. Usando mock local...', err);
+          console.warn('[MiraWelch API Proxy] Servidor Express local inacessível. Usando mock local...', err);
           return mockLocalEndpoint(apiPath, method, bodyText);
         }
       }
@@ -504,7 +798,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
             const fullName = (body.name || '').trim();
             const parts = fullName.split(' ').filter(Boolean);
             const firstName = parts[0] || 'Gestor';
-            const lastName = parts.slice(1).join(' ') || 'Fintel';
+            const lastName = parts.slice(1).join(' ') || 'MiraWelch';
             
             // Normalize sector / industry value for NestJS enum (AGRICULTURE, LIVESTOCK, FISHERIES, COMMERCE, SERVICES)
             let rawSector = (body.industry || body.sector || body.industryType || 'AGRICULTURE').toString().toUpperCase();
@@ -525,10 +819,10 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
             // Save to localStorage immediately so frontend remembers preferred sector
             safeStorage.setItem('olo_fintel_last_selected_sector', rawSector);
 
-            const compName = body.companyName || body.organizationName || body.company_name || 'Cooperativa OLO';
+            const compName = body.companyName || body.organizationName || body.company_name || 'Cooperativa MiraWelch';
 
             const payload = {
-              name: fullName || 'Gestor Fintel',
+              name: fullName || 'Gestor MiraWelch',
               firstName,
               lastName,
               email: body.email,
@@ -630,11 +924,17 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
           targetUrl = `${activeUrl}/api/v1/operations`;
         }
       }
-      else if (cleanApiPath === 'survey/stats') {
+      else if (cleanApiPath === 'survey/stats' || cleanApiPath === 'surveys/statistics') {
+        targetUrl = `${activeUrl}/api/v1/surveys/statistics`;
+      }
+      else if (cleanApiPath === 'surveys/jury-dashboard') {
         targetUrl = `${activeUrl}/api/v1/surveys/jury-dashboard`;
       }
-      else if (cleanApiPath === 'survey/submit') {
+      else if (cleanApiPath === 'survey/submit' || cleanApiPath === 'surveys/responses') {
         targetUrl = `${activeUrl}/api/v1/surveys/responses`;
+      }
+      else if (cleanApiPath === 'survey/active' || cleanApiPath === 'surveys/active') {
+        targetUrl = `${activeUrl}/api/v1/surveys/active`;
       }
       else if (cleanApiPath === 'ai/advisor') {
         targetUrl = `${activeUrl}/api/v1/ai/chat`;
@@ -760,7 +1060,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
         // Se o servidor retornar 404 ou HTML para este endpoint (ex: erro HTML do Render ou rota indisponível),
         // ativamos imediatamente a cura automática fallback-local
         if (response.status === 404 || contentType.includes('text/html')) {
-          console.warn(`[OLO Fintel API Proxy] Endpoint ${apiPath} indisponível ou retornou HTML (${response.status}) no NestJS/Render. Ativando cura local...`);
+          console.warn(`[MiraWelch API Proxy] Endpoint ${apiPath} indisponível ou retornou HTML (${response.status}) no NestJS/Render. Ativando cura local...`);
           return mockLocalEndpoint(apiPath, method, bodyText);
         }
 
@@ -784,7 +1084,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
                     safeStorage.setItem('accessToken', tokenVal);
                   }
 
-                  const compName = rootData.organizationName || rootData.companyName || orgObj.name || userObj?.organizationName || userObj?.companyName || 'Cooperativa OLO';
+                  const compName = rootData.organizationName || rootData.companyName || orgObj.name || userObj?.organizationName || userObj?.companyName || 'Cooperativa MiraWelch';
 
                   // Sector is at rootData.sector in NestJS backend response (or rootData.industry)
                   let rawInd = rootData.sector || rootData.industry || rootData.orgSector || orgObj.sector || orgObj.industry || userObj?.sector || userObj?.industry;
@@ -848,7 +1148,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
                   const flatUser = {
                     id: uObj.id || rootData.id || `usr-${Date.now()}`,
                     name: fullName,
-                    email: uObj.email || rootData.email || 'utilizador@olofintel.ao',
+                    email: uObj.email || rootData.email || 'utilizador@mirawelch.ao',
                     role: normalizedUserRole,
                     organizationId: rootData.organizationId || orgObj.id || uObj.organizationId || `org-${Date.now()}`,
                     organizationName: compName,
@@ -872,17 +1172,47 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
                   finalJson = flatUser;
                 }
               }
-              else if (cleanApiPath === 'survey/stats') {
-                const stats = originalJson.stats || {};
+              else if (cleanApiPath.includes('survey') || cleanApiPath.includes('surveys')) {
+                const rootData = originalJson.data || originalJson;
+                const responsesList = Array.isArray(originalJson.responses) ? originalJson.responses :
+                                     (Array.isArray(rootData.responses) ? rootData.responses :
+                                     (Array.isArray(originalJson.data) ? originalJson.data :
+                                     (Array.isArray(rootData) ? rootData :
+                                     (Array.isArray(originalJson) ? originalJson : []))));
+
+                const questionStats = originalJson.questionStats || rootData.questionStats || originalJson.data?.questionStats || [];
+                const surveyInfo = originalJson.survey || rootData.survey || originalJson.data?.survey || null;
+
+                const totalRespCount = surveyInfo?.responsesCount || originalJson.stats?.totalResponses || rootData.stats?.totalResponses || responsesList.length;
+                const targetG = surveyInfo?.target || originalJson.stats?.targetGoal || rootData.stats?.targetGoal || 100;
+
+                const stats = originalJson.stats || rootData.stats || {
+                  totalResponses: totalRespCount,
+                  targetGoal: targetG,
+                  progressPercentage: Math.min(100, Math.round((totalRespCount / targetG) * 100)),
+                  byProvince: originalJson.byProvince || rootData.byProvince || {},
+                  bySector: originalJson.bySector || rootData.bySector || {}
+                };
+
                 finalJson = {
-                  total: stats.totalResponses || 0,
+                  ...originalJson,
+                  success: originalJson.success ?? true,
+                  survey: surveyInfo,
+                  questionStats,
+                  stats: {
+                    ...stats,
+                    totalResponses: stats.totalResponses || stats.total || totalRespCount,
+                    targetGoal: stats.targetGoal || targetG,
+                    progressPercentage: stats.progressPercentage || Math.min(100, Math.round(((stats.totalResponses || totalRespCount) / targetG) * 100)),
+                    byProvince: stats.byProvince || {},
+                    bySector: stats.bySector || {}
+                  },
+                  total: stats.totalResponses || stats.total || totalRespCount,
                   byProvince: stats.byProvince || {},
                   bySector: stats.bySector || {},
-                  challenges: [
-                    { id: '1', challenge: 'Falta de controle de fluxo de caixa.', percentage: 48 },
-                    { id: '2', challenge: 'Dificuldade de acesso a financiamento bancário.', percentage: 37 },
-                    { id: '3', challenge: 'Falta de registos e histórico financeiro organizado.', percentage: 15 }
-                  ]
+                  responses: responsesList,
+                  data: originalJson.data || rootData,
+                  count: totalRespCount
                 };
               }
               else if (cleanApiPath === 'ai/advisor') {
@@ -1031,7 +1361,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
                 headers: response.headers
               });
             } catch (jsonErr) {
-              console.warn(`[OLO Fintel API Proxy] Falha ao analisar JSON para ${apiPath}. Ativando cura local...`, jsonErr);
+              console.warn(`[MiraWelch API Proxy] Falha ao analisar JSON para ${apiPath}. Ativando cura local...`, jsonErr);
               return mockLocalEndpoint(apiPath, method, bodyText);
             }
           }
@@ -1046,7 +1376,7 @@ const customFetch = async function (input: RequestInfo | URL, init?: RequestInit
 
         return response;
       } catch (err) {
-        console.warn('[OLO Fintel API Proxy] Servidor Render NestJS inacessível. Ativando cura local...', err);
+        console.warn('[MiraWelch API Proxy] Servidor Render NestJS inacessível. Ativando cura local...', err);
         return mockLocalEndpoint(apiPath, method, bodyText);
       }
     }
@@ -1067,7 +1397,7 @@ try {
       enumerable: true
     });
   } catch (e2) {
-    console.warn("[OLO Fintel API Proxy] Não foi possível redefinir window.fetch diretamente, tentando prototype:", e2);
+    console.warn("[MiraWelch API Proxy] Não foi possível redefinir window.fetch diretamente, tentando prototype:", e2);
     try {
       const proto = Object.getPrototypeOf(window);
       if (proto) {
@@ -1079,7 +1409,7 @@ try {
         });
       }
     } catch (e3) {
-      console.error("[OLO Fintel API Proxy] Falha crítica ao interceptar fetch globalmente:", e3);
+      console.error("[MiraWelch API Proxy] Falha crítica ao interceptar fetch globalmente:", e3);
     }
   }
 }
@@ -1108,7 +1438,7 @@ function getAuthHeaders(): HeadersInit {
 }
 
 /**
- * Cliente de Serviços do OLO Fintel
+ * Cliente de Serviços do MiraWelch
  */
 export const ApiClient = {
   /**

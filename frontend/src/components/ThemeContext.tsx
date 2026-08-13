@@ -18,7 +18,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setThemeState] = useState<Theme>(() => {
     try {
-      const saved = localStorage.getItem('olo-fintel-theme');
+      const saved = localStorage.getItem('mirawelch-theme') || localStorage.getItem('olo-fintel-theme');
       return (saved as Theme) || 'system';
     } catch {
       return 'system';
@@ -30,7 +30,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     try {
-      localStorage.setItem('olo-fintel-theme', newTheme);
+      localStorage.setItem('mirawelch-theme', newTheme);
     } catch {}
   };
 

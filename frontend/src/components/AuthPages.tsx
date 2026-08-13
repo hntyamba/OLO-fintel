@@ -4,6 +4,7 @@
  */
 
 import React, { useState, useRef } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from './AuthContext.js';
 import { safeStorage } from '../lib/api';
 import { useTheme } from './ThemeContext.js';
@@ -52,10 +53,10 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
   const handleQuickLogin = async (roleType: 'owner' | 'superadmin' | 'analyst' | 'consultant') => {
     setLoading(true);
     const emailMap = {
-      owner: 'owner@olofintel.ao',
-      superadmin: 'superadmin@olofintel.ao',
-      analyst: 'analyst@olofintel.ao',
-      consultant: 'consultant@olofintel.ao'
+      owner: 'owner@mirawelch.ao',
+      superadmin: 'superadmin@mirawelch.ao',
+      analyst: 'analyst@mirawelch.ao',
+      consultant: 'consultant@mirawelch.ao'
     };
     const targetEmail = emailMap[roleType];
     const res = await login(targetEmail, 'password');
@@ -132,8 +133,8 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
       industry: chosenSector,
       sector: chosenSector,
       province: province || 'Luanda',
-      companyName: organizationName || 'Cooperativa OLO',
-      organizationName: organizationName || 'Cooperativa OLO'
+      companyName: organizationName || 'Cooperativa MiraWelch',
+      organizationName: organizationName || 'Cooperativa MiraWelch'
     };
 
     const res = await register(payload);
@@ -147,49 +148,57 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
 
   const provinces = ['Luanda', 'Huíla', 'Benguela', 'Bengo', 'Bié', 'Lunda Norte', 'Lunda Sul', 'Huambo', 'Cabinda', 'Cuanza Sul', 'Namibe', 'Uíge', 'Malanje', 'Zaire', 'Moxico Leste', 'Moxico', 'Cuanza Norte', 'Cuando', 'Cubango', 'Cunene', 'Icolo e Bengo'];
 
-  const inputStyle = `w-full h-11 px-4 rounded-xl border bg-white dark:bg-[#1A1A21] border-gray-300 dark:border-gray-700 text-gray-900 dark:text-white outline-none focus:border-brand-iris transition-all`;
+  const inputStyle = `w-full h-10 px-3.5 rounded-lg border bg-white dark:bg-zinc-900 border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-zinc-100 outline-none focus:border-slate-500 text-xs transition-all`;
 
   return (
-    <div className="max-w-md w-full mx-auto px-6 py-12 flex flex-col justify-center min-h-[80vh]">
-      
-      {view === 'login' ? (
-        <div className="bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl p-8 shadow-xl space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('auth.login_title')}</h2>
-            <p className="text-xs text-gray-400 mt-1.5">{t('auth.login_subtitle')}</p>
+    <div className="max-w-md w-full mx-auto px-6 py-12 flex flex-col justify-center min-h-[80vh] overflow-hidden">
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={view}
+          initial={{ opacity: 0, scale: 0.98, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.98, y: -10 }}
+          transition={{ duration: 0.22, ease: "easeOut" }}
+          className="w-full"
+        >
+          {view === 'login' ? (
+        <div className="fintel-card space-y-6 text-left">
+          <div className="text-center space-y-1">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-zinc-100">{t('auth.login_title')}</h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">{t('auth.login_subtitle')}</p>
           </div>
 
           {error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/25 rounded-xl text-red-500 text-xs font-semibold">
+            <div className="p-3 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800/40 rounded-lg text-rose-600 dark:text-rose-400 text-xs font-semibold">
               ⚠️ {error}
             </div>
           )}
 
           <form onSubmit={handleLoginSubmit} className="space-y-4">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-400 uppercase">{t('auth.email_label')}</label>
+              <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('auth.email_label')}</label>
               <div className="relative">
-                <Mail className="absolute left-3.5 top-3.5 text-gray-400" size={16} />
+                <Mail className="absolute left-3 top-3 text-slate-400" size={16} />
                 <input 
                   type="email" 
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="exemplo@olofintel.ao" 
-                  className={`${inputStyle} pl-11`}
+                  placeholder="exemplo@mirawelch.ao" 
+                  className={`${inputStyle} pl-9`}
                 />
               </div>
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-gray-400 uppercase">{t('auth.password_label')}</label>
+              <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('auth.password_label')}</label>
               <div className="relative">
-                <Lock className="absolute left-3.5 top-3.5 text-gray-400" size={16} />
+                <Lock className="absolute left-3 top-3 text-slate-400" size={16} />
                 <input 
                   type="password" 
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••" 
-                  className={`${inputStyle} pl-11`}
+                  className={`${inputStyle} pl-9`}
                 />
               </div>
             </div>
@@ -197,57 +206,57 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
             <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 bg-brand-iris hover:bg-brand-iris-hover text-white font-bold rounded-xl transition-all shadow-md shadow-brand-iris/25"
+              className="w-full btn-primary h-10 text-xs cursor-pointer"
             >
               {loading ? t('auth.authenticating') : t('auth.login_btn')}
             </button>
           </form>
 
           {/* QUICK-ACCESS DEMO ACCOUNTS FOR TESTERS & LISPA JURY */}
-          <div className="border-t border-gray-200 dark:border-gray-800 pt-5 space-y-3">
-            <p className="text-xs font-bold text-gray-400 uppercase text-center">{t('auth.quick_profiles')}</p>
+          <div className="border-t border-slate-200 dark:border-zinc-800 pt-4 space-y-2.5">
+            <p className="text-[10px] font-bold text-slate-400 uppercase text-center font-mono">{t('auth.quick_profiles')}</p>
             <div className="grid grid-cols-2 gap-2">
               <button 
                 onClick={() => handleQuickLogin('owner')}
-                className="py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-brand-iris text-left text-xs font-semibold cursor-pointer text-gray-900 dark:text-white bg-white dark:bg-[#1A1A21]"
+                className="py-2 px-2.5 rounded-md border border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600 text-left text-[11px] font-semibold cursor-pointer text-slate-800 dark:text-zinc-200 bg-slate-50 dark:bg-zinc-900 transition-all"
               >
                 🌾 Cooperativa (Owner)
               </button>
               <button 
                 onClick={() => handleQuickLogin('superadmin')}
-                className="py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-brand-purple text-left text-xs font-semibold cursor-pointer text-gray-900 dark:text-white bg-white dark:bg-[#1A1A21]"
+                className="py-2 px-2.5 rounded-md border border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600 text-left text-[11px] font-semibold cursor-pointer text-slate-800 dark:text-zinc-200 bg-slate-50 dark:bg-zinc-900 transition-all"
               >
                 👑 Super Admin
               </button>
               <button 
                 onClick={() => handleQuickLogin('analyst')}
-                className="py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-green-500 text-left text-xs font-semibold cursor-pointer text-gray-900 dark:text-white bg-white dark:bg-[#1A1A21]"
+                className="py-2 px-2.5 rounded-md border border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600 text-left text-[11px] font-semibold cursor-pointer text-slate-800 dark:text-zinc-200 bg-slate-50 dark:bg-zinc-900 transition-all"
               >
                 📊 Analista Bancário
               </button>
               <button 
                 onClick={() => handleQuickLogin('consultant')}
-                className="py-2.5 px-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-amber-500 text-left text-xs font-semibold cursor-pointer text-gray-900 dark:text-white bg-white dark:bg-[#1A1A21]"
+                className="py-2 px-2.5 rounded-md border border-slate-200 dark:border-zinc-800 hover:border-slate-400 dark:hover:border-zinc-600 text-left text-[11px] font-semibold cursor-pointer text-slate-800 dark:text-zinc-200 bg-slate-50 dark:bg-zinc-900 transition-all"
               >
                 🤝 Consultor (Mentor)
               </button>
             </div>
-            <p className="text-[10px] text-gray-400 text-center font-mono">{t('auth.password_tip')}</p>
+            <p className="text-[10px] text-slate-400 text-center font-mono">{t('auth.password_tip')}</p>
           </div>
 
-          <div className="text-center text-xs">
-            <span className="text-gray-400">{t('auth.no_account')}</span>{' '}
-            <button onClick={() => onNavigate('register')} className="text-brand-iris font-bold hover:underline">
+          <div className="text-center text-xs pt-1">
+            <span className="text-slate-500 dark:text-zinc-400">{t('auth.no_account')}</span>{' '}
+            <button onClick={() => onNavigate('register')} className="text-slate-900 dark:text-zinc-100 font-bold hover:underline cursor-pointer">
               {t('auth.register_here')}
             </button>
           </div>
         </div>
       ) : (
         /* REGISTER PROGRESSIVE FLOW */
-        <div className="bg-white dark:bg-[#1A1A21] border border-gray-200 dark:border-[#2A2A35] rounded-3xl p-8 shadow-xl space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('auth.register_title')}</h2>
-            <p className="text-xs text-gray-400 mt-1.5">{t('auth.register_subtitle')}</p>
+        <div className="fintel-card space-y-6 text-left">
+          <div className="text-center space-y-1">
+            <h2 className="text-xl font-bold text-slate-900 dark:text-zinc-100">{t('auth.register_title')}</h2>
+            <p className="text-xs text-slate-500 dark:text-zinc-400">{t('auth.register_subtitle')}</p>
           </div>
 
           {error && (
@@ -257,12 +266,12 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
           )}
 
           {/* Stepper Indicator */}
-          <div className="flex justify-center gap-2">
+          <div className="flex justify-center gap-1.5">
             {[1, 2, 3].map(s => (
               <div 
                 key={s} 
-                className={`h-1.5 rounded-full transition-all ${
-                  regStep === s ? 'w-8 bg-brand-iris' : 'w-2 bg-gray-200 dark:bg-gray-800'
+                className={`h-1 rounded-full transition-all ${
+                  regStep === s ? 'w-6 bg-slate-800 dark:bg-zinc-200' : 'w-2 bg-slate-200 dark:bg-zinc-800'
                 }`}
               />
             ))}
@@ -272,7 +281,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
           {regStep === 1 && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-400 uppercase">{t('auth.full_name')}</label>
+                <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('auth.full_name')}</label>
                 <input 
                   type="text" 
                   value={name}
@@ -283,18 +292,18 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-400 uppercase">{t('auth.email_label')}</label>
+                <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('auth.email_label')}</label>
                 <input 
                   type="email" 
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  placeholder="exemplo@olofintel.ao" 
+                  placeholder="exemplo@mirawelch.ao" 
                   className={inputStyle}
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-400 uppercase">{t('auth.password_access')}</label>
+                <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('auth.password_access')}</label>
                 <input 
                   type="password" 
                   value={password}
@@ -313,10 +322,10 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                   setError(null);
                   setRegStep(2);
                 }}
-                className="w-full h-11 bg-brand-iris hover:bg-brand-iris-hover text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2"
+                className="w-full btn-primary h-10 text-xs cursor-pointer flex items-center justify-center gap-2"
               >
                 {t('auth.continue')}
-                <ArrowRight size={16} />
+                <ArrowRight size={14} />
               </button>
             </div>
           )}
@@ -324,11 +333,11 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
           {/* REG STEP 2: BRING YOUR CHAOS (DRAG & DROP SIMULATOR) */}
           {regStep === 2 && (
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-gray-900 dark:text-white flex items-center gap-1.5">
-                <FileSpreadsheet className="text-brand-purple" size={18} />
+              <h3 className="text-xs font-bold text-slate-900 dark:text-zinc-100 flex items-center gap-1.5">
+                <FileSpreadsheet className="text-slate-600 dark:text-zinc-400" size={16} />
                 {t('auth.bring_chaos')}
               </h3>
-              <p className="text-xs text-gray-400 leading-relaxed">
+              <p className="text-xs text-slate-500 dark:text-zinc-400 leading-relaxed">
                 {t('auth.bring_chaos_desc')}
               </p>
 
@@ -337,10 +346,10 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                 onDragLeave={handleDragLeave}
                 onDrop={handleDrop}
                 onClick={() => fileInputRef.current?.click()}
-                className={`p-6 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
+                className={`p-5 border border-dashed rounded-xl flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
                   isDragging 
-                    ? 'border-brand-iris bg-brand-iris/10' 
-                    : 'border-gray-200 dark:border-gray-700 hover:border-brand-iris hover:bg-brand-iris/5'
+                    ? 'border-slate-500 bg-slate-100 dark:bg-zinc-800' 
+                    : 'border-slate-300 dark:border-zinc-700 hover:border-slate-400 bg-slate-50/50 dark:bg-zinc-900/40'
                 }`}
               >
                 <input
@@ -351,9 +360,9 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                   onChange={handleFileInputChange}
                   className="hidden"
                 />
-                <FileUp className="text-brand-purple mb-2" size={32} />
-                <span className="text-xs font-bold text-gray-700 dark:text-gray-300">{t('auth.drag_files')}</span>
-                <span className="text-[10px] text-gray-400 mt-1">{t('auth.accept_formats')}</span>
+                <FileUp className="text-slate-500 dark:text-zinc-400 mb-1.5" size={24} />
+                <span className="text-xs font-bold text-slate-700 dark:text-zinc-300">{t('auth.drag_files')}</span>
+                <span className="text-[10px] text-slate-400 mt-0.5">{t('auth.accept_formats')}</span>
                 
                 <button
                   type="button"
@@ -361,35 +370,35 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                     e.stopPropagation();
                     fileInputRef.current?.click();
                   }}
-                  className="mt-3 px-4 py-2 bg-brand-iris hover:bg-brand-iris-hover text-white text-xs font-bold rounded-xl shadow-sm transition-all"
+                  className="mt-3 btn-secondary text-xs py-1.5 px-3 cursor-pointer"
                 >
-                  Procurar Ficheiros no Computador
+                  Procurar Ficheiros
                 </button>
               </div>
 
               {uploadedFiles.length > 0 && (
                 <div className="space-y-1.5 max-h-24 overflow-y-auto">
-                  <p className="text-[10px] font-bold text-gray-400 uppercase">{t('auth.detected_files')}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase font-mono">{t('auth.detected_files')}</p>
                   {uploadedFiles.map((fn, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-2 rounded bg-gray-50 dark:bg-gray-800 text-xs border border-transparent hover:border-brand-iris/20">
-                      <span className="truncate font-mono text-gray-600 dark:text-gray-300">{fn}</span>
-                      <CheckCircle size={14} className="text-green-500 shrink-0" />
+                    <div key={idx} className="flex items-center justify-between p-2 rounded bg-slate-100 dark:bg-zinc-800 text-xs">
+                      <span className="truncate font-mono text-slate-700 dark:text-zinc-300">{fn}</span>
+                      <CheckCircle size={14} className="text-emerald-500 shrink-0" />
                     </div>
                   ))}
                 </div>
               )}
 
-              <div className="flex gap-4">
+              <div className="flex gap-3">
                 <button
                   onClick={() => setRegStep(1)}
-                  className="flex-1 h-11 border border-gray-300 dark:border-gray-700 rounded-xl font-semibold text-xs text-gray-500 flex items-center justify-center gap-1.5"
+                  className="flex-1 btn-secondary h-10 text-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <ArrowLeft size={14} />
                   {t('auth.back')}
                 </button>
                 <button
                   onClick={() => setRegStep(3)}
-                  className="flex-1 h-11 bg-brand-iris hover:bg-brand-iris-hover text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5"
+                  className="flex-1 btn-primary h-10 text-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   {t('auth.continue')}
                   <ArrowRight size={14} />
@@ -402,7 +411,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
           {regStep === 3 && (
             <div className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-bold text-gray-400 uppercase">{t('auth.org_name')}</label>
+                <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('auth.org_name')}</label>
                 <input 
                   type="text" 
                   value={organizationName}
@@ -413,9 +422,9 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase">{t('auth.sector')}</label>
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('auth.sector')}</label>
                   <select
                     value={industry}
                     onChange={e => setIndustry(e.target.value)}
@@ -429,7 +438,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-bold text-gray-400 uppercase">{t('auth.province')}</label>
+                  <label className="text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">{t('auth.province')}</label>
                   <select
                     value={province}
                     onChange={e => setProvince(e.target.value)}
@@ -442,10 +451,10 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                 </div>
               </div>
 
-              <div className="flex gap-4 pt-3">
+              <div className="flex gap-3 pt-2">
                 <button
                   onClick={() => setRegStep(2)}
-                  className="flex-1 h-11 border border-gray-300 dark:border-gray-700 rounded-xl font-semibold text-xs text-gray-500 flex items-center justify-center gap-1.5"
+                  className="flex-1 btn-secondary h-10 text-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   <ArrowLeft size={14} />
                   {t('auth.back')}
@@ -453,7 +462,7 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
                 <button
                   onClick={handleRegisterSubmit}
                   disabled={loading}
-                  className="flex-1 h-11 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 shadow"
+                  className="flex-1 btn-primary h-10 text-xs cursor-pointer flex items-center justify-center gap-1.5"
                 >
                   {loading ? t('auth.registering') : t('auth.finish_register')}
                   <CheckCircle size={14} />
@@ -462,14 +471,16 @@ export default function AuthPages({ view, onNavigate }: AuthPagesProps) {
             </div>
           )}
 
-          <div className="text-center text-xs">
-            <span className="text-gray-400">{t('auth.have_account')}</span>{' '}
-            <button onClick={() => onNavigate('login')} className="text-brand-iris font-bold hover:underline">
+          <div className="text-center text-xs pt-1">
+            <span className="text-slate-500 dark:text-zinc-400">{t('auth.have_account')}</span>{' '}
+            <button onClick={() => onNavigate('login')} className="text-slate-900 dark:text-zinc-100 font-bold hover:underline cursor-pointer">
               {t('auth.do_login')}
             </button>
           </div>
         </div>
       )}
+        </motion.div>
+      </AnimatePresence>
 
     </div>
   );

@@ -130,11 +130,11 @@ export default function AICenterModule({ userId, userRole, organizationId }: AIC
       }
 
       // 4. Fetch Financial Data from LocalStorage (consistent with FinancialModule)
-      const cachedReceitas = localStorage.getItem(`olo-fintel-fin-receitas-${userId}`);
-      const cachedDespesas = localStorage.getItem(`olo-fintel-fin-despesas-${userId}`);
-      const cachedBudgets = localStorage.getItem(`olo-fintel-fin-budgets-${userId}`);
-      const cachedAR = localStorage.getItem(`olo-fintel-fin-ar-${userId}`);
-      const cachedAP = localStorage.getItem(`olo-fintel-fin-ap-${userId}`);
+      const cachedReceitas = localStorage.getItem(`mirawelch-fin-receitas-${userId}`) || localStorage.getItem(`olo-fintel-fin-receitas-${userId}`);
+      const cachedDespesas = localStorage.getItem(`mirawelch-fin-despesas-${userId}`) || localStorage.getItem(`olo-fintel-fin-despesas-${userId}`);
+      const cachedBudgets = localStorage.getItem(`mirawelch-fin-budgets-${userId}`) || localStorage.getItem(`olo-fintel-fin-budgets-${userId}`);
+      const cachedAR = localStorage.getItem(`mirawelch-fin-ar-${userId}`) || localStorage.getItem(`olo-fintel-fin-ar-${userId}`);
+      const cachedAP = localStorage.getItem(`mirawelch-fin-ap-${userId}`) || localStorage.getItem(`olo-fintel-fin-ap-${userId}`);
 
       const finReceitas = cachedReceitas ? JSON.parse(cachedReceitas) : [];
       const finDespesas = cachedDespesas ? JSON.parse(cachedDespesas) : [];
@@ -146,9 +146,9 @@ export default function AICenterModule({ userId, userRole, organizationId }: AIC
       const totalDesVal = finDespesas.reduce((sum: number, d: any) => sum + (Number(d.valor) || 0), 0);
 
       // 5. Fetch CRM Data from LocalStorage (consistent with CommercialCRMModule)
-      const cachedDeals = localStorage.getItem(`olo-fintel-crm-oportunidades-${userId}`);
-      const cachedClients = localStorage.getItem(`olo-fintel-crm-clientes-${userId}`);
-      const cachedContracts = localStorage.getItem(`olo-fintel-crm-contratos-${userId}`);
+      const cachedDeals = localStorage.getItem(`mirawelch-crm-oportunidades-${userId}`) || localStorage.getItem(`olo-fintel-crm-oportunidades-${userId}`);
+      const cachedClients = localStorage.getItem(`mirawelch-crm-clientes-${userId}`) || localStorage.getItem(`olo-fintel-crm-clientes-${userId}`);
+      const cachedContracts = localStorage.getItem(`mirawelch-crm-contratos-${userId}`) || localStorage.getItem(`olo-fintel-crm-contratos-${userId}`);
 
       const crmDeals = cachedDeals ? JSON.parse(cachedDeals) : [];
       const crmClients = cachedClients ? JSON.parse(cachedClients) : [];
@@ -359,8 +359,8 @@ export default function AICenterModule({ userId, userRole, organizationId }: AIC
             </span>
           </div>
           <h3 className="text-lg font-bold text-gray-900 dark:text-white mt-1.5 flex items-center gap-2">
-            <Sparkles className="text-brand-purple" size={22} />
-            Assessores OLO AI Fintel
+            <Sparkles className="text-emerald-500" size={22} />
+            Assessores MiraWelch AI
           </h3>
         </div>
         <button
@@ -522,7 +522,7 @@ export default function AICenterModule({ userId, userRole, organizationId }: AIC
             <div className="p-8 border border-gray-100 dark:border-gray-800 rounded-2xl flex flex-col items-center justify-center text-center space-y-4 min-h-[350px] bg-brand-purple/5 border-dashed">
               <Loader2 size={36} className="text-brand-purple animate-spin" />
               <div className="space-y-1">
-                <h5 className="font-bold text-sm text-brand-purple">Processando com OLO AI...</h5>
+                <h5 className="font-bold text-sm text-emerald-600 dark:text-emerald-400">Processando com MiraWelch AI...</h5>
                 <p className="text-xs text-gray-400">{statusMessage || 'Por favor, aguarde...'}</p>
               </div>
               <div className="text-[9px] font-mono text-gray-400 border border-gray-100 dark:border-gray-800 bg-white dark:bg-black/40 px-3 py-1.5 rounded-lg max-w-xs leading-normal">
@@ -537,7 +537,7 @@ export default function AICenterModule({ userId, userRole, organizationId }: AIC
                   Relatório Estruturado de Inteligência Artificial
                 </span>
                 <span className="text-[9px] font-mono text-gray-400">
-                  OLO Fintel Gen3 • {new Date().toLocaleDateString()}
+                  MiraWelch Engine • {new Date().toLocaleDateString()}
                 </span>
               </div>
 
@@ -600,7 +600,7 @@ export default function AICenterModule({ userId, userRole, organizationId }: AIC
               <div className="flex gap-3 justify-end pt-2">
                 <button
                   onClick={() => {
-                    const printText = `RELATÓRIO OLO FINTEL AI\nConsultor: ${getAdvisorTitle(activeAdvisor)}\n\n1. DIAGNÓSTICO:\n${report?.diagnostico}\n\n2. RISCOS:\n${report?.riscos}\n\n3. OPORTUNIDADES:\n${report?.oportunidades}\n\n4. AÇÕES CONCRETAS:\n${report?.acoes}\n\n5. IMPACTO ESPERADO:\n${report?.impactoEsperado}`;
+                    const printText = `RELATÓRIO MIRAWELCH AI\nConsultor: ${getAdvisorTitle(activeAdvisor)}\n\n1. DIAGNÓSTICO:\n${report?.diagnostico}\n\n2. RISCOS:\n${report?.riscos}\n\n3. OPORTUNIDADES:\n${report?.oportunidades}\n\n4. AÇÕES CONCRETAS:\n${report?.acoes}\n\n5. IMPACTO ESPERADO:\n${report?.impactoEsperado}`;
                     const blob = new Blob([printText], { type: 'text/plain' });
                     const url = URL.createObjectURL(blob);
                     const link = document.createElement('a');
